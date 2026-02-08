@@ -28,6 +28,9 @@ class RolePermissionSeeder extends Seeder
             'manage-clients',
             'manage-services',
             'manage-settings',
+            'manage-users',
+            'manage-roles',
+            'manage-permissions',
             // Order: view list and detail
             'orders-view',
             // Order workflow (granular)
