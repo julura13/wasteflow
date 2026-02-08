@@ -1,0 +1,74 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Company extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'name',
+        'email',
+        'phone',
+        'address',
+        'contact_person',
+        'registration_number',
+        'rebate_percentage',
+        'is_active',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'is_active' => 'boolean',
+            'rebate_percentage' => 'decimal:2',
+        ];
+    }
+
+    /**
+     * Get the branches for the company.
+     */
+    public function branches(): HasMany
+    {
+        return $this->hasMany(Branch::class);
+    }
+
+    /**
+     * Get the users for the company (legacy direct relationship).
+     */
+    public function directUsers(): HasMany
+    {
+        return $this->hasMany(User::class);
+    }
+
+    /**
+     * Get the users for the company (many-to-many relationship).
+     */
+    public function users(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'company_user')
+            ->withPivot('role')
+            ->withTimestamps();
+    }
+
+    /**
+     * Get all collection points through branches.
+     */
+    public function collectionPoints(): HasMany
+    {
+        return $this->hasManyThrough(Site::class, Branch::class);
+    }
+
+    /**
+     * Get all orders for the company.
+     */
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class);
+    }
+}

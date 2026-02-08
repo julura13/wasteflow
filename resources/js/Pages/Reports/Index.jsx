@@ -1,0 +1,80 @@
+import { Head, Link, router } from '@inertiajs/react';
+import DashboardLayout from '@/Layouts/DashboardLayout';
+import { FileText, TrendingUp, BarChart3, Leaf } from 'lucide-react';
+
+export default function Index() {
+    const reports = [
+        {
+            title: 'Waste Management Report',
+            description: 'Comprehensive waste management summary: Environmental impact, waste grades, recycling commodities, and diversion metrics.',
+            href: '/reports/waste-management',
+            icon: Leaf,
+            color: 'bg-emerald-600',
+            details: 'Shows: Trees saved, energy saved, water saved, recycling breakdown, and landfill diversion rate',
+        },
+        {
+            title: 'Monthly Rebate Tracker',
+            description: 'Financial tracking: View rebate earnings per grade and site. Shows how much money was earned from recycling orders.',
+            href: '/reports/rebate-tracker',
+            icon: TrendingUp,
+            color: 'bg-green-500',
+            details: 'Requires: Finalized recycling orders with rebate materials and weights captured',
+        },
+        {
+            title: 'Average Weight for Containers',
+            description: 'Operational planning: Calculate average weight per container (REL Skip, Wheelie Bins, or 30m² Skips). Helps understand typical container weights for route optimization.',
+            href: '/reports/average-weight-wheelie-bins',
+            icon: BarChart3,
+            color: 'bg-blue-500',
+            details: 'Requires: Finalized waste orders with selected container type and weights captured',
+        },
+    ];
+
+    return (
+        <DashboardLayout title="Reports">
+            <Head title="Reports" />
+
+            <div className="max-w-7xl mx-auto">
+                <div className="mb-6">
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Reports</h1>
+                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                        View and analyze order data, rebates, and performance metrics
+                    </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {reports.map((report) => {
+                        const Icon = report.icon;
+                        return (
+                            <div
+                                key={report.href}
+                                onClick={() => router.visit(report.href)}
+                                className="bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition-shadow p-6 border border-gray-200 dark:border-gray-700 hover:border-primary-500 dark:hover:border-primary-500 cursor-pointer"
+                            >
+                                <div className="flex items-start">
+                                    <div className={`${report.color} p-3 rounded-lg`}>
+                                        <Icon className="h-6 w-6 text-white" />
+                                    </div>
+                                    <div className="ml-4 flex-1">
+                                        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                                            {report.title}
+                                        </h3>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                                            {report.description}
+                                        </p>
+                                        {report.details && (
+                                            <p className="text-xs text-gray-500 dark:text-gray-500 italic">
+                                                {report.details}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        </DashboardLayout>
+    );
+}
+
