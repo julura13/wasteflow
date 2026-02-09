@@ -164,15 +164,18 @@
                             foreach ($quantityLines as $line) {
                                 $type = $line['quantity_type'] ?? '';
                                 $quantity = $line['quantity'] ?? 0;
-                                
-                                if ($type === 'rel_skip') {
+                                $containerName = $line['container_option_name'] ?? null;
+
+                                if ($containerName) {
+                                    // Waste order with container options
+                                    $recyclingContainers[] = $quantity . ' x ' . $containerName;
+                                } elseif ($type === 'rel_skip') {
                                     $relSkip = $quantity;
                                 } elseif ($type === 'wheelie_bins') {
                                     $wheelieBins = $quantity;
                                 } elseif ($type === 'skips_30m2') {
                                     $skips30m3 = $quantity;
                                 } elseif ($orderType === 'recycling') {
-                                    // For recycling orders, collect container info
                                     $typeLabel = $quantityTypes[$type] ?? ucfirst(str_replace('_', ' ', $type));
                                     if ($type === 'other' && !empty($line['description'] ?? '')) {
                                         $typeLabel .= ' (' . $line['description'] . ')';
@@ -181,10 +184,10 @@
                                 }
                             }
                         }
-                        
+
                         // Get special instructions from notes
                         $specialInstructions = $order->notes ?? '';
-                        if ($orderType === 'recycling' && !empty($recyclingContainers)) {
+                        if (!empty($recyclingContainers)) {
                             $specialInstructions = (!empty($specialInstructions) ? $specialInstructions . ' | ' : '') . implode(', ', $recyclingContainers);
                         }
                     @endphp

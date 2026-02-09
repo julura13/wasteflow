@@ -163,6 +163,29 @@ class MaterialController extends Controller
         return back()->with('success', 'Rebate rate updated successfully.');
     }
 
+    /**
+     * Quick update for client rebate share / rebate percentage (inline editing).
+     */
+    public function updateRebateShare(Request $request, Material $material)
+    {
+        $validated = $request->validate([
+            'client_rebate_share' => 'required|numeric|min:0|max:100',
+        ]);
+
+        $material->update([
+            'client_rebate_share' => round((float) $validated['client_rebate_share'], 2),
+        ]);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'client_rebate_share' => $material->client_rebate_share,
+            ]);
+        }
+
+        return back()->with('success', 'Rebate percentage updated successfully.');
+    }
+
     protected function validatePayload(Request $request, ?int $materialId = null): array
     {
         $baseRules = [

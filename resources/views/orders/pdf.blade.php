@@ -375,12 +375,12 @@
                     $quantityLines = $order->quantity_lines ?? [];
                     $totalContainers = 0;
                 @endphp
-                @if(!empty($quantityLines) && is_array($quantityLines))
+                    @if(!empty($quantityLines) && is_array($quantityLines))
                     @foreach($quantityLines as $line)
                         @php
                             $totalContainers += $line['quantity'] ?? 0;
-                            $typeLabel = $quantityTypes[$line['quantity_type']] ?? ucfirst(str_replace('_', ' ', $line['quantity_type']));
-                            // Add description for "other" type
+                            // Waste orders may use container_option_name; recycling uses quantity_type
+                            $typeLabel = $line['container_option_name'] ?? ($quantityTypes[$line['quantity_type'] ?? ''] ?? ucfirst(str_replace('_', ' ', $line['quantity_type'] ?? '')));
                             if (($line['quantity_type'] ?? '') === 'other' && !empty($line['description'] ?? '')) {
                                 $typeLabel .= ' (' . $line['description'] . ')';
                             }

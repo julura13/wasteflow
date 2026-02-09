@@ -60,7 +60,7 @@ class MonthlyReportDataSeeder extends Seeder
 
         $containerOption = ContainerOption::firstOrCreate(
             ['name' => 'Loose'],
-            ['description' => 'Loose material', 'is_active' => true]
+            ['is_active' => true]
         );
 
         $classification = Classification::firstOrCreate(

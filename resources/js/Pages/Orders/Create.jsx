@@ -5,7 +5,7 @@ import { Link } from '@inertiajs/react';
 import { useState, useEffect, useMemo } from 'react';
 import SearchableDropdown from '@/Components/SearchableDropdown';
 
-export default function Create({ companies = [], branches = [], sites = [], materials, serviceProviders }) {
+export default function Create({ companies = [], branches = [], sites = [], materials, serviceProviders, containerOptions = [] }) {
     const [quantityLines, setQuantityLines] = useState([
         { id: 1, quantity_type: '', quantity: '', description: '' }
     ]);
@@ -44,21 +44,28 @@ export default function Create({ companies = [], branches = [], sites = [], mate
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        
+
+        const isWaste = data.order_type === 'waste';
         const validQuantityLines = quantityLines
             .filter(line => {
-                const hasType = line.quantity_type && line.quantity_type !== '';
+                const hasType = isWaste
+                    ? (line.quantity_type && line.quantity_type !== '')
+                    : (line.quantity_type && line.quantity_type !== '');
                 const hasQuantity = line.quantity && parseInt(line.quantity) > 0;
-                // For "other" type, description is required
-                const hasDescriptionIfOther = line.quantity_type !== 'other' || (line.description && line.description.trim() !== '');
+                const hasDescriptionIfOther = isWaste || line.quantity_type !== 'other' || (line.description && line.description.trim() !== '');
                 return hasType && hasQuantity && hasDescriptionIfOther;
             })
-            .map(line => ({
-                quantity_type: line.quantity_type,
-                quantity: parseInt(line.quantity),
-                ...(line.quantity_type === 'other' && line.description ? { description: line.description.trim() } : {})
-            }));
-        
+            .map(line => {
+                if (isWaste) {
+                    return { container_option_id: parseInt(line.quantity_type, 10), quantity: parseInt(line.quantity, 10) };
+                }
+                return {
+                    quantity_type: line.quantity_type,
+                    quantity: parseInt(line.quantity, 10),
+                    ...(line.quantity_type === 'other' && line.description ? { description: line.description.trim() } : {})
+                };
+            });
+
         if (validQuantityLines.length === 0) {
             alert('Please add at least one quantity line');
             return;
@@ -95,30 +102,13 @@ export default function Create({ companies = [], branches = [], sites = [], mate
         router.post('/orders', submitData);
     };
 
-    // Waste order container types
-    const wasteQuantityTypes = [
-        { 
-            value: 'rel_skip', 
-            label: 'REL Skip', 
-            icon: Truck, 
-            color: 'orange',
-            description: 'Regular skip container'
-        },
-        { 
-            value: 'wheelie_bins', 
-            label: 'Wheelie Bins', 
-            icon: Package, 
-            color: 'blue',
-            description: 'Standard wheelie bins'
-        },
-        { 
-            value: 'skips_30m2', 
-            label: '30m² Skips', 
-            icon: Truck, 
-            color: 'green',
-            description: 'Large 30 square meter skips'
-        },
-    ];
+    // Waste order container types from settings (container options)
+    const wasteQuantityTypes = (containerOptions || []).map(opt => ({
+        value: String(opt.id),
+        label: opt.name,
+        icon: Package,
+        color: 'blue',
+    }));
 
     // Recycling order container types
     const recyclingQuantityTypes = [
@@ -219,7 +209,10 @@ export default function Create({ companies = [], branches = [], sites = [], mate
     };
 
     const getQuantityTypeLabel = (value) => {
-        // Check both waste and recycling types
+        if (data.order_type === 'waste' && containerOptions?.length) {
+            const opt = containerOptions.find(o => String(o.id) === String(value));
+            return opt ? opt.name : value;
+        }
         const allTypes = [...wasteQuantityTypes, ...recyclingQuantityTypes];
         return allTypes.find(type => type.value === value)?.label || value;
     };
@@ -365,13 +358,13 @@ export default function Create({ companies = [], branches = [], sites = [], mate
                                     />
                                 </div>
 
-                                {/* Site Selection */}
+                                {/* Site Selection - optional */}
                                 <div>
                                     <SearchableDropdown
                                         id="site_id"
                                         name="site_id"
-                                        label="Collection Site"
-                                        placeholder={data.branch_id ? "Select a collection site (optional)" : "Select a branch first"}
+                                        label="Collection Site (optional)"
+                                        placeholder={data.branch_id ? "Select a site or leave blank" : "Select a branch first"}
                                         options={availableSites}
                                         value={data.site_id}
                                         onChange={(siteId) => setData('site_id', siteId)}

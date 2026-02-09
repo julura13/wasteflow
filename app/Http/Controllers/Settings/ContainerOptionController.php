@@ -29,7 +29,6 @@ class ContainerOptionController extends Controller
     {
         $data = $request->validate([
             'name' => 'required|string|max:255|unique:container_options,name',
-            'description' => 'nullable|string|max:1000',
             'is_active' => 'sometimes|boolean',
         ]);
 
@@ -44,7 +43,6 @@ class ContainerOptionController extends Controller
     {
         $data = $request->validate([
             'name' => 'required|string|max:255|unique:container_options,name,' . $containerOption->id,
-            'description' => 'nullable|string|max:1000',
             'is_active' => 'sometimes|boolean',
         ]);
 

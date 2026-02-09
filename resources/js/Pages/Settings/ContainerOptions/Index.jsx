@@ -18,7 +18,6 @@ export default function ContainerOptionsIndex({ containerOptions, filters }) {
 
     const form = useForm({
         name: '',
-        description: '',
         is_active: true,
     });
 
@@ -27,11 +26,6 @@ export default function ContainerOptionsIndex({ containerOptions, filters }) {
             accessorKey: 'name',
             header: 'Container Option',
             cell: ({ getValue }) => <span className="font-medium text-gray-900">{getValue()}</span>,
-        },
-        {
-            accessorKey: 'description',
-            header: 'Description',
-            cell: ({ getValue }) => <span className="text-sm text-gray-600">{getValue() ?? '—'}</span>,
         },
         {
             id: 'is_active',
@@ -63,7 +57,6 @@ export default function ContainerOptionsIndex({ containerOptions, filters }) {
         form.clearErrors();
         form.setData({
             name: '',
-            description: '',
             is_active: true,
         });
         setEditingId(null);
@@ -79,7 +72,6 @@ export default function ContainerOptionsIndex({ containerOptions, filters }) {
         form.clearErrors();
         form.setData({
             name: option.name ?? '',
-            description: option.description ?? '',
             is_active: Boolean(option.is_active),
         });
         setEditingId(option.id);
@@ -189,18 +181,6 @@ export default function ContainerOptionsIndex({ containerOptions, filters }) {
                                 autoFocus
                             />
                             <InputError message={form.errors.name} className="mt-2" />
-                        </div>
-
-                        <div>
-                            <InputLabel htmlFor="container-description" value="Description" />
-                            <TextInput
-                                id="container-description"
-                                value={form.data.description}
-                                onChange={(event) => form.setData('description', event.target.value)}
-                                className="mt-1 block w-full"
-                                placeholder="Optional"
-                            />
-                            <InputError message={form.errors.description} className="mt-2" />
                         </div>
 
                         <label className="inline-flex items-center space-x-2">

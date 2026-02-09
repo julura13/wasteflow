@@ -9,6 +9,7 @@ use App\Models\Company;
 use App\Models\Branch;
 use App\Models\WasteType;
 use App\Models\Material;
+use App\Models\ContainerOption;
 use App\Models\ServiceProvider;
 use App\Models\OrderWasteStream;
 use App\Repositories\OrderStatusHistoryRepository;
@@ -44,7 +45,7 @@ class OrderController extends Controller
     {
         // Get status from request or session, prioritize request
         $status = $request->input('status');
-        
+
         // If status is provided in request, save it to session
         if ($request->has('status')) {
             if ($status) {
@@ -105,7 +106,7 @@ class OrderController extends Controller
     public function create()
     {
         $user = auth()->user();
-        
+
         if ($user->isAdmin()) {
         $companies = Company::where('is_active', true)->orderBy('name')->get();
         $branches = Branch::with('company')->where('is_active', true)->orderBy('name')->get();
@@ -115,11 +116,11 @@ class OrderController extends Controller
             $managerCompanyIds = collect($companyIds)->filter(function ($companyId) use ($user) {
                 return $user->isManagerForCompany($companyId);
             })->toArray();
-            
+
             if (empty($managerCompanyIds)) {
                 abort(403, 'Only managers can create orders. Viewers can only view orders.');
             }
-            
+
             $companies = Company::whereIn('id', $managerCompanyIds)->where('is_active', true)->orderBy('name')->get();
             $branches = Branch::with('company')
                 ->whereHas('company', function ($q) use ($managerCompanyIds) {
@@ -136,11 +137,11 @@ class OrderController extends Controller
                 ->orderBy('name')
                 ->get();
         }
-        
+
         $sites->each(function ($site) {
             $site->company_name = $site->getCompanyNameAttribute();
         });
-        
+
         $materials = Material::active()
             ->with([
                 'grade:id,name',
@@ -149,6 +150,7 @@ class OrderController extends Controller
             ])
             ->get();
         $serviceProviders = ServiceProvider::active()->get();
+        $containerOptions = ContainerOption::where('is_active', true)->orderBy('name')->get(['id', 'name', 'slug']);
 
         return Inertia::render('Orders/Create', [
             'companies' => $companies,
@@ -156,6 +158,7 @@ class OrderController extends Controller
             'sites' => $sites,
             'materials' => $materials,
             'serviceProviders' => $serviceProviders,
+            'containerOptions' => $containerOptions,
         ]);
     }
 
@@ -164,60 +167,73 @@ class OrderController extends Controller
         abort_unless(auth()->user()->can('orders-create'), 403, 'You do not have permission to create orders.');
 
         $orderType = $request->input('order_type');
-        
-        $wasteQuantityTypes = 'rel_skip,wheelie_bins,skips_30m2';
-        $recyclingQuantityTypes = 'scrap_load,loose_bags,cage_8m3,cage_20m3,other';
-        $allowedQuantityTypes = $orderType === 'recycling' 
-            ? $recyclingQuantityTypes 
-            : $wasteQuantityTypes;
 
-        $validated = $request->validate([
+        $recyclingQuantityTypes = 'scrap_load,loose_bags,cage_8m3,cage_20m3,other';
+        $rules = [
             'company_id' => 'required|exists:companies,id',
             'branch_id' => 'required|exists:branches,id',
             'site_id' => 'nullable|exists:sites,id',
             'service_provider_id' => 'required|exists:service_providers,id',
             'order_type' => 'required|in:waste,recycling',
             'quantity_lines' => 'required|array|min:1',
-            'quantity_lines.*.quantity_type' => "required|in:{$allowedQuantityTypes}",
             'quantity_lines.*.quantity' => 'required|integer|min:1',
-            'quantity_lines.*.description' => 'nullable|string|max:255',
             'requested_collection_date' => 'required|date|after_or_equal:today',
             'notes' => 'nullable|string|max:1000',
-        ]);
+        ];
 
-        $site = Site::with('branch.company')->findOrFail($validated['site_id']);
-        $companyId = $site->branch->company->id;
-        
-        if (!$user->canManageOrdersForCompany($companyId)) {
+        if ($orderType === 'waste') {
+            $rules['quantity_lines.*.container_option_id'] = 'required|exists:container_options,id';
+        } else {
+            $rules['quantity_lines.*.quantity_type'] = "required|in:{$recyclingQuantityTypes}";
+            $rules['quantity_lines.*.description'] = 'nullable|string|max:255';
+        }
+
+        $validated = $request->validate($rules);
+
+        $companyId = (int) $validated['company_id'];
+        if (! empty($validated['site_id'])) {
+            $site = Site::with('branch.company')->find($validated['site_id']);
+            if ($site && $site->branch && $site->branch->company_id) {
+                $companyId = (int) $site->branch->company_id;
+                $validated['branch_id'] = $site->branch_id;
+                $validated['company_id'] = $companyId;
+            }
+        }
+
+        if (! auth()->user()->canManageOrdersForCompany($companyId)) {
             abort(403, 'Only managers can create orders for this company. Viewers can only view orders.');
         }
 
-        foreach ($validated['quantity_lines'] as $index => $line) {
-            if ($line['quantity_type'] === 'other' && empty($line['description'])) {
-                return back()->withErrors([
-                    "quantity_lines.{$index}.description" => 'Description is required when selecting "Other" container type.'
-                ]);
+        if ($orderType === 'recycling') {
+            foreach ($validated['quantity_lines'] as $index => $line) {
+                if (($line['quantity_type'] ?? '') === 'other' && empty($line['description'] ?? '')) {
+                    return back()->withErrors([
+                        "quantity_lines.{$index}.description" => 'Description is required when selecting "Other" container type.'
+                    ]);
+                }
             }
         }
 
         $validated['created_by'] = auth()->id();
         $validated['status'] = 'pending';
 
+        if ($orderType === 'waste') {
+            $containerOptionIds = collect($validated['quantity_lines'])->pluck('container_option_id')->unique()->filter()->all();
+            $containerOptions = ContainerOption::whereIn('id', $containerOptionIds)->get()->keyBy('id');
+            $validated['quantity_lines'] = collect($validated['quantity_lines'])->map(function ($line) use ($containerOptions) {
+                $option = $containerOptions->get($line['container_option_id']);
+                return [
+                    'container_option_id' => (int) $line['container_option_id'],
+                    'container_option_name' => $option ? $option->name : '',
+                    'quantity' => (int) $line['quantity'],
+                ];
+            })->all();
+        }
+
         $totalQuantity = collect($validated['quantity_lines'])->sum('quantity');
         $validated['estimated_quantity'] = $totalQuantity;
 
-        // When site is provided, ensure company_id and branch_id match the site
-        if (!empty($validated['site_id'])) {
-            $site = Site::with('branch')->find($validated['site_id']);
-            if ($site) {
-                if ($site->branch_id) {
-                    $validated['branch_id'] = $site->branch_id;
-                }
-                if ($site->branch && $site->branch->company_id) {
-                    $validated['company_id'] = $site->branch->company_id;
-                }
-            }
-        }
+        $validated['site_id'] = ! empty($validated['site_id']) ? $validated['site_id'] : null;
 
         $order = Order::create($validated);
 
@@ -230,8 +246,8 @@ class OrderController extends Controller
         $this->ensureOrderInScope($order);
 
         $order->load([
-            'site.branch.company', 
-            'creator', 
+            'site.branch.company',
+            'creator',
             'serviceProvider',
             'wasteStreams.material.wasteStream',
             'wasteStreams.material.grade',
@@ -240,8 +256,9 @@ class OrderController extends Controller
         ]);
 
         $order->append(['can_be_finalized', 'has_required_supporting_documents', 'total_rebate']);
-        
-        $companyId = $order->site->branch->company->id;
+
+        $user = auth()->user();
+        $companyId = $order->site?->branch?->company?->id ?? $order->company_id;
         $canManageOrder = $user->isAdmin() || $user->canManageOrdersForCompany($companyId);
 
         return Inertia::render('Orders/Show', [
@@ -253,19 +270,19 @@ class OrderController extends Controller
     public function edit(Order $order)
     {
         $user = auth()->user();
-        
+
         $order->load(['site.branch.company', 'wasteStreams.wasteType']);
-        $companyId = $order->site->branch->company->id;
-        
+        $companyId = $order->site?->branch?->company?->id ?? $order->company_id;
+
         if (!$user->canManageOrdersForCompany($companyId)) {
             abort(403, 'Only managers can edit orders for this company. Viewers can only view orders.');
         }
         $sites = Site::with(['branch.company'])->get();
-        
+
         $sites->each(function ($site) {
             $site->company_name = $site->getCompanyNameAttribute();
         });
-        
+
         $wasteTypes = WasteType::active()->get();
 
         return Inertia::render('Orders/Edit', [
@@ -378,35 +395,37 @@ class OrderController extends Controller
         }
 
         $order->load([
-            'site.branch.company', 
-            'creator', 
+            'site.branch.company',
+            'creator',
             'serviceProvider',
             'wasteStreams.material.wasteStream',
             'wasteStreams.material.grade',
             'supportingDocuments'
         ]);
-        
+
         if (!$order->relationLoaded('site')) {
             $order->load('site.branch.company');
         }
-        
+
         $order->load('wasteStreams');
         $order->append(['can_be_finalized', 'has_required_supporting_documents']);
 
         $materialsQuery = Material::active()
             ->with(['wasteStream:id,name', 'grade:id,name'])
             ->whereHas('wasteStream');
-        
+
         if ($order->order_type === 'waste') {
             $materialsQuery->whereHas('wasteStream', function ($q) {
                 $q->where('name', 'like', '%Waste%');
             });
         }
-        
+
         $materials = $materialsQuery->get();
 
         $order->append(['can_be_finalized', 'has_required_supporting_documents']);
 
+        $user = auth()->user();
+        $companyId = $order->site?->branch?->company?->id ?? $order->company_id;
         $canManageOrder = $user->isAdmin() || $user->canManageOrdersForCompany($companyId);
 
         return Inertia::render('Orders/Finalize', [
@@ -598,14 +617,14 @@ class OrderController extends Controller
 
         $dompdf = new Dompdf($options);
         $html = view('orders.pdf', ['order' => $order])->render();
-        
+
         $dompdf->loadHtml($html);
         $dompdf->setPaper('A4', 'portrait');
         $dompdf->render();
 
         $filename = 'Order_' . $order->tracking_number . '_' . now()->format('Y-m-d') . '.pdf';
             $output = $dompdf->output();
-            
+
             unset($dompdf, $html, $order);
 
             return response()->streamDownload(function () use ($output) {
@@ -659,8 +678,8 @@ class OrderController extends Controller
             ->get();
 
         foreach ($orders as $order) {
-            if ($order->status === 'scheduled' || $order->status === 'pending') {
-                $order->update(['status' => 'weight_required']);
+            if ($order->status === 'pending') {
+                $order->update(['status' => 'scheduled']);
             }
         }
 
@@ -677,7 +696,7 @@ class OrderController extends Controller
             'serviceProvider' => $serviceProvider,
             'collectionDate' => $collectionDate,
         ])->render();
-        
+
         $dompdf->loadHtml($html);
         $dompdf->setPaper('A4', 'portrait');
         $dompdf->render();
@@ -695,11 +714,11 @@ class OrderController extends Controller
     {
         $user = $request->user();
         $companyIds = $user->isAdmin() ? [] : $this->companyUserService->getCompanyIdsForUser($user);
-        
+
         if (!$user->isAdmin() && empty($companyIds)) {
             abort(403, 'No company assigned. Please contact administrator.');
         }
-        
+
         $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->format('Y-m-d'));
         $endDate = $request->input('end_date', Carbon::now()->endOfMonth()->format('Y-m-d'));
         $companyId = $request->input('company_id') ? (int) $request->input('company_id') : null;
@@ -708,7 +727,7 @@ class OrderController extends Controller
 
         [$companyId, $branchId, $siteId] = $this->enforceCompanyScope($companyId, $branchId, $siteId);
 
-        $rebateData = $this->getRebateTrackerData($startDate, $endDate, $companyId, $branchId, $siteId);
+        $rebateData = $this->getRebateTrackerData($startDate, $endDate, $companyId, $branchId, $siteId, $user, $companyIds);
 
         $companies = $this->scopeCompaniesForUser();
 
@@ -729,6 +748,9 @@ class OrderController extends Controller
 
     public function rebateTrackerPdf(Request $request)
     {
+        $user = $request->user();
+        $companyIds = $user->isAdmin() ? [] : $this->companyUserService->getCompanyIdsForUser($user);
+
         $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->format('Y-m-d'));
         $endDate = $request->input('end_date', Carbon::now()->endOfMonth()->format('Y-m-d'));
         $companyId = $request->input('company_id') ? (int) $request->input('company_id') : null;
@@ -737,7 +759,7 @@ class OrderController extends Controller
 
         [$companyId, $branchId, $siteId] = $this->enforceCompanyScope($companyId, $branchId, $siteId);
 
-        $rebateData = $this->getRebateTrackerData($startDate, $endDate, $companyId, $branchId, $siteId);
+        $rebateData = $this->getRebateTrackerData($startDate, $endDate, $companyId, $branchId, $siteId, $user, $companyIds);
 
         $options = new \Dompdf\Options();
         $options->set('isHtml5ParserEnabled', true);
@@ -771,14 +793,15 @@ class OrderController extends Controller
         ]);
     }
 
-    private function getRebateTrackerData(string $startDate, string $endDate, ?string $companyId, ?string $branchId, ?string $siteId)
+    private function getRebateTrackerData(string $startDate, string $endDate, ?string $companyId, ?string $branchId, ?string $siteId, $user, array $companyIds)
     {
         $query = OrderWasteStream::with([
             'order.site.branch.company',
+            'order.supportingDocuments',
             'material.grade',
             'material.wasteStream',
         ])
-        ->whereHas('order', function ($q) use ($startDate, $endDate, $companyId, $branchId, $siteId) {
+        ->whereHas('order', function ($q) use ($startDate, $endDate, $companyId, $branchId, $siteId, $user, $companyIds) {
             $q->where('status', 'finalized')
               ->where(function ($query) use ($startDate, $endDate) {
                   $query->whereBetween('actual_collection_date', [$startDate, $endDate])
@@ -824,9 +847,7 @@ class OrderController extends Controller
                 'rate' => $stream->material->rebate_rate ?? 0,
                 'total' => $stream->client_rebate_amount,
                 'material_id' => $stream->material_id,
-                'supporting_documents' => $supportingDocs->filter(function ($doc) {
-                    return $doc->collection === 'supporting_documents';
-                })->map(function ($doc) {
+                'supporting_documents' => $stream->order->supportingDocuments->map(function ($doc) {
                     return [
                         'id' => $doc->id,
                         'original_name' => $doc->original_name,
@@ -875,7 +896,7 @@ class OrderController extends Controller
 
         $user = $request->user();
         $companyIds = $user->isAdmin() ? [] : $this->companyUserService->getCompanyIdsForUser($user);
-        
+
         if (!$user->isAdmin() && empty($companyIds)) {
             abort(403, 'No company assigned. Please contact administrator.');
         }
@@ -905,7 +926,7 @@ class OrderController extends Controller
             });
 
         $streams = $query->get();
-        
+
         $sites = Site::with(['branch.company'])
             ->where('is_active', true)
             ->when(!$user->isAdmin(), function ($query) use ($companyIds) {
@@ -915,7 +936,7 @@ class OrderController extends Controller
             })
             ->orderBy('name')
             ->get();
-        
+
         if ($streams->isEmpty()) {
             return Inertia::render('Reports/AverageWeight', [
                 'averageWeightData' => null,
@@ -928,9 +949,9 @@ class OrderController extends Controller
                 ],
             ]);
         }
-        
+
         $totalWeight = $streams->sum('nett_weight');
-        
+
         $ordersWithContainers = $streams->pluck('order')->unique('id');
         $totalContainers = $ordersWithContainers->sum(function ($order) use ($containerType) {
             if ($order->quantity_type === $containerType) {
@@ -968,10 +989,10 @@ class OrderController extends Controller
     public function destroy(Order $order)
     {
         $user = auth()->user();
-        
+
         $order->load('site.branch.company');
-        $companyId = $order->site->branch->company->id;
-        
+        $companyId = $order->site?->branch?->company?->id ?? $order->company_id;
+
         if (!$user->canManageOrdersForCompany($companyId)) {
             abort(403, 'Only managers can delete orders for this company. Viewers can only view orders.');
         }

@@ -14,10 +14,61 @@ use Illuminate\Support\Arr;
 class MaterialMatrixSeeder extends Seeder
 {
     /**
+     * Rebate rate (R per kg) by grade name. From pricing spreadsheets.
+     * Grades not listed get rebate_rate 0 when rebate_offered is Yes, null otherwise.
+     */
+    private static function rebateRatesByGrade(): array
+    {
+        return [
+            // Image 1 (materials / rebate amounts)
+            'HL 1' => 2.20,
+            'K4' => 0.60,
+            'K4 Rolls' => 0.20,
+            'Label Backing' => 0.00,
+            'LD Consul' => 2.79,
+            'LD Clear' => 2.90,
+            'LD Mix' => 2.09,
+            'Light Steel Cans' => 1.50,
+            'Light Steel' => 2.00,
+            'Light Steel Drums' => 1.10,
+            'PET Clear' => 4.00,
+            'PET Mix' => 1.50,
+            'PP' => 1.50,
+            'PP Caps' => 1.50,
+            'Tetrapak' => 0.30,
+            'Tissue Paper' => 0.00,
+            'Wrapping' => 1.00,
+            // Image 2 (grade / rate)
+            'Alu Cans' => 14.09,
+            'Alu Foil' => 0.69,
+            'BOPP' => 0.00,
+            'CMW' => 0.20,
+            'CMW Rolls' => 0.30,
+            'EPS/XPS' => 0.00,
+            'FN/SBM' => 0.40,
+            'General Waste' => 0.00,
+            'Glass' => 0.00,
+            'Hangers' => 0.00,
+            'HD' => 2.50,
+            'HD - PP' => 2.00,
+            'HD Caps' => 1.50,
+            'HD Clear' => 3.00,
+            'HD Crates' => 2.00,
+            'HD - Colour' => 2.80,
+            'HD Dark' => 2.80,
+            'HD Light' => 3.00,
+            'HD White' => 3.50,
+            'Heavy Steel' => 2.79,
+        ];
+    }
+
+    /**
      * Run the database seeds.
      */
     public function run(): void
     {
+        $rebateRates = self::rebateRatesByGrade();
+
         $matrix = [
             // General waste
             ['Waste', 'General Waste', 'Disposed', 'Landfill', 'No Average Weight', 'No', 'Yes', 'Yes'],
@@ -133,6 +184,12 @@ class MaterialMatrixSeeder extends Seeder
                 $serviceProviderId = $defaultServiceProviderId;
             }
 
+            $hasRebateRate = array_key_exists($gradeName, $rebateRates);
+            $rebateRate = $rebateRates[$gradeName] ?? null;
+            $rebateYes = strtolower($rebate) === 'yes';
+            $offerRebate = $rebateYes || $hasRebateRate;
+            $rate = $offerRebate ? ($rebateRate !== null ? $rebateRate : 0) : null;
+
             Material::updateOrCreate(
                 [
                     'waste_stream_id' => $wasteStream->id,
@@ -143,9 +200,9 @@ class MaterialMatrixSeeder extends Seeder
                 ],
                 [
                     'weight_required' => $weight,
-                    'rebate_offered' => strtolower($rebate) === 'yes',
-                    'rebate_rate' => strtolower($rebate) === 'yes' ? 0 : null,
-                    'client_rebate_share' => strtolower($rebate) === 'yes' ? 70 : null,
+                    'rebate_offered' => $offerRebate,
+                    'rebate_rate' => $rate,
+                    'client_rebate_share' => $offerRebate ? 70 : null,
                     'backing_document' => strtolower($backing) === 'yes',
                     'notes' => null,
                     'is_active' => true,

@@ -23,6 +23,12 @@ Route::get('/dashboard/branches', [App\Http\Controllers\DashboardController::cla
 Route::get('/dashboard/sites', [App\Http\Controllers\DashboardController::class, 'getSites'])
     ->middleware(['auth', 'verified', 'permission:view-dashboard'])->name('dashboard.sites');
 
+Route::get('/dashboard/grade-month-detail', [App\Http\Controllers\DashboardController::class, 'getGradeMonthDailyDetail'])
+    ->middleware(['auth', 'verified', 'permission:view-dashboard'])->name('dashboard.grade-month-detail');
+
+Route::get('/dashboard/orders-for-day', [App\Http\Controllers\DashboardController::class, 'getOrdersForDay'])
+    ->middleware(['auth', 'verified', 'permission:view-dashboard'])->name('dashboard.orders-for-day');
+
 Route::get('/clients', function () {
     return Inertia::render('Clients/Index');
 })->middleware(['auth', 'verified', 'permission:manage-clients'])->name('clients');
@@ -66,6 +72,8 @@ Route::resource('service-providers', App\Http\Controllers\ServiceProviderControl
     ->middleware(['auth', 'verified', 'permission:manage-services']);
 Route::patch('materials/{material}/rebate-rate', [App\Http\Controllers\MaterialController::class, 'updateRebateRate'])
     ->middleware(['auth', 'verified', 'permission:manage-services'])->name('materials.update-rebate-rate');
+Route::patch('materials/{material}/rebate-share', [App\Http\Controllers\MaterialController::class, 'updateRebateShare'])
+    ->middleware(['auth', 'verified', 'permission:manage-services'])->name('materials.update-rebate-share');
 Route::resource('materials', App\Http\Controllers\MaterialController::class)
     ->middleware(['auth', 'verified', 'permission:manage-services']);
 

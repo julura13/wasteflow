@@ -109,6 +109,104 @@ function EditableRebateRateCell({ material, onSave }) {
     );
 }
 
+// Editable client rebate share (rebate %) cell
+function EditableRebateShareCell({ material, onSave }) {
+    const [isEditing, setIsEditing] = useState(false);
+    const [value, setValue] = useState(material.client_rebate_share !== null ? Number(material.client_rebate_share).toFixed(2) : '');
+    const [isSaving, setIsSaving] = useState(false);
+    const inputRef = useRef(null);
+
+    useEffect(() => {
+        if (!isEditing) {
+            setValue(material.client_rebate_share !== null ? Number(material.client_rebate_share).toFixed(2) : '');
+        }
+    }, [material.client_rebate_share, isEditing]);
+
+    useEffect(() => {
+        if (isEditing && inputRef.current) {
+            inputRef.current.focus();
+            inputRef.current.select();
+        }
+    }, [isEditing]);
+
+    const handleClick = () => {
+        setIsEditing(true);
+        setValue(material.client_rebate_share !== null ? Number(material.client_rebate_share).toFixed(2) : '');
+    };
+
+    const handleChange = (e) => setValue(e.target.value);
+
+    const handleSave = () => {
+        if (value === '') {
+            setIsEditing(false);
+            return;
+        }
+        const numValue = parseFloat(value);
+        if (isNaN(numValue) || numValue < 0 || numValue > 100) {
+            alert('Please enter a number between 0 and 100');
+            return;
+        }
+        setIsSaving(true);
+        onSave(material.id, numValue, () => {
+            setIsEditing(false);
+            setIsSaving(false);
+        }, () => setIsSaving(false));
+    };
+
+    const handleCancel = () => {
+        setIsEditing(false);
+        setValue(material.client_rebate_share !== null ? Number(material.client_rebate_share).toFixed(2) : '');
+    };
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            handleSave();
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            handleCancel();
+        }
+    };
+
+    if (!material.rebate_offered || material.client_rebate_share === null) {
+        return <span className="text-sm text-gray-400 dark:text-gray-500">—</span>;
+    }
+
+    if (isEditing) {
+        return (
+            <div className="flex items-center space-x-2">
+                <input
+                    ref={inputRef}
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    value={value}
+                    onChange={handleChange}
+                    onBlur={handleSave}
+                    onKeyDown={handleKeyDown}
+                    className="w-20 px-2 py-1 text-sm border border-primary-500 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                    disabled={isSaving}
+                />
+                <span className="text-sm text-gray-600 dark:text-gray-400">%</span>
+                {isSaving && (
+                    <Loader2 className="h-4 w-4 animate-spin text-primary-600" />
+                )}
+            </div>
+        );
+    }
+
+    return (
+        <button
+            onClick={handleClick}
+            className="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-primary-600 dark:hover:text-primary-400 transition-colors cursor-pointer text-left"
+            title="Click to edit rebate percentage"
+        >
+            {Number(material.client_rebate_share).toFixed(2)}%
+        </button>
+    );
+}
+
 export default function MaterialsIndex({ materials, filters, wasteStreams, facilities }) {
     const { flash } = usePage().props;
     const [showSuccess, setShowSuccess] = useState(false);
@@ -150,6 +248,24 @@ export default function MaterialsIndex({ materials, filters, wasteStreams, facil
                 },
                 onError: (errors) => {
                     const errorMessage = errors.rebate_rate?.[0] || errors.message || 'Failed to update rebate rate. Please try again.';
+                    alert(errorMessage);
+                    onError();
+                },
+            }
+        );
+    }, []);
+
+    const handleRebateShareSave = useCallback((materialId, clientRebateShare, onSuccess, onError) => {
+        router.patch(
+            `/materials/${materialId}/rebate-share`,
+            { client_rebate_share: clientRebateShare },
+            {
+                preserveState: true,
+                preserveScroll: true,
+                only: ['materials'],
+                onSuccess: () => onSuccess(),
+                onError: (errors) => {
+                    const errorMessage = errors.client_rebate_share?.[0] || errors.message || 'Failed to update rebate percentage. Please try again.';
                     alert(errorMessage);
                     onError();
                 },
@@ -202,11 +318,9 @@ export default function MaterialsIndex({ materials, filters, wasteStreams, facil
             },
             {
                 id: 'client_share',
-                header: 'Client Share',
+                header: 'Rebate %',
                 cell: ({ row }) => (
-                    row.original.rebate_offered && row.original.client_rebate_share !== null
-                        ? <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{Number(row.original.client_rebate_share).toFixed(2)}%</span>
-                        : <span className="text-sm text-gray-400 dark:text-gray-500">—</span>
+                    <EditableRebateShareCell material={row.original} onSave={handleRebateShareSave} />
                 ),
             },
             {

@@ -65,6 +65,16 @@ export default function CompaniesIndex({ companies, filters }) {
             },
         },
         {
+            id: 'rebate_percentage',
+            header: 'Rebate %',
+            cell: ({ row }) => {
+                const company = row.original;
+                const pct = company.rebate_percentage;
+                if (pct === null || pct === undefined || pct === '') return <span className="text-gray-400 dark:text-gray-500">—</span>;
+                return <span className="text-sm text-gray-900 dark:text-gray-100">{Number(pct).toFixed(2)}%</span>;
+            },
+        },
+        {
             accessorKey: 'is_active',
             header: 'Status',
             cell: ({ getValue }) => {
