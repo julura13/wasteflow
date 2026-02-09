@@ -24,7 +24,7 @@ import {
     Shield,
 } from 'lucide-react';
 
-export default function DashboardLayout({ children, title = "Dashboard" }) {
+export default function DashboardLayout({ children }) {
     const { url, props } = usePage();
     const version = props.app?.version ?? '';
     const user = usePage().props.auth.user;
@@ -323,13 +323,6 @@ export default function DashboardLayout({ children, title = "Dashboard" }) {
                                 )}
                             </div>
                         </div>
-                    </div>
-                </div>
-
-                {/* Page header */}
-                <div className="bg-white shadow-sm dark:bg-gray-800">
-                    <div className="px-4 py-6 sm:px-6 lg:px-8">
-                        <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{title}</h1>
                     </div>
                 </div>
 
