@@ -59,7 +59,7 @@ class OrderController extends Controller
             $status = session('orders_status_filter', null);
         }
 
-        $query = Order::with(['site.branch.company', 'creator', 'serviceProvider']);
+        $query = Order::with(['site.branch.company', 'company', 'branch', 'creator', 'serviceProvider']);
 
         // Client-scoped: only orders for their company
         $user = auth()->user();
@@ -247,6 +247,8 @@ class OrderController extends Controller
 
         $order->load([
             'site.branch.company',
+            'company',
+            'branch',
             'creator',
             'serviceProvider',
             'wasteStreams.material.wasteStream',
@@ -271,7 +273,7 @@ class OrderController extends Controller
     {
         $user = auth()->user();
 
-        $order->load(['site.branch.company', 'wasteStreams.wasteType']);
+        $order->load(['site.branch.company', 'company', 'branch', 'wasteStreams.wasteType']);
         $companyId = $order->site?->branch?->company?->id ?? $order->company_id;
 
         if (!$user->canManageOrdersForCompany($companyId)) {
@@ -396,6 +398,8 @@ class OrderController extends Controller
 
         $order->load([
             'site.branch.company',
+            'company',
+            'branch',
             'creator',
             'serviceProvider',
             'wasteStreams.material.wasteStream',
@@ -602,6 +606,8 @@ class OrderController extends Controller
 
         $order->load([
             'site.branch.company',
+            'company',
+            'branch',
             'creator',
             'serviceProvider',
                 'wasteStreams.material.grade',
@@ -671,7 +677,7 @@ class OrderController extends Controller
         $collectionDate = \Carbon\Carbon::parse($validated['collection_date']);
         $serviceProvider = ServiceProvider::findOrFail($validated['service_provider_id']);
 
-        $orders = Order::with(['site.branch.company'])
+        $orders = Order::with(['site.branch.company', 'company', 'branch'])
             ->where('requested_collection_date', $collectionDate->format('Y-m-d'))
             ->where('service_provider_id', $serviceProvider->id)
             ->orderBy('created_at')
@@ -684,6 +690,7 @@ class OrderController extends Controller
         }
 
         $orders->fresh();
+        $orders->load(['site.branch.company', 'company', 'branch']);
 
         $options = new Options();
         $options->set('isHtml5ParserEnabled', true);

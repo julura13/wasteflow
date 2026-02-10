@@ -195,8 +195,8 @@
         <div class="section-title">Collection Details</div>
         
         @php
-            $company = $order->site->branch->company ?? null;
-            $branch = $order->site->branch ?? null;
+            $company = $order->site?->branch?->company ?? $order->company ?? null;
+            $branch = $order->site?->branch ?? $order->branch ?? null;
             $site = $order->site ?? null;
         @endphp
 

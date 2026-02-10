@@ -193,9 +193,9 @@ export default function Show({ order, canManageOrder = true }) {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {detailRow('Tracking Number', order.tracking_number)}
                         {detailRow('Order Type', order.order_type === 'waste' ? 'Waste Order' : 'Recycling Order')}
-                        {detailRow('Site', order.site?.name || '—')}
-                        {detailRow('Company', order.site?.branch?.company?.name || '—')}
-                        {detailRow('Branch', order.site?.branch?.name || '—')}
+                        {detailRow('Site', order.site?.name || (order.site_id ? '—' : 'No collection point'))}
+                        {detailRow('Company', order.site?.branch?.company?.name || order.company?.name || '—')}
+                        {detailRow('Branch', order.site?.branch?.name || order.branch?.name || '—')}
                         {detailRow('Service Provider', order.service_provider?.name || order.service_provider || '—')}
                         {detailRow('Requested Collection Date', order.requested_collection_date ? new Date(order.requested_collection_date).toLocaleDateString() : '—')}
                         {detailRow('Actual Collection Date', order.actual_collection_date ? new Date(order.actual_collection_date).toLocaleDateString() : '—')}

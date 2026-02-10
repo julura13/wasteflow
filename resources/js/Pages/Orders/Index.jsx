@@ -74,8 +74,8 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
             cell: ({ row }) => {
                 const order = row.original;
                 const site = order.site;
-                const branch = site?.branch;
-                const company = branch?.company;
+                const branch = site?.branch ?? order.branch;
+                const company = branch?.company ?? order.company;
 
                 return (
                     <div className="flex flex-col text-sm">
@@ -94,8 +94,11 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
                                 {site.name}
                             </span>
                         )}
-                        {!site && (
+                        {!site && !company?.name && !branch?.name && (
                             <span className="text-gray-400 dark:text-gray-500 italic">N/A</span>
+                        )}
+                        {!site && (company?.name || branch?.name) && (
+                            <span className="text-gray-500 dark:text-gray-400 italic">No collection point</span>
                         )}
                     </div>
                 );
@@ -176,7 +179,7 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
             header: 'Actions',
             cell: ({ row }) => {
                 const order = row.original;
-                const companyId = order.site?.branch?.company?.id;
+                const companyId = order.site?.branch?.company?.id ?? order.company?.id ?? order.company_id;
                 const userRole = user?.is_admin ? 'admin' : (companyId ? userCompanyRoles[companyId] : null);
                 const canManageOrder = user?.is_admin || userRole === 'manager';
                 

@@ -151,6 +151,8 @@
                 @foreach($orders as $order)
                     @php
                         $site = $order->site ?? null;
+                        $company = $order->site?->branch?->company ?? $order->company ?? null;
+                        $branch = $order->site?->branch ?? $order->branch ?? null;
                         $quantityLines = $order->quantity_lines ?? [];
                         $orderType = $order->order_type ?? 'waste';
                         
@@ -198,7 +200,9 @@
                                 {{ optional($site->branch)->name ?? '' }}<br>
                                 {{ $site->name ?? '' }}
                             @else
-                                N/A
+                                {{ optional($company)->name ?? 'N/A' }}<br>
+                                {{ optional($branch)->name ?? '' }}<br>
+                                <em>No collection point</em>
                             @endif
                         </td>
                         <td>{{ $orderType === 'waste' ? ($relSkip > 0 ? $relSkip : '') : '' }}</td>
