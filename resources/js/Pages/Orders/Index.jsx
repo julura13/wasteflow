@@ -6,7 +6,7 @@ import { Plus, Trash2, Eye, Search, Filter, Package, CheckCircle, X, FileDown, F
 import axios from 'axios';
 
 export default function OrdersIndex({ orders, filters, serviceProviders = [], userCompanyRoles = {} }) {
-    const { flash, auth } = usePage().props;
+    const { flash, auth, errors: pageErrors = {} } = usePage().props;
     const user = auth?.user;
     const [showSuccess, setShowSuccess] = useState(false);
     const [showConsolidatedForm, setShowConsolidatedForm] = useState(false);
@@ -14,6 +14,9 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
     const [consolidatedServiceProvider, setConsolidatedServiceProvider] = useState('');
     const [availableServiceProviders, setAvailableServiceProviders] = useState([]);
     const [loadingProviders, setLoadingProviders] = useState(false);
+    const [orderToDelete, setOrderToDelete] = useState(null);
+    const [deleteReason, setDeleteReason] = useState('');
+    const [deleteReasonDetails, setDeleteReasonDetails] = useState('');
 
     useEffect(() => {
         if (flash?.success) {
@@ -96,9 +99,6 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
                         )}
                         {!site && !company?.name && !branch?.name && (
                             <span className="text-gray-400 dark:text-gray-500 italic">N/A</span>
-                        )}
-                        {!site && (company?.name || branch?.name) && (
-                            <span className="text-gray-500 dark:text-gray-400 italic">No collection point</span>
                         )}
                     </div>
                 );
@@ -210,9 +210,13 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
                         >
                             <FileDown className="h-4 w-4" />
                         </a>
-                        {canManageOrder && (
+                        {canManageOrder && (order.status === 'pending' || order.status === 'scheduled') && (
                             <button
-                                onClick={() => handleDelete(order.id)}
+                                onClick={() => {
+                                    setOrderToDelete(order);
+                                    setDeleteReason('');
+                                    setDeleteReasonDetails('');
+                                }}
                                 className="text-red-600 hover:text-red-800"
                                 title="Delete Order"
                             >
@@ -225,10 +229,36 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
         },
     ], [user, userCompanyRoles]);
 
-    const handleDelete = (id) => {
-        if (confirm('Are you sure you want to delete this order?')) {
-            router.delete(`/orders/${id}`);
-        }
+    const deleteReasonOptions = [
+        { value: 'incorrect_order', label: 'Incorrect order' },
+        { value: 'duplicate', label: 'Duplicate order' },
+        { value: 'wrong_date', label: 'Wrong collection date' },
+        { value: 'wrong_site', label: 'Wrong site / collection point' },
+        { value: 'cancelled_by_client', label: 'Cancelled by client' },
+        { value: 'other', label: 'Other' },
+    ];
+
+    const handleDeleteOrder = (e) => {
+        e.preventDefault();
+        if (!orderToDelete || !deleteReason) return;
+        if (deleteReason === 'other' && !deleteReasonDetails.trim()) return;
+        router.post(`/orders/${orderToDelete.id}/delete`, {
+            reason: deleteReason,
+            reason_details: deleteReason === 'other' ? deleteReasonDetails.trim() : '',
+        }, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setOrderToDelete(null);
+                setDeleteReason('');
+                setDeleteReasonDetails('');
+            },
+        });
+    };
+
+    const closeDeleteModal = () => {
+        setOrderToDelete(null);
+        setDeleteReason('');
+        setDeleteReasonDetails('');
     };
 
     const handleSearch = (e) => {
@@ -337,6 +367,15 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
                             <X className="h-5 w-5" />
                         </button>
                     </div>
+                </div>
+            )}
+
+            {/* Error Message (e.g. delete validation or status) */}
+            {(flash?.error || pageErrors?.reason || pageErrors?.reason_details) && (
+                <div className="mb-6 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4">
+                    <p className="text-sm font-medium text-red-800 dark:text-red-200">
+                        {flash?.error || pageErrors?.reason || pageErrors?.reason_details}
+                    </p>
                 </div>
             )}
 
@@ -451,6 +490,89 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
                                         className="px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
                                     >
                                         Generate PDF
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Order Modal */}
+            {orderToDelete && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                    <div className="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white dark:bg-gray-800">
+                        <div className="mt-3">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+                                    Delete order {orderToDelete.tracking_number}
+                                </h3>
+                                <button
+                                    type="button"
+                                    onClick={closeDeleteModal}
+                                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                >
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                                This action cannot be undone. Please select a reason for deleting this order.
+                            </p>
+                            <form onSubmit={handleDeleteOrder} className="space-y-4">
+                                <div>
+                                    <label htmlFor="delete_reason" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+                                        Reason *
+                                    </label>
+                                    <select
+                                        id="delete_reason"
+                                        value={deleteReason}
+                                        onChange={(e) => setDeleteReason(e.target.value)}
+                                        required
+                                        className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                    >
+                                        <option value="">Select a reason</option>
+                                        {deleteReasonOptions.map((opt) => (
+                                            <option key={opt.value} value={opt.value}>
+                                                {opt.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {pageErrors.reason && (
+                                        <p className="mt-1 text-sm text-red-600 dark:text-red-400">{pageErrors.reason}</p>
+                                    )}
+                                </div>
+                                {deleteReason === 'other' && (
+                                    <div>
+                                        <label htmlFor="delete_reason_details" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+                                            Details *
+                                        </label>
+                                        <textarea
+                                            id="delete_reason_details"
+                                            rows={3}
+                                            value={deleteReasonDetails}
+                                            onChange={(e) => setDeleteReasonDetails(e.target.value)}
+                                            placeholder="Please provide details..."
+                                            className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                        />
+                                        {pageErrors.reason_details && (
+                                            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{pageErrors.reason_details}</p>
+                                        )}
+                                    </div>
+                                )}
+                                <div className="flex justify-end gap-3 pt-4">
+                                    <button
+                                        type="button"
+                                        onClick={closeDeleteModal}
+                                        className="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600 dark:hover:bg-gray-600"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={!deleteReason || (deleteReason === 'other' && !deleteReasonDetails.trim())}
+                                        className="px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Delete order
                                     </button>
                                 </div>
                             </form>

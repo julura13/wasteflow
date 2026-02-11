@@ -995,6 +995,12 @@ class OrderController extends Controller
 
     public function destroy(Order $order)
     {
+        return redirect()->route('orders.index')
+            ->with('error', 'Please use the delete button and select a reason. Only pending or scheduled orders can be deleted.');
+    }
+
+    public function deleteOrder(Request $request, Order $order)
+    {
         $user = auth()->user();
 
         $order->load('site.branch.company');
@@ -1004,9 +1010,56 @@ class OrderController extends Controller
             abort(403, 'Only managers can delete orders for this company. Viewers can only view orders.');
         }
 
+        if (!in_array($order->status, ['pending', 'scheduled'], true)) {
+            return redirect()->route('orders.index')
+                ->with('error', 'Only pending or scheduled orders can be deleted.');
+        }
+
+        $validated = $request->validate([
+            'reason' => 'required|string|in:incorrect_order,duplicate,wrong_date,wrong_site,cancelled_by_client,other',
+            'reason_details' => 'nullable|string|max:1000',
+        ], [
+            'reason.required' => 'Please select a reason for deleting this order.',
+            'reason.in' => 'Please select a valid reason.',
+        ]);
+
+        if ($validated['reason'] === 'other' && empty(trim($validated['reason_details'] ?? ''))) {
+            return redirect()->back()->withErrors(['reason_details' => 'Please provide details when selecting Other.']);
+        }
+
+        $reasonLabel = $this->getDeletionReasonLabel($validated['reason'], $validated['reason_details'] ?? '');
+
+        ActivityLog::create([
+            'log_name' => 'order_deleted',
+            'description' => "Order {$order->tracking_number} deleted: {$reasonLabel}",
+            'subject_type' => Order::class,
+            'subject_id' => $order->id,
+            'causer_id' => $user->id,
+            'properties' => [
+                'order_id' => $order->id,
+                'tracking_number' => $order->tracking_number,
+                'reason' => $validated['reason'],
+                'reason_details' => $validated['reason_details'] ?? null,
+            ],
+        ]);
+
         $order->delete();
 
         return redirect()->route('orders.index')
             ->with('success', 'Order deleted successfully.');
+    }
+
+    private function getDeletionReasonLabel(string $reason, string $details): string
+    {
+        $labels = [
+            'incorrect_order' => 'Incorrect order',
+            'duplicate' => 'Duplicate order',
+            'wrong_date' => 'Wrong collection date',
+            'wrong_site' => 'Wrong site / collection point',
+            'cancelled_by_client' => 'Cancelled by client',
+            'other' => 'Other' . ($details ? ": {$details}" : ''),
+        ];
+
+        return $labels[$reason] ?? $reason;
     }
 }

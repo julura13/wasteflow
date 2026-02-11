@@ -87,19 +87,13 @@ class Order extends Model
         $dateCode = date('ym');
         $sequenceStart = 30001;
 
-        $latest = static::where('tracking_number', 'like', $prefix . '-%')
-            ->orderByDesc('created_at')
-            ->orderByDesc('id')
-            ->first();
+        // Use one global sequence for the date code so the numeric part is always in order
+        // (no duplicate sequence numbers across RO and WO, e.g. 30001, 30002, 30003...)
+        $maxSeq = (int) static::where('tracking_number', 'like', '%-' . $dateCode . '-%')
+            ->selectRaw('MAX(CAST(SUBSTRING(tracking_number, -5) AS UNSIGNED)) as max_seq')
+            ->value('max_seq');
 
-        $nextSequence = $sequenceStart;
-
-        if ($latest) {
-            $lastSequence = (int) substr($latest->tracking_number, -5);
-            if ($lastSequence >= $sequenceStart) {
-                $nextSequence = $lastSequence + 1;
-            }
-        }
+        $nextSequence = max($sequenceStart, $maxSeq + 1);
 
         return sprintf('%s-%s-%05d', $prefix, $dateCode, $nextSequence);
     }

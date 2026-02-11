@@ -18,7 +18,7 @@
             margin: 0;
         }
         .header {
-            border-bottom: 3px solid #dc2626;
+            border-bottom: 3px solid #000;
             padding-bottom: 20px;
             margin-bottom: 20px;
         }
@@ -45,12 +45,12 @@
             width: auto;
         }
         .header-title h1 {
-            color: #dc2626;
+            color: #000;
             font-size: 16px;
             margin: 0;
         }
         .collection-date {
-            color: #dc2626;
+            color: #000;
             font-size: 14px;
             font-weight: bold;
             margin-top: 10px;
@@ -69,7 +69,7 @@
         }
         .consolidated-table th {
             background-color: #f3f4f6;
-            color: #dc2626;
+            color: #000;
             padding: 10px;
             text-align: left;
             font-weight: bold;
@@ -86,7 +86,7 @@
         }
         .special-instructions {
             font-weight: bold;
-            color: #dc2626;
+            color: #000;
         }
         .footer {
             margin-top: 40px;
@@ -126,6 +126,7 @@
         <table class="consolidated-table">
             <thead>
                 <tr>
+                    <th>Order #</th>
                     <th>Site Name</th>
                     <th>REL Skip</th>
                     <th>No of Wheelie Bins</th>
@@ -194,6 +195,7 @@
                         }
                     @endphp
                     <tr>
+                        <td>{{ $order->tracking_number ?? $order->id }}</td>
                         <td>
                             @if($site)
                                 {{ optional(optional($site->branch)->company)->name ?? '' }}<br>
@@ -201,8 +203,9 @@
                                 {{ $site->name ?? '' }}
                             @else
                                 {{ optional($company)->name ?? 'N/A' }}<br>
-                                {{ optional($branch)->name ?? '' }}<br>
-                                <em>No collection point</em>
+                                @if(optional($branch)->name)
+                                    {{ $branch->name }}
+                                @endif
                             @endif
                         </td>
                         <td>{{ $orderType === 'waste' ? ($relSkip > 0 ? $relSkip : '') : '' }}</td>

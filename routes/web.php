@@ -59,6 +59,8 @@ Route::post('orders/{order}/update-status', [App\Http\Controllers\OrderControlle
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.update-status');
 Route::get('orders/{order}/download-pdf', [App\Http\Controllers\OrderController::class, 'downloadPDF'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.download-pdf');
+Route::post('orders/{order}/delete', [App\Http\Controllers\OrderController::class, 'deleteOrder'])
+    ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.delete');
 Route::get('orders/seeder/index', [App\Http\Controllers\OrderSeederController::class, 'index'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.seeder.index');
 Route::post('orders/seeder/generate', [App\Http\Controllers\OrderSeederController::class, 'store'])
