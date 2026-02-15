@@ -297,16 +297,16 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
             <Head title="Dashboard" />
 
             {/* Filters */}
-            <div className="bg-white rounded-lg shadow p-3 mb-3">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 mb-3 border border-gray-200 dark:border-gray-700">
                 <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-6 gap-2 items-end">
                     <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Company
                         </label>
                         <select
                             value={data.company_id}
                             onChange={(e) => handleFilterChange('company_id', e.target.value)}
-                            className="w-full text-sm rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-1.5"
+                            className="w-full text-sm rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-1.5"
                         >
                             <option value="">Select Company</option>
                             {companies.map((company) => (
@@ -318,14 +318,14 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
                     </div>
 
                     <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                            Branch <span className="text-gray-400 font-normal">(optional)</span>
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Branch <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span>
                         </label>
                         <select
                             value={data.branch_id}
                             onChange={(e) => handleFilterChange('branch_id', e.target.value)}
                             disabled={!data.company_id || loadingBranches}
-                            className="w-full text-sm rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100 py-1.5"
+                            className="w-full text-sm rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100 dark:disabled:bg-gray-600 py-1.5"
                         >
                             <option value="">All branches</option>
                             {branches.map((branch) => (
@@ -337,14 +337,14 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
                     </div>
 
                     <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                            Site <span className="text-gray-400 font-normal">(optional)</span>
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Site <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span>
                         </label>
                         <select
                             value={data.site_id}
                             onChange={(e) => handleFilterChange('site_id', e.target.value)}
                             disabled={!data.branch_id || loadingSites}
-                            className="w-full text-sm rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100 py-1.5"
+                            className="w-full text-sm rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100 dark:disabled:bg-gray-600 py-1.5"
                         >
                             <option value="">All sites</option>
                             {sites.map((site) => (
@@ -356,26 +356,26 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
                     </div>
 
                     <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                             From Date
                         </label>
                         <input
                             type="date"
                             value={data.from_date}
                             onChange={(e) => handleFilterChange('from_date', e.target.value)}
-                            className="w-full text-sm rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-1.5"
+                            className="w-full text-sm rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-1.5"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                             To Date
                         </label>
                         <input
                             type="date"
                             value={data.to_date}
                             onChange={(e) => handleFilterChange('to_date', e.target.value)}
-                            className="w-full text-sm rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-1.5"
+                            className="w-full text-sm rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-1.5"
                         />
                     </div>
 
@@ -391,8 +391,8 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
             </div>
 
             {/* Tabs */}
-            <div className="bg-white rounded-lg shadow mb-3 overflow-hidden">
-                <div className="border-b border-gray-200">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow mb-3 overflow-hidden border border-gray-200 dark:border-gray-700">
+                <div className="border-b border-gray-200 dark:border-gray-700">
                     <nav className="flex -mb-px" aria-label="Tabs">
                         <button
                             type="button"
@@ -400,8 +400,8 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
                             className={[
                                 'flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors',
                                 activeTab === 'dashboard'
-                                    ? 'border-indigo-500 text-indigo-600 bg-indigo-50/50'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+                                    ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/30'
+                                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600',
                             ].join(' ')}
                         >
                             <LayoutDashboard className="w-4 h-4" />
@@ -413,8 +413,8 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
                             className={[
                                 'flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors',
                                 activeTab === 'grade-summary'
-                                    ? 'border-indigo-500 text-indigo-600 bg-indigo-50/50'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+                                    ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/30'
+                                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600',
                             ].join(' ')}
                         >
                             <Table2 className="w-4 h-4" />
@@ -425,42 +425,42 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
             </div>
 
             {activeTab === 'grade-summary' && (
-                <div className="bg-white rounded-lg shadow p-3 mb-3 overflow-x-auto">
-                    <h2 className="text-sm font-semibold mb-2">Waste grade summary by month (kg) – {filters.from_date ? new Date(filters.from_date).getFullYear() : new Date().getFullYear()}</h2>
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 mb-3 overflow-x-auto border border-gray-200 dark:border-gray-700">
+                    <h2 className="text-sm font-semibold mb-2 text-gray-900 dark:text-gray-100">Waste grade summary by month (kg) – {filters.from_date ? new Date(filters.from_date).getFullYear() : new Date().getFullYear()}</h2>
                     <table className="w-full text-sm border-collapse">
                         <thead>
-                            <tr className="border-b border-gray-200">
-                                <th className="text-left py-2 px-2 font-semibold text-gray-700">WASTE GRADE</th>
+                            <tr className="border-b border-gray-200 dark:border-gray-600">
+                                <th className="text-left py-2 px-2 font-semibold text-gray-700 dark:text-gray-300">WASTE GRADE</th>
                                 {MONTH_LABELS.map((label) => (
-                                    <th key={label} className="text-right py-2 px-2 font-semibold text-gray-700">{label}</th>
+                                    <th key={label} className="text-right py-2 px-2 font-semibold text-gray-700 dark:text-gray-300">{label}</th>
                                 ))}
-                                <th className="text-right py-2 px-2 font-semibold text-gray-700">TOTAL</th>
+                                <th className="text-right py-2 px-2 font-semibold text-gray-700 dark:text-gray-300">TOTAL</th>
                             </tr>
                         </thead>
                         <tbody>
                             {gradeSummaryByYear.length === 0 ? (
                                 <tr>
-                                    <td colSpan={14} className="py-4 text-center text-gray-500">
+                                    <td colSpan={14} className="py-4 text-center text-gray-500 dark:text-gray-400">
                                         No data for the selected filters and year. Select company/branch/site and apply.
                                     </td>
                                 </tr>
                             ) : (
                                 gradeSummaryByYear.map((row) => (
-                                    <tr key={row.name} className="border-b border-gray-100 hover:bg-gray-50">
-                                        <td className="py-2 px-2 font-medium text-gray-900">{row.name}</td>
+                                    <tr key={row.name} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                        <td className="py-2 px-2 font-medium text-gray-900 dark:text-gray-100">{row.name}</td>
                                         {MONTHS.map((m, idx) => (
-                                            <td key={m} className="text-right py-2 px-2 text-gray-600 tabular-nums">
+                                            <td key={m} className="text-right py-2 px-2 text-gray-600 dark:text-gray-300 tabular-nums">
                                                 <button
                                                     type="button"
                                                     onClick={() => handleGradeMonthClick(row.name, idx)}
-                                                    className={row[m] ? 'cursor-pointer hover:bg-indigo-50 hover:text-indigo-700 rounded px-1 -mx-1' : 'cursor-default'}
+                                                    className={row[m] ? 'cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-700 dark:hover:text-indigo-300 rounded px-1 -mx-1' : 'cursor-default'}
                                                     title={row[m] ? `View daily breakdown for ${row.name} in ${MONTH_LABELS[idx]}` : undefined}
                                                 >
                                                     {row[m] ? formatWeight(row[m]) : '–'}
                                                 </button>
                                             </td>
                                         ))}
-                                        <td className="text-right py-2 px-2 font-semibold text-gray-900 tabular-nums">{formatWeight(row.total)}</td>
+                                        <td className="text-right py-2 px-2 font-semibold text-gray-900 dark:text-gray-100 tabular-nums">{formatWeight(row.total)}</td>
                                     </tr>
                                 ))
                             )}
@@ -471,38 +471,38 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
 
             {/* Inline detail panel: daily breakdown + orders for day (only on Grade Summary tab) */}
             {activeTab === 'grade-summary' && detailPanel.open && (
-                <div className="bg-white rounded-lg shadow border border-gray-200 mb-3 overflow-hidden">
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gray-50">
-                        <h3 className="text-sm font-semibold text-gray-800">
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 mb-3 overflow-hidden">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
+                        <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
                             Weight – {detailPanel.wasteStream} – {MONTH_LABELS[(detailPanel.month || 1) - 1]} {detailPanel.year}
                         </h3>
                         <button
                             type="button"
                             onClick={closeDetailPanel}
-                            className="inline-flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded"
+                            className="inline-flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
                         >
                             <X className="w-4 h-4" /> Close
                         </button>
                     </div>
                     <div className="p-4 overflow-x-auto">
                         {detailPanel.dailyLoading ? (
-                            <p className="text-sm text-gray-500">Loading daily breakdown…</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Loading daily breakdown…</p>
                         ) : detailPanel.dailyData && detailPanel.dailyData.rows && detailPanel.dailyData.rows.length > 0 ? (
-                            <table className="w-full text-sm border-collapse border border-gray-300">
+                            <table className="w-full text-sm border-collapse border border-gray-300 dark:border-gray-600">
                                 <thead>
-                                    <tr className="bg-gray-50">
-                                        <th className="text-left py-2 px-2 font-semibold text-gray-700 border border-gray-300">Grade</th>
+                                    <tr className="bg-gray-50 dark:bg-gray-700">
+                                        <th className="text-left py-2 px-2 font-semibold text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600">Grade</th>
                                         {Array.from({ length: detailPanel.dailyData.days_in_month || 31 }, (_, i) => i + 1).map((d) => (
-                                            <th key={d} className="text-right py-2 px-2 font-semibold text-gray-700 w-12 border border-gray-300">{d}</th>
+                                            <th key={d} className="text-right py-2 px-2 font-semibold text-gray-700 dark:text-gray-300 w-12 border border-gray-300 dark:border-gray-600">{d}</th>
                                         ))}
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {detailPanel.dailyData.rows.map((r) => (
                                         <tr key={r.name}>
-                                            <td className="py-2 px-2 border border-gray-300 align-top">
-                                                <div className="font-medium text-gray-900">{r.name}</div>
-                                                <div className="text-xs font-semibold text-gray-600 mt-0.5 tabular-nums">{formatWeight(r.total)} kg</div>
+                                            <td className="py-2 px-2 border border-gray-300 dark:border-gray-600 align-top">
+                                                <div className="font-medium text-gray-900 dark:text-gray-100">{r.name}</div>
+                                                <div className="text-xs font-semibold text-gray-600 dark:text-gray-400 mt-0.5 tabular-nums">{formatWeight(r.total)} kg</div>
                                             </td>
                                             {Array.from({ length: detailPanel.dailyData.days_in_month || 31 }, (_, i) => i + 1).map((day) => {
                                                 const dateStr = `${detailPanel.year}-${String(detailPanel.month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -511,12 +511,12 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
                                                 return (
                                                     <td
                                                         key={day}
-                                                        className={`text-right py-2 px-1 tabular-nums border border-gray-300 ${isEmpty ? 'bg-gray-50 text-gray-400' : ''}`}
+                                                        className={`text-right py-2 px-1 tabular-nums border border-gray-300 dark:border-gray-600 ${isEmpty ? 'bg-gray-50 dark:bg-gray-700/50 text-gray-400 dark:text-gray-500' : ''}`}
                                                     >
                                                         <button
                                                             type="button"
                                                             onClick={() => handleDayClick(dateStr, detailPanel.wasteStream)}
-                                                            className={val ? 'cursor-pointer hover:bg-indigo-50 hover:text-indigo-700 rounded w-full min-w-[2.5rem]' : 'cursor-default'}
+                                                            className={val ? 'cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-700 dark:hover:text-indigo-300 rounded w-full min-w-[2.5rem]' : 'cursor-default'}
                                                             title={val ? `View orders for ${dateStr}` : undefined}
                                                         >
                                                             {val ? formatWeight(val) : '–'}
@@ -529,28 +529,28 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
                                 </tbody>
                             </table>
                         ) : (
-                            <p className="text-sm text-gray-500">No daily data for this grade and month.</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">No daily data for this grade and month.</p>
                         )}
                     </div>
                     {detailPanel.selectedDate && (
-                        <div className="border-t border-gray-200 px-4 py-3 bg-gray-50/70">
-                            <h4 className="text-xs font-semibold text-gray-700 mb-2">
+                        <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-3 bg-gray-50/70 dark:bg-gray-700/30">
+                            <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
                                 Finalized orders for {detailPanel.selectedDate}
                                 {detailPanel.wasteStream ? ` (${detailPanel.wasteStream})` : ''}
                             </h4>
                             {detailPanel.ordersLoading ? (
-                                <p className="text-sm text-gray-500">Loading orders…</p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">Loading orders…</p>
                             ) : !detailPanel.ordersForDate || detailPanel.ordersForDate.length === 0 ? (
-                                <p className="text-sm text-gray-500">No finalized orders for this day.</p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">No finalized orders for this day.</p>
                             ) : (
-                                <ul className="divide-y divide-gray-200 border border-gray-200 rounded-lg bg-white overflow-hidden">
+                                <ul className="divide-y divide-gray-200 dark:divide-gray-600 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700/50 overflow-hidden">
                                     {detailPanel.ordersForDate.map((order) => (
-                                        <li key={order.id} className="px-3 py-2 flex items-center justify-between gap-2 hover:bg-gray-50">
-                                            <Link href={route('orders.show', order.id)} className="text-indigo-600 hover:text-indigo-800 font-medium">
+                                        <li key={order.id} className="px-3 py-2 flex items-center justify-between gap-2 hover:bg-gray-50 dark:hover:bg-gray-600/50">
+                                            <Link href={route('orders.show', order.id)} className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium">
                                                 {order.tracking_number}
                                             </Link>
-                                            <span className="text-xs text-gray-500 capitalize">{order.status?.replace(/_/g, ' ')}</span>
-                                            {order.waste_type && <span className="text-xs text-gray-600">{order.waste_type}</span>}
+                                            <span className="text-xs text-gray-500 dark:text-gray-400 capitalize">{order.status?.replace(/_/g, ' ')}</span>
+                                            {order.waste_type && <span className="text-xs text-gray-600 dark:text-gray-400">{order.waste_type}</span>}
                                         </li>
                                     ))}
                                 </ul>
@@ -563,8 +563,8 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
             {activeTab === 'dashboard' && (
             <>
             {/* All Charts in One Row */}
-            <div className="bg-white rounded-lg shadow p-3 mb-3">
-                <h2 className="text-sm font-semibold mb-2">Summary of Waste Treatment Outputs and achievements at a glance (kg per waste category)</h2>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 mb-3 border border-gray-200 dark:border-gray-700">
+                <h2 className="text-sm font-semibold mb-2 text-gray-900 dark:text-gray-100">Summary of Waste Treatment Outputs and achievements at a glance (kg per waste category)</h2>
                 <div className="grid grid-cols-1 lg:grid-cols-10 gap-3">
                     {/* Main Waste Stream Pie Chart */}
                     {wasteStreamData.length > 0 && (
@@ -596,7 +596,7 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
                                             className="w-2 h-2 rounded"
                                             style={{ backgroundColor: item.color }}
                                         />
-                                        <span className="text-xs">{item.name}: {formatNumber(item.value)} kg</span>
+                                        <span className="text-xs text-gray-700 dark:text-gray-300">{item.name}: {formatNumber(item.value)} kg</span>
                                     </div>
                                 ))}
                             </div>
@@ -608,7 +608,7 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
                         <div className="grid grid-cols-4 gap-2 mb-2">
                             {/* Avoidance */}
                             <div className="text-center">
-                                <h3 className="text-xs font-medium mb-1">AVOIDANCE</h3>
+                                <h3 className="text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">AVOIDANCE</h3>
                                 <ResponsiveContainer width="100%" height={100}>
                                     <PieChart>
                                         <Pie
@@ -629,13 +629,13 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
                                         </Pie>
                                     </PieChart>
                                 </ResponsiveContainer>
-                                <p className="text-xs text-gray-500 mt-1">{classificationData.avoidance.percentage}%</p>
-                                <p className="text-xs text-gray-500">kg</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{classificationData.avoidance.percentage}%</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">kg</p>
                             </div>
 
                             {/* Recycling */}
                             <div className="text-center">
-                                <h3 className="text-xs font-medium mb-1">RECYCLING</h3>
+                                <h3 className="text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">RECYCLING</h3>
                                 <ResponsiveContainer width="100%" height={100}>
                                     <PieChart>
                                         <Pie
@@ -656,13 +656,13 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
                                         </Pie>
                                     </PieChart>
                                 </ResponsiveContainer>
-                                <p className="text-xs text-gray-500 mt-1">{classificationData.recycling.percentage}%</p>
-                                <p className="text-xs text-gray-500">kg</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{classificationData.recycling.percentage}%</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">kg</p>
                             </div>
 
                             {/* Recovery */}
                             <div className="text-center">
-                                <h3 className="text-xs font-medium mb-1">RECOVERY</h3>
+                                <h3 className="text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">RECOVERY</h3>
                                 <ResponsiveContainer width="100%" height={100}>
                                     <PieChart>
                                         <Pie
@@ -683,13 +683,13 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
                                         </Pie>
                                     </PieChart>
                                 </ResponsiveContainer>
-                                <p className="text-xs text-gray-500 mt-1">{classificationData.recovery.percentage}%</p>
-                                <p className="text-xs text-gray-500">kg</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{classificationData.recovery.percentage}%</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">kg</p>
                             </div>
 
                             {/* Disposal */}
                             <div className="text-center">
-                                <h3 className="text-xs font-medium mb-1">DISPOSAL</h3>
+                                <h3 className="text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">DISPOSAL</h3>
                                 <ResponsiveContainer width="100%" height={100}>
                                     <PieChart>
                                         <Pie
@@ -710,28 +710,28 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
                                         </Pie>
                                     </PieChart>
                                 </ResponsiveContainer>
-                                <p className="text-xs text-gray-500 mt-1">{classificationData.disposal.percentage}%</p>
-                                <p className="text-xs text-gray-500">kg</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{classificationData.disposal.percentage}%</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">kg</p>
                             </div>
                         </div>
 
                         {/* Classification Totals */}
                         <div className="grid grid-cols-4 gap-2">
-                            <div className="text-center p-1.5 bg-gray-50 rounded">
-                                <p className="text-xs text-gray-600">Total Avoidance</p>
-                                <p className="text-sm font-semibold">{formatNumber(classificationData.avoidance.total)} kg</p>
+                            <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700/50 rounded">
+                                <p className="text-xs text-gray-600 dark:text-gray-400">Total Avoidance</p>
+                                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{formatNumber(classificationData.avoidance.total)} kg</p>
                             </div>
-                            <div className="text-center p-1.5 bg-gray-50 rounded">
-                                <p className="text-xs text-gray-600">Total Recycling</p>
-                                <p className="text-sm font-semibold">{formatNumber(classificationData.recycling.total)} kg</p>
+                            <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700/50 rounded">
+                                <p className="text-xs text-gray-600 dark:text-gray-400">Total Recycling</p>
+                                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{formatNumber(classificationData.recycling.total)} kg</p>
                             </div>
-                            <div className="text-center p-1.5 bg-gray-50 rounded">
-                                <p className="text-xs text-gray-600">Total Recovery</p>
-                                <p className="text-sm font-semibold">{formatNumber(classificationData.recovery.total)} kg</p>
+                            <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700/50 rounded">
+                                <p className="text-xs text-gray-600 dark:text-gray-400">Total Recovery</p>
+                                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{formatNumber(classificationData.recovery.total)} kg</p>
                             </div>
-                            <div className="text-center p-1.5 bg-gray-50 rounded">
-                                <p className="text-xs text-gray-600">Total Disposal</p>
-                                <p className="text-sm font-semibold">{formatNumber(classificationData.disposal.total)} kg</p>
+                            <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700/50 rounded">
+                                <p className="text-xs text-gray-600 dark:text-gray-400">Total Disposal</p>
+                                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{formatNumber(classificationData.disposal.total)} kg</p>
                             </div>
                         </div>
                     </div>
@@ -739,34 +739,34 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
             </div>
 
             {/* Environmental Achievements */}
-            <div className="bg-white rounded-lg shadow p-3">
-                <h2 className="text-sm font-semibold mb-2">Environmental achievements through implementation of waste hierarchy options</h2>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 border border-gray-200 dark:border-gray-700">
+                <h2 className="text-sm font-semibold mb-2 text-gray-900 dark:text-gray-100">Environmental achievements through implementation of waste hierarchy options</h2>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                    <div className="text-center p-3 bg-blue-50 rounded-lg">
-                        <Cloud className="w-8 h-8 mx-auto mb-1 text-blue-600" />
-                        <p className="text-xs text-gray-600 mb-1">Carbon Dioxide Saved</p>
-                        <p className="text-lg font-bold text-blue-600">
+                    <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-100 dark:border-blue-800/50">
+                        <Cloud className="w-8 h-8 mx-auto mb-1 text-blue-600 dark:text-blue-400" />
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Lifecycle Carbon Avoidance</p>
+                        <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
                             {formatNumber(environmentalImpact.co2Saved)} kg CO₂e
                         </p>
                     </div>
-                    <div className="text-center p-3 bg-cyan-50 rounded-lg">
-                        <Droplet className="w-8 h-8 mx-auto mb-1 text-cyan-600" />
-                        <p className="text-xs text-gray-600 mb-1">Water Saved</p>
-                        <p className="text-lg font-bold text-cyan-600">
+                    <div className="text-center p-3 bg-cyan-50 dark:bg-cyan-900/30 rounded-lg border border-cyan-100 dark:border-cyan-800/50">
+                        <Droplet className="w-8 h-8 mx-auto mb-1 text-cyan-600 dark:text-cyan-400" />
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Water Saved</p>
+                        <p className="text-lg font-bold text-cyan-600 dark:text-cyan-400">
                             {formatNumber(environmentalImpact.waterSaved)} kL
                         </p>
                     </div>
-                    <div className="text-center p-3 bg-green-50 rounded-lg">
-                        <TreePine className="w-8 h-8 mx-auto mb-1 text-green-600" />
-                        <p className="text-xs text-gray-600 mb-1">Trees Saved</p>
-                        <p className="text-lg font-bold text-green-600">
+                    <div className="text-center p-3 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-100 dark:border-green-800/50">
+                        <TreePine className="w-8 h-8 mx-auto mb-1 text-green-600 dark:text-green-400" />
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Trees Saved</p>
+                        <p className="text-lg font-bold text-green-600 dark:text-green-400">
                             {formatNumber(environmentalImpact.treesSaved)} trees
                         </p>
                     </div>
-                    <div className="text-center p-3 bg-yellow-50 rounded-lg">
-                        <Zap className="w-8 h-8 mx-auto mb-1 text-yellow-600" />
-                        <p className="text-xs text-gray-600 mb-1">Energy Saved</p>
-                        <p className="text-lg font-bold text-yellow-600">
+                    <div className="text-center p-3 bg-yellow-50 dark:bg-amber-900/30 rounded-lg border border-yellow-100 dark:border-amber-800/50">
+                        <Zap className="w-8 h-8 mx-auto mb-1 text-yellow-600 dark:text-amber-400" />
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Energy Saved</p>
+                        <p className="text-lg font-bold text-yellow-600 dark:text-amber-400">
                             {formatNumber(environmentalImpact.energySaved)} kWh
                         </p>
                     </div>
@@ -774,35 +774,35 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
             </div>
 
             {/* Orders for selected day (yesterday / today / tomorrow) */}
-            <div className="bg-white rounded-lg shadow p-3 mt-3">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 mt-3 border border-gray-200 dark:border-gray-700">
                 <div className="flex flex-wrap items-center gap-2 mb-2">
-                    <span className="text-sm font-semibold text-gray-800">Orders for</span>
+                    <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">Orders for</span>
                     <select
                         value={selectedOrdersDay}
                         onChange={(e) => setSelectedOrdersDay(e.target.value)}
-                        className="text-sm rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-1.5 pr-8"
+                        className="text-sm rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-1.5 pr-8"
                     >
                         {orderDayOptions.map((opt) => (
                             <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
                     </select>
                 </div>
-                <p className="text-xs text-gray-500 mb-2">Filtered by selected company / branch / site. Change filters above and click Apply to update.</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Filtered by selected company / branch / site. Change filters above and click Apply to update.</p>
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm border-collapse">
                         <thead>
-                            <tr className="border-b border-gray-200 bg-gray-50">
-                                <th className="text-left py-2 px-2 font-semibold text-gray-700">Date</th>
-                                <th className="text-left py-2 px-2 font-semibold text-gray-700">Status</th>
-                                <th className="text-left py-2 px-2 font-semibold text-gray-700">Tracking No</th>
-                                <th className="text-left py-2 px-2 font-semibold text-gray-700">Type</th>
-                                <th className="text-left py-2 px-2 font-semibold text-gray-700">Service Provider</th>
+                            <tr className="border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50">
+                                <th className="text-left py-2 px-2 font-semibold text-gray-700 dark:text-gray-300">Date</th>
+                                <th className="text-left py-2 px-2 font-semibold text-gray-700 dark:text-gray-300">Status</th>
+                                <th className="text-left py-2 px-2 font-semibold text-gray-700 dark:text-gray-300">Tracking No</th>
+                                <th className="text-left py-2 px-2 font-semibold text-gray-700 dark:text-gray-300">Type</th>
+                                <th className="text-left py-2 px-2 font-semibold text-gray-700 dark:text-gray-300">Service Provider</th>
                             </tr>
                         </thead>
                         <tbody>
                             {(!ordersNearDates || ordersNearDates.length === 0) ? (
                                 <tr>
-                                    <td colSpan={5} className="py-4 text-center text-gray-500">
+                                    <td colSpan={5} className="py-4 text-center text-gray-500 dark:text-gray-400">
                                         No orders for yesterday, today or tomorrow. Select company/branch/site and apply to filter.
                                     </td>
                                 </tr>
@@ -810,26 +810,26 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
                                 const filtered = ordersNearDates.filter((o) => o.collection_date === selectedOrdersDay);
                                 return filtered.length === 0 ? (
                                     <tr>
-                                        <td colSpan={5} className="py-4 text-center text-gray-500">
+                                        <td colSpan={5} className="py-4 text-center text-gray-500 dark:text-gray-400">
                                             No orders for the selected day.
                                         </td>
                                     </tr>
                                 ) : (
                                     filtered.map((order) => (
-                                        <tr key={order.id} className="border-b border-gray-100 hover:bg-gray-50">
-                                            <td className="py-2 px-2 text-gray-600">{order.collection_date || '–'}</td>
+                                        <tr key={order.id} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                            <td className="py-2 px-2 text-gray-600 dark:text-gray-300">{order.collection_date || '–'}</td>
                                             <td className="py-2 px-2">
-                                                <span className="inline-flex px-1.5 py-0.5 text-xs font-medium rounded bg-gray-100 text-gray-800 capitalize">
+                                                <span className="inline-flex px-1.5 py-0.5 text-xs font-medium rounded bg-gray-100 dark:bg-gray-600 text-gray-800 dark:text-gray-200 capitalize">
                                                     {order.status?.replace(/_/g, ' ') || '–'}
                                                 </span>
                                             </td>
                                             <td className="py-2 px-2">
-                                                <Link href={route('orders.show', order.id)} className="text-indigo-600 hover:text-indigo-800 font-medium">
+                                                <Link href={route('orders.show', order.id)} className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium">
                                                     {order.tracking_number}
                                                 </Link>
                                             </td>
-                                            <td className="py-2 px-2 text-gray-600 capitalize">{order.order_type || '–'}</td>
-                                            <td className="py-2 px-2 text-gray-600">{order.service_provider || '–'}</td>
+                                            <td className="py-2 px-2 text-gray-600 dark:text-gray-300 capitalize">{order.order_type || '–'}</td>
+                                            <td className="py-2 px-2 text-gray-600 dark:text-gray-300">{order.service_provider || '–'}</td>
                                         </tr>
                                     ))
                                 );

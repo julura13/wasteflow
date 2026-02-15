@@ -16,7 +16,96 @@ export default function Finalize({ order, materials = [], canManageOrder = true 
     const [validationError, setValidationError] = useState(null);
     const [successMessage, setSuccessMessage] = useState(null);
     const [slipNumberExistsError, setSlipNumberExistsError] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
+    const [fileValidationError, setFileValidationError] = useState(null);
     const slipCheckTimeoutRef = useRef(null);
+
+    // File upload validation (must match backend: max 10MB, allowed types)
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    const ACCEPTED_EXTENSIONS = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'];
+    const ACCEPTED_MIMES = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'image/jpeg',
+        'image/png',
+    ];
+
+    const getFileExtension = (name) => {
+        const parts = (name || '').split('.');
+        return parts.length > 1 ? parts.pop().toLowerCase() : '';
+    };
+
+    const validateFiles = (fileList) => {
+        const valid = [];
+        const errors = [];
+        const names = new Set();
+        for (let i = 0; i < fileList.length; i++) {
+            const file = fileList[i];
+            if (names.has(file.name)) {
+                errors.push(`Duplicate file: ${file.name}`);
+                continue;
+            }
+            names.add(file.name);
+            if (file.size > MAX_FILE_SIZE) {
+                errors.push(`${file.name} exceeds 10MB limit`);
+                continue;
+            }
+            const ext = getFileExtension(file.name);
+            const mimeOk = ACCEPTED_MIMES.includes(file.type);
+            const extOk = ACCEPTED_EXTENSIONS.includes(ext);
+            if (!mimeOk && !extOk) {
+                errors.push(`${file.name}: allowed types are PDF, DOC, DOCX, JPG, JPEG, PNG`);
+                continue;
+            }
+            valid.push(file);
+        }
+        return { valid, errors };
+    };
+
+    const setFilesFromList = (fileList) => {
+        setFileValidationError(null);
+        if (!fileList || fileList.length === 0) {
+            setUploadData('files', []);
+            return { valid: [], errors: [] };
+        }
+        const { valid, errors } = validateFiles(Array.from(fileList));
+        setUploadData('files', valid);
+        if (errors.length > 0) {
+            const msg = errors.length > 1 ? `${errors[0]} (and ${errors.length - 1} other issue${errors.length > 2 ? 's' : ''})` : errors[0];
+            setFileValidationError(msg);
+        }
+        return { valid, errors };
+    };
+
+    const uploadFiles = async (filesToUpload) => {
+        if (!filesToUpload || filesToUpload.length === 0) return;
+        setUploading(true);
+        for (let i = 0; i < filesToUpload.length; i++) {
+            const file = filesToUpload[i];
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('mediable_type', uploadData.mediable_type);
+            formData.append('mediable_id', uploadData.mediable_id);
+            formData.append('collection', uploadData.collection);
+            if (uploadData.description) formData.append('description', uploadData.description);
+            try {
+                await window.axios.post(route('media.upload'), formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                });
+            } catch (error) {
+                console.error('Error uploading file:', error);
+                const errorMessage = error.response?.data?.message || error.message || 'Upload failed';
+                alert(`Error uploading file ${file.name}: ${errorMessage}`);
+                setUploading(false);
+                return;
+            }
+        }
+        router.reload({ only: ['order'], preserveScroll: true });
+        resetUpload();
+        setFileValidationError(null);
+        setUploading(false);
+    };
 
     // Slip number prefix from order's service provider
     const slipPrefix = (order.service_provider?.slip_number_prefix || '').trim();
@@ -99,49 +188,9 @@ export default function Finalize({ order, materials = [], canManageOrder = true 
         slip_number: order.slip_number || '',
     });
 
-    const handleFileUpload = async (e) => {
+    const handleFileUpload = (e) => {
         e.preventDefault();
-        if (!uploadData.files || uploadData.files.length === 0) {
-            return;
-        }
-        
-        setUploading(true);
-
-        // Upload files sequentially using axios (which handles CSRF tokens automatically)
-        for (let i = 0; i < uploadData.files.length; i++) {
-            const file = uploadData.files[i];
-            
-            // Create form data for this file
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('mediable_type', uploadData.mediable_type);
-            formData.append('mediable_id', uploadData.mediable_id);
-            formData.append('collection', uploadData.collection);
-            if (uploadData.description) {
-                formData.append('description', uploadData.description);
-            }
-
-            try {
-                await window.axios.post(route('media.upload'), formData, {
-                    headers: {
-                        'Content-Type': 'multipart/form-data',
-                    },
-                });
-            } catch (error) {
-                console.error('Error uploading file:', error);
-                const errorMessage = error.response?.data?.message || error.message || 'Upload failed';
-                alert(`Error uploading file ${file.name}: ${errorMessage}`);
-                setUploading(false);
-                return;
-            }
-        }
-
-        // Reload the order data after all uploads complete
-        router.reload({ only: ['order'], preserveScroll: true });
-        
-        // Reset form after all files are uploaded
-        resetUpload();
-        setUploading(false);
+        if (uploadData.files?.length) uploadFiles(uploadData.files);
     };
 
     const handleDeleteDocument = (mediaId) => {
@@ -207,6 +256,23 @@ export default function Finalize({ order, materials = [], canManageOrder = true 
             return total;
         }, 0);
     }, [order.waste_streams, order.site?.branch?.company?.rebate_percentage]);
+
+    // Total weight from current form lines (for double-check before save)
+    const totalWeightFromLines = useMemo(() => {
+        return weightLines.reduce((sum, line) => {
+            const w = parseFloat(line.weight);
+            return sum + (Number.isFinite(w) && w > 0 ? w : 0);
+        }, 0);
+    }, [weightLines]);
+
+    // Total weight from saved waste streams
+    const totalSavedWeight = useMemo(() => {
+        if (!order.waste_streams || order.waste_streams.length === 0) return 0;
+        return order.waste_streams.reduce((sum, ws) => {
+            const w = ws.nett_weight ?? ws.gross_weight ?? 0;
+            return sum + (Number(w) || 0);
+        }, 0);
+    }, [order.waste_streams]);
 
     const addWeightLine = () => {
         const newId = Math.max(...weightLines.map(line => line.id || 0), 0) + 1;
@@ -412,32 +478,82 @@ export default function Finalize({ order, materials = [], canManageOrder = true 
                             Upload supporting documents for this order. At least one document is required to finalize.
                         </p>
 
-                        {/* Upload Form - Separate form outside of finalize form */}
+                        {/* Upload Form - Drag and drop + file input */}
                         {canManageOrder && (
                         <form onSubmit={handleFileUpload} className="mb-6 border-b border-gray-200 dark:border-gray-700 pb-6">
                             <div className="space-y-4">
                                 <div>
-                                    <label htmlFor="files" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                                         Upload Documents (Multiple files allowed)
                                     </label>
-                                    <input
-                                        type="file"
-                                        id="files"
-                                        multiple
-                                        onChange={(e) => {
-                                            const files = Array.from(e.target.files || []);
-                                            setUploadData('files', files);
+                                    <div
+                                        onDragEnter={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            setIsDragging(true);
                                         }}
-                                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 dark:file:bg-primary-900 dark:file:text-primary-300"
-                                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                                    />
+                                        onDragOver={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                        }}
+                                        onDragLeave={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            setIsDragging(false);
+                                        }}
+                                        onDrop={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            setIsDragging(false);
+                                            const items = e.dataTransfer?.files;
+                                            if (items && items.length > 0) {
+                                                const result = setFilesFromList(items);
+                                                if (result.valid.length > 0 && result.errors.length === 0) {
+                                                    uploadFiles(result.valid);
+                                                }
+                                            }
+                                        }}
+                                        className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                                            isDragging
+                                                ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                                                : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
+                                        }`}
+                                    >
+                                        <input
+                                            type="file"
+                                            id="files"
+                                            multiple
+                                            onChange={(e) => {
+                                                const result = setFilesFromList(e.target.files || []);
+                                                e.target.value = '';
+                                                if (result.valid.length > 0 && result.errors.length === 0) {
+                                                    uploadFiles(result.valid);
+                                                }
+                                            }}
+                                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                        />
+                                        <Upload className="mx-auto h-10 w-10 text-gray-400 dark:text-gray-500 mb-3" />
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                                            Drag and drop files here, or <span className="text-primary-600 dark:text-primary-400 font-medium">click to browse</span>
+                                        </p>
+                                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-500">
+                                            PDF, DOC, DOCX, JPG, PNG up to 10MB each
+                                        </p>
+                                    </div>
                                     {uploadData.files && uploadData.files.length > 0 && (
                                         <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
                                             {uploadData.files.length} file{uploadData.files.length !== 1 ? 's' : ''} selected
                                         </p>
                                     )}
+                                    {fileValidationError && (
+                                        <p className="mt-2 text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
+                                            <AlertCircle className="h-4 w-4 shrink-0" />
+                                            {fileValidationError}
+                                        </p>
+                                    )}
                                     {uploadErrors.files && (
-                                        <p className="mt-1 text-sm text-red-600">{uploadErrors.files}</p>
+                                        <p className="mt-1 text-sm text-red-600 dark:text-red-400">{uploadErrors.files}</p>
                                     )}
                                 </div>
 
@@ -663,7 +779,10 @@ export default function Finalize({ order, materials = [], canManageOrder = true 
                                     </div>
                                 </div>
 
-                                <div className="mt-4 flex justify-end">
+                                <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
+                                    <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                        Total weight: <span className="text-gray-900 dark:text-gray-100">{totalWeightFromLines > 0 ? Number(totalWeightFromLines).toFixed(3) : '0'} kg</span>
+                                    </div>
                                     <button
                                         type="submit"
                                         disabled={savingWeights}
@@ -729,6 +848,11 @@ export default function Finalize({ order, materials = [], canManageOrder = true 
                                             })}
                                         </tbody>
                                     </table>
+                                </div>
+                                <div className="mt-3 px-6 py-2 bg-gray-50 dark:bg-gray-700/50 rounded-b-lg border-t border-gray-200 dark:border-gray-600">
+                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                        Total weight: <span className="text-gray-900 dark:text-gray-100">{Number(totalSavedWeight).toFixed(3)} kg</span>
+                                    </span>
                                 </div>
                             </div>
                         )}

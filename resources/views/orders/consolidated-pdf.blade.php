@@ -111,7 +111,7 @@
                 <img src="{{ asset('images/logo.png') }}" alt="WasteFlow Logo">
             </div>
             <div class="header-title">
-                <h1>Consolidated Waste Collection Order</h1>
+                <h1>Summary of Orders for Collection</h1>
             </div>
         </div>
         <div class="collection-date">
@@ -128,20 +128,16 @@
                 <tr>
                     <th>Order #</th>
                     <th>Site Name</th>
-                    <th>REL Skip</th>
-                    <th>No of Wheelie Bins</th>
-                    <th>Skips / 30M3</th>
-                    <th>Special Instructions</th>
+                    <th>Order Details</th>
+                    <th>Notes</th>
                 </tr>
             </thead>
             <tbody>
                 @php
                     $quantityTypes = [
-                        // Waste types
                         'rel_skip' => 'REL Skip',
                         'wheelie_bins' => 'Wheelie Bins',
                         'skips_30m2' => 'Skips / 30M3',
-                        // Recycling types
                         'scrap_load' => 'Scrap Load',
                         'loose_bags' => 'Loose Bags',
                         'cage_8m3' => '8m³ Cage',
@@ -156,43 +152,31 @@
                         $branch = $order->site?->branch ?? $order->branch ?? null;
                         $quantityLines = $order->quantity_lines ?? [];
                         $orderType = $order->order_type ?? 'waste';
-                        
-                        // Extract quantities by type
-                        $relSkip = 0;
-                        $wheelieBins = 0;
-                        $skips30m3 = 0;
-                        $recyclingContainers = [];
-                        
+
+                        // Build order details: readable summary of all quantity lines
+                        $orderDetailsParts = [];
                         if (!empty($quantityLines) && is_array($quantityLines)) {
                             foreach ($quantityLines as $line) {
                                 $type = $line['quantity_type'] ?? '';
-                                $quantity = $line['quantity'] ?? 0;
-                                $containerName = $line['container_option_name'] ?? null;
+                                $quantity = (int) ($line['quantity'] ?? 0);
+                                if ($quantity <= 0) continue;
 
+                                $containerName = $line['container_option_name'] ?? null;
                                 if ($containerName) {
-                                    // Waste order with container options
-                                    $recyclingContainers[] = $quantity . ' x ' . $containerName;
-                                } elseif ($type === 'rel_skip') {
-                                    $relSkip = $quantity;
-                                } elseif ($type === 'wheelie_bins') {
-                                    $wheelieBins = $quantity;
-                                } elseif ($type === 'skips_30m2') {
-                                    $skips30m3 = $quantity;
-                                } elseif ($orderType === 'recycling') {
-                                    $typeLabel = $quantityTypes[$type] ?? ucfirst(str_replace('_', ' ', $type));
+                                    $orderDetailsParts[] = $quantity . ' x ' . $containerName;
+                                } elseif (isset($quantityTypes[$type])) {
+                                    $typeLabel = $quantityTypes[$type];
                                     if ($type === 'other' && !empty($line['description'] ?? '')) {
                                         $typeLabel .= ' (' . $line['description'] . ')';
                                     }
-                                    $recyclingContainers[] = $quantity . ' x ' . $typeLabel;
+                                    $orderDetailsParts[] = $quantity . ' x ' . $typeLabel;
+                                } else {
+                                    $orderDetailsParts[] = $quantity . ' x ' . ucfirst(str_replace('_', ' ', $type));
                                 }
                             }
                         }
-
-                        // Get special instructions from notes
-                        $specialInstructions = $order->notes ?? '';
-                        if (!empty($recyclingContainers)) {
-                            $specialInstructions = (!empty($specialInstructions) ? $specialInstructions . ' | ' : '') . implode(', ', $recyclingContainers);
-                        }
+                        $orderDetails = implode('<br>', $orderDetailsParts);
+                        $notes = $order->notes ?? '';
                     @endphp
                     <tr>
                         <td>{{ $order->tracking_number ?? $order->id }}</td>
@@ -208,12 +192,8 @@
                                 @endif
                             @endif
                         </td>
-                        <td>{{ $orderType === 'waste' ? ($relSkip > 0 ? $relSkip : '') : '' }}</td>
-                        <td>{{ $orderType === 'waste' ? ($wheelieBins > 0 ? $wheelieBins : '') : '' }}</td>
-                        <td>{{ $orderType === 'waste' ? ($skips30m3 > 0 ? $skips30m3 : '') : '' }}</td>
-                        <td class="{{ !empty($specialInstructions) ? 'special-instructions' : '' }}">
-                            {{ $specialInstructions }}
-                        </td>
+                        <td>{!! $orderDetails !!}</td>
+                        <td class="{{ !empty($notes) ? 'special-instructions' : '' }}">{{ $notes }}</td>
                     </tr>
                 @endforeach
             </tbody>
