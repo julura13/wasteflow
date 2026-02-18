@@ -10,6 +10,58 @@ use Carbon\Carbon;
 class ClientMonthlySummaryService
 {
     /**
+     * Move this order's waste stream weights in monthly summaries from the "from" month
+     * (where they were previously counted, e.g. requested_collection_date) to the actual
+     * collection month. Call this when an order is finalized or when actual_collection_date
+     * is set/changed so the Grade Summary by month uses actual collection date.
+     *
+     * @param Order $order Order with actual_collection_date set (e.g. after finalize)
+     * @param \Carbon\Carbon|null $oldActualCollectionDate Previous actual_collection_date, or null if first time setting
+     */
+    public function moveOrderSummariesToActualCollectionDate(Order $order, ?Carbon $oldActualCollectionDate = null): void
+    {
+        $toDate = $order->actual_collection_date;
+        if (! $toDate) {
+            return;
+        }
+
+        $toDate = Carbon::parse($toDate);
+        $fromDate = $oldActualCollectionDate
+            ? Carbon::parse($oldActualCollectionDate)
+            : ($order->requested_collection_date ? Carbon::parse($order->requested_collection_date) : null);
+
+        if (! $fromDate || ($fromDate->year === $toDate->year && $fromDate->month === $toDate->month)) {
+            return;
+        }
+
+        $order->load('wasteStreams');
+        foreach ($order->wasteStreams as $stream) {
+            if (! $stream->material_id || $stream->nett_weight <= 0) {
+                continue;
+            }
+            $weight = (float) $stream->nett_weight;
+            $this->subtractWeight(
+                $order->company_id,
+                $order->branch_id,
+                $order->site_id,
+                $fromDate->year,
+                $fromDate->month,
+                $weight,
+                $stream->material_id
+            );
+            $this->addWeight(
+                $order->company_id,
+                $order->branch_id,
+                $order->site_id,
+                $toDate->year,
+                $toDate->month,
+                $weight,
+                $stream->material_id,
+                false
+            );
+        }
+    }
+    /**
      * Update summaries when a weight is added or updated.
      * 
      * @param OrderWasteStream $orderWasteStream

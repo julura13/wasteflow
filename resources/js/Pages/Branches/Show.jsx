@@ -369,10 +369,10 @@ export default function Show({ branch }) {
             <Modal show={collectionPointModalOpen} onClose={closeCollectionPointModal} maxWidth="2xl">
                 <form onSubmit={handleCollectionPointSubmit} className="p-6 space-y-6">
                     <div>
-                        <h2 className="text-lg font-semibold text-gray-900">
+                        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                             {collectionPointMode === 'create' ? 'Create Collection Point' : 'Edit Collection Point'}
                         </h2>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
                             {collectionPointMode === 'create' ? 'Create a new collection point for this branch.' : 'Update collection point information.'}
                         </p>
                     </div>
@@ -487,9 +487,9 @@ export default function Show({ branch }) {
                                 type="checkbox"
                                 checked={collectionPointForm.data.is_active}
                                 onChange={(e) => collectionPointForm.setData('is_active', e.target.checked)}
-                                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded"
                             />
-                            <label htmlFor="cp-active" className="ml-2 block text-sm text-gray-900">
+                            <label htmlFor="cp-active" className="ml-2 block text-sm text-gray-900 dark:text-gray-300">
                                 Active
                             </label>
                         </div>

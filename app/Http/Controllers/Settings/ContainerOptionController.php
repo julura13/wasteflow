@@ -30,9 +30,11 @@ class ContainerOptionController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:255|unique:container_options,name',
             'is_active' => 'sometimes|boolean',
+            'default_weight' => 'nullable|numeric|min:0',
         ]);
 
         $data['is_active'] = $request->has('is_active') ? $request->boolean('is_active') : true;
+        $data['default_weight'] = $request->filled('default_weight') ? (float) $request->input('default_weight') : null;
 
         ContainerOption::create($data);
 
@@ -44,9 +46,11 @@ class ContainerOptionController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:255|unique:container_options,name,' . $containerOption->id,
             'is_active' => 'sometimes|boolean',
+            'default_weight' => 'nullable|numeric|min:0',
         ]);
 
         $data['is_active'] = $request->has('is_active') ? $request->boolean('is_active') : true;
+        $data['default_weight'] = $request->filled('default_weight') ? (float) $request->input('default_weight') : null;
 
         $containerOption->update($data);
 

@@ -15,12 +15,14 @@ class ContainerOption extends Model
         'name',
         'slug',
         'is_active',
+        'default_weight',
     ];
 
     protected function casts(): array
     {
         return [
             'is_active' => 'boolean',
+            'default_weight' => 'float',
         ];
     }
 

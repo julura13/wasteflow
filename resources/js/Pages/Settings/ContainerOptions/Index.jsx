@@ -19,6 +19,7 @@ export default function ContainerOptionsIndex({ containerOptions, filters }) {
     const form = useForm({
         name: '',
         is_active: true,
+        default_weight: '',
     });
 
     const columns = [
@@ -26,6 +27,15 @@ export default function ContainerOptionsIndex({ containerOptions, filters }) {
             accessorKey: 'name',
             header: 'Container Option',
             cell: ({ getValue }) => <span className="font-medium text-gray-900">{getValue()}</span>,
+        },
+        {
+            id: 'default_weight',
+            header: 'Default weight',
+            cell: ({ row }) => (
+                <span className="text-gray-600">
+                    {row.original.default_weight != null ? `${Number(row.original.default_weight)} kg` : '—'}
+                </span>
+            ),
         },
         {
             id: 'is_active',
@@ -58,6 +68,7 @@ export default function ContainerOptionsIndex({ containerOptions, filters }) {
         form.setData({
             name: '',
             is_active: true,
+            default_weight: '',
         });
         setEditingId(null);
     };
@@ -73,6 +84,7 @@ export default function ContainerOptionsIndex({ containerOptions, filters }) {
         form.setData({
             name: option.name ?? '',
             is_active: Boolean(option.is_active),
+            default_weight: option.default_weight != null ? String(option.default_weight) : '',
         });
         setEditingId(option.id);
         setMode('edit');
@@ -181,6 +193,21 @@ export default function ContainerOptionsIndex({ containerOptions, filters }) {
                                 autoFocus
                             />
                             <InputError message={form.errors.name} className="mt-2" />
+                        </div>
+
+                        <div>
+                            <InputLabel htmlFor="container-default-weight" value="Default weight (kg)" />
+                            <TextInput
+                                id="container-default-weight"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={form.data.default_weight}
+                                onChange={(event) => form.setData('default_weight', event.target.value)}
+                                className="mt-1 block w-full"
+                                placeholder="Optional"
+                            />
+                            <InputError message={form.errors.default_weight} className="mt-2" />
                         </div>
 
                         <label className="inline-flex items-center space-x-2">

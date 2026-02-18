@@ -256,7 +256,7 @@ export default function AddressAutocomplete({
                         }
                     }}
                     placeholder={placeholder}
-                    className={`${className} ${textarea ? '' : 'pr-10'}`}
+                    className={`border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${className} ${textarea ? '' : 'pr-10'}`}
                     {...inputProps}
                 />
                 {!textarea && (
@@ -273,7 +273,7 @@ export default function AddressAutocomplete({
             {showSuggestions && suggestions.length > 0 && (
                 <div
                     ref={suggestionsRef}
-                    className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg"
+                    className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg"
                 >
                     <div className="flex">
                         {/* Suggestions List */}
@@ -294,21 +294,21 @@ export default function AddressAutocomplete({
                                         }}
                                         onMouseEnter={() => setHoveredIndex(index)}
                                         onMouseLeave={() => setHoveredIndex(-1)}
-                                        className={`w-full text-left px-4 py-3 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none transition-colors ${
-                                            index === selectedIndex ? 'bg-gray-100' : ''
+                                        className={`w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 focus:bg-gray-100 dark:focus:bg-gray-700 focus:outline-none transition-colors ${
+                                            index === selectedIndex ? 'bg-gray-100 dark:bg-gray-700' : ''
                                         } ${
                                             index < suggestions.length - 1
-                                                ? 'border-b border-gray-200'
+                                                ? 'border-b border-gray-200 dark:border-gray-600'
                                                 : ''
                                         }`}
                                     >
                                         <div className="flex items-start">
-                                            <MapPin className="h-4 w-4 text-gray-400 mt-0.5 mr-2 flex-shrink-0" />
+                                            <MapPin className="h-4 w-4 text-gray-400 dark:text-gray-500 mt-0.5 mr-2 flex-shrink-0" />
                                             <div className="flex-1 min-w-0">
-                                                <div className="text-sm font-medium text-gray-900 truncate">
+                                                <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                                                     {primaryText}
                                                 </div>
-                                                <div className="text-xs text-gray-500 truncate">
+                                                <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
                                                     {fullAddress}
                                                 </div>
                                             </div>
@@ -320,7 +320,7 @@ export default function AddressAutocomplete({
 
                         {/* Mini Map Preview */}
                         {mapPreviewUrl && previewedSuggestion && (
-                            <div className="hidden sm:block w-48 h-48 border-l border-gray-200 flex-shrink-0">
+                            <div className="hidden sm:block w-48 h-48 border-l border-gray-200 dark:border-gray-600 flex-shrink-0">
                                 <img
                                     src={mapPreviewUrl}
                                     alt="Location preview"

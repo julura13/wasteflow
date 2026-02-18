@@ -232,6 +232,7 @@ export default function CompaniesIndex({ companies, filters }) {
                 data={companies.data}
                 columns={columns}
                 title="All Companies"
+                pagination={false}
             />
 
             {/* Pagination */}

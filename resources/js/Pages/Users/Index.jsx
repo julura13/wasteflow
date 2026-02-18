@@ -114,13 +114,16 @@ export default function UsersIndex({ users, filters }) {
                 cell: ({ row }) => {
                     const u = row.original;
                     return (
-                        <Link
-                            href={`/users/${u.id}/edit`}
-                            className="inline-flex items-center text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-300"
-                            title="Edit user"
-                        >
-                            <Edit className="h-4 w-4" />
-                        </Link>
+                        <div onClick={(e) => e.stopPropagation()} className="inline-flex">
+                            <Link
+                                href={`/users/${u.id}/edit`}
+                                className="inline-flex items-center text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-300"
+                                title="Edit user"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <Edit className="h-4 w-4" />
+                            </Link>
+                        </div>
                     );
                 },
             },
@@ -227,7 +230,12 @@ export default function UsersIndex({ users, filters }) {
                 </form>
             </div>
 
-            <DataTable data={users.data} columns={columns} title="All users" />
+            <DataTable
+                data={users.data}
+                columns={columns}
+                title="All users"
+                pagination={false}
+            />
 
             {users.links && (
                 <div className="mt-6 flex items-center justify-between">

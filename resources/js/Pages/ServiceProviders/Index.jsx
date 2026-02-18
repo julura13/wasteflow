@@ -261,6 +261,7 @@ export default function ServiceProvidersIndex({ serviceProviders, filters }) {
                 data={serviceProviders.data}
                 columns={columns}
                 title="All Service Providers"
+                pagination={false}
             />
 
             {/* Pagination */}

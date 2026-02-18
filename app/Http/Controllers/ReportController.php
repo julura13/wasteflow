@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\ChartImageService;
+use App\Services\WasteImpactCalculator;
 use App\Models\Company;
 use App\Traits\ScopeByClientTrait;
 use App\Models\Branch;
@@ -20,11 +21,14 @@ class ReportController extends Controller
 {
     use ScopeByClientTrait;
 
-    protected $chartService;
+    protected ChartImageService $chartService;
 
-    public function __construct(ChartImageService $chartService)
+    protected WasteImpactCalculator $wasteImpactCalculator;
+
+    public function __construct(ChartImageService $chartService, WasteImpactCalculator $wasteImpactCalculator)
     {
         $this->chartService = $chartService;
+        $this->wasteImpactCalculator = $wasteImpactCalculator;
     }
 
     /**
@@ -848,7 +852,7 @@ class ReportController extends Controller
     }
 
     /**
-     * Calculate environmental impact (trees saved, energy saved, water saved) from pre-calculated summaries
+     * Calculate environmental impact (trees saved, energy saved, water saved) using shared WasteImpactCalculator.
      */
     private function getEnvironmentalImpact(?Company $company = null, ?Branch $branch = null, ?Site $site = null, ?int $month = null, ?int $year = null, float $organicsRecovered = 0): array
     {
@@ -860,105 +864,14 @@ class ReportController extends Controller
             ];
         }
 
-        // Get material-level summaries
         $summaries = $this->getMaterialSummaries($company, $branch, $site, $month, $year);
-
-        // Initialize category weights
-        $categoryWeights = [
-            'paper' => 0,
-            'plastics' => 0,
-            'aluminium' => 0,
-            'organics' => $organicsRecovered,
-            'tetrapak' => 0,
-            'steel' => 0,
-            'glass' => 0,
-        ];
-
-        foreach ($summaries as $summary) {
-            if (!$summary->material || !$summary->material->grade || !$summary->material->wasteStream) {
-                continue;
-            }
-
-            $weight = (float) $summary->total_weight;
-            $wasteStreamName = trim($summary->material->wasteStream->name);
-            $gradeName = trim($summary->material->grade->name);
-
-            // Tetrapak: grade name = "Tetrapak" (separate from paper)
-            if ($gradeName === 'Tetrapak') {
-                $categoryWeights['tetrapak'] += $weight;
-            }
-            // Paper: waste stream = "Paper" (excluding Tetrapak)
-            elseif ($wasteStreamName === 'Paper' && $gradeName !== 'Tetrapak') {
-                $categoryWeights['paper'] += $weight;
-            }
-            // Plastics: waste stream = "Plastic"
-            elseif ($wasteStreamName === 'Plastic') {
-                $categoryWeights['plastics'] += $weight;
-            }
-            // Aluminium: waste stream = "Aluminium"
-            elseif ($wasteStreamName === 'Aluminium') {
-                $categoryWeights['aluminium'] += $weight;
-            }
-            // Steel: waste stream = "Metal" with steel grades
-            elseif ($wasteStreamName === 'Metal' && (
-                $gradeName === 'Heavy Steel' || 
-                $gradeName === 'Light Steel' || 
-                $gradeName === 'Light Steel Cans' || 
-                $gradeName === 'Light Steel Drums'
-            )) {
-                $categoryWeights['steel'] += $weight;
-            }
-            // Glass: waste stream = "Glass"
-            elseif ($wasteStreamName === 'Glass') {
-                $categoryWeights['glass'] += $weight;
-            }
-        }
-
-        // Energy Saved factors (blue column)
-        $energyFactors = [
-            'paper' => 10,
-            'plastics' => 20,
-            'aluminium' => 140,
-            'organics' => 9,
-            'tetrapak' => 2,
-            'steel' => 15,
-            'glass' => 7,
-        ];
-
-        // Water Saved factors (green column)
-        $waterFactors = [
-            'paper' => 7000,
-            'plastics' => 50,
-            'aluminium' => 0,
-            'organics' => 0,
-            'tetrapak' => 0,
-            'steel' => 0,
-            'glass' => 0,
-        ];
-
-        // Calculate treesSaved = totalPaperWeight * (20 / 1000)
-        $totalPaperWeight = $categoryWeights['paper'];
-        $treesSaved = round($totalPaperWeight * (20 / 1000), 2);
-
-        // Calculate energySaved = sum of (weight * energy factor) for each category
-        $energySaved = 0;
-        foreach ($categoryWeights as $category => $weight) {
-            $energySaved += $weight * $energyFactors[$category];
-        }
-        $energySaved = round($energySaved, 2);
-
-        // Calculate waterSaved = sum of (weight * water factor) for each category
-        $waterSaved = 0;
-        foreach ($categoryWeights as $category => $weight) {
-            $waterSaved += $weight * $waterFactors[$category];
-        }
-        // Convert to kL (kiloliters) - divide by 1000
-        $waterSaved = round($waterSaved / 1000, 2);
+        $categoryWeights = $this->wasteImpactCalculator->buildCategoryWeightsFromSummaries($summaries, $organicsRecovered);
+        $impact = $this->wasteImpactCalculator->calculateImpactFromCategoryWeights($categoryWeights);
 
         return [
-            'treesSaved' => $treesSaved,
-            'energySaved' => $energySaved,
-            'waterSaved' => $waterSaved,
+            'treesSaved' => $impact['treesSaved'],
+            'energySaved' => $impact['energySaved'],
+            'waterSaved' => $impact['waterSaved'],
         ];
     }
 

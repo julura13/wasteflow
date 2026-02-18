@@ -432,10 +432,15 @@ class OrderController extends Controller
         $companyId = $order->site?->branch?->company?->id ?? $order->company_id;
         $canManageOrder = $user->isAdmin() || $user->canManageOrdersForCompany($companyId);
 
+        $containerOptionsWithWeight = $order->order_type === 'waste'
+            ? ContainerOption::whereNotNull('default_weight')->where('is_active', true)->orderBy('name')->get(['id', 'name', 'default_weight'])
+            : [];
+
         return Inertia::render('Orders/Finalize', [
             'order' => $order,
             'materials' => $materials,
             'canManageOrder' => $canManageOrder,
+            'containerOptionsWithWeight' => $containerOptionsWithWeight,
         ]);
     }
 
@@ -585,12 +590,19 @@ class OrderController extends Controller
             ['slip_number' => [Rule::unique('orders', 'slip_number')->ignore($order->id)]]
         )->validate();
 
+        $oldActualCollectionDate = $order->actual_collection_date;
+
         $order->update([
             'status' => 'finalized',
             'actual_collection_date' => $validated['actual_collection_date'] ?? $order->requested_collection_date,
             'actual_quantity' => $validated['actual_quantity'] ?? $order->estimated_quantity,
             'slip_number' => $fullSlipNumber,
         ]);
+
+        // Move monthly summary weights from requested (or previous actual) month to actual collection month
+        // so Grade Summary by month uses actual collection date
+        $order->refresh();
+        app(\App\Services\ClientMonthlySummaryService::class)->moveOrderSummariesToActualCollectionDate($order, $oldActualCollectionDate);
 
         return redirect()->route('orders.show', $order)
             ->with('success', 'Order finalized successfully.');

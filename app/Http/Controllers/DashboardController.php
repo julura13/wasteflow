@@ -12,6 +12,7 @@ use App\Models\WasteStream;
 use App\Traits\ScopeByClientTrait;
 use App\Models\ClientMonthlyMaterialSummary;
 use App\Models\Classification;
+use App\Services\WasteImpactCalculator;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -19,6 +20,10 @@ use Inertia\Inertia;
 class DashboardController extends Controller
 {
     use ScopeByClientTrait;
+
+    public function __construct(
+        private WasteImpactCalculator $wasteImpactCalculator
+    ) {}
 
     /**
      * Display the dashboard
@@ -339,8 +344,9 @@ class DashboardController extends Controller
         // Get classification totals (4 smaller pie charts)
         $classificationTotals = $this->getClassificationTotals($materialSummaries);
 
-        // Calculate environmental impact
-        $environmentalImpact = $this->calculateEnvironmentalImpact($materialSummaries);
+        // Calculate environmental impact (shared with report and summary)
+        $categoryWeights = $this->wasteImpactCalculator->buildCategoryWeightsFromSummaries($materialSummaries);
+        $environmentalImpact = $this->wasteImpactCalculator->calculateImpactFromCategoryWeights($categoryWeights);
 
         return [
             'wasteStreamTotals' => $wasteStreamTotals,
@@ -575,201 +581,6 @@ class DashboardController extends Controller
                 'percentage' => $totalWeight > 0 ? round(($totals['Disposal'] / $totalWeight) * 100, 1) : 0,
             ],
         ];
-    }
-
-    /**
-     * Calculate environmental impact (trees, energy, water, CO2)
-     */
-    private function calculateEnvironmentalImpact($materialSummaries): array
-    {
-        // Initialize category weights
-        $categoryWeights = [
-            'paper' => 0,
-            'plastics' => 0,
-            'aluminium' => 0,
-            'organics' => 0,
-            'tetrapak' => 0,
-            'steel' => 0,
-            'glass' => 0,
-        ];
-
-        foreach ($materialSummaries as $summary) {
-            if (!$summary->material || !$summary->material->grade || !$summary->material->wasteStream) {
-                continue;
-            }
-
-            $weight = (float) $summary->total_weight;
-            $wasteStreamName = trim($summary->material->wasteStream->name);
-            $gradeName = trim($summary->material->grade->name);
-
-            // Organics: Organic Waste stream, Organics Recovered grade
-            if ($wasteStreamName === 'Organic Waste' && $gradeName === 'Organics Recovered') {
-                $categoryWeights['organics'] += $weight;
-            }
-            // Tetrapak: grade name = "Tetrapak" (separate from paper)
-            elseif ($gradeName === 'Tetrapak') {
-                $categoryWeights['tetrapak'] += $weight;
-            }
-            // Paper: waste stream = "Paper" (excluding Tetrapak)
-            elseif ($wasteStreamName === 'Paper' && $gradeName !== 'Tetrapak') {
-                $categoryWeights['paper'] += $weight;
-            }
-            // Plastics: waste stream = "Plastic"
-            elseif ($wasteStreamName === 'Plastic') {
-                $categoryWeights['plastics'] += $weight;
-            }
-            // Aluminium: waste stream = "Aluminium"
-            elseif ($wasteStreamName === 'Aluminium') {
-                $categoryWeights['aluminium'] += $weight;
-            }
-            // Steel: waste stream = "Metal" with steel grades
-            elseif ($wasteStreamName === 'Metal' && (
-                $gradeName === 'Heavy Steel' || 
-                $gradeName === 'Light Steel' || 
-                $gradeName === 'Light Steel Cans' || 
-                $gradeName === 'Light Steel Drums'
-            )) {
-                $categoryWeights['steel'] += $weight;
-            }
-            // Glass: waste stream = "Glass"
-            elseif ($wasteStreamName === 'Glass') {
-                $categoryWeights['glass'] += $weight;
-            }
-        }
-
-        // Energy Saved factors
-        $energyFactors = [
-            'paper' => 10,
-            'plastics' => 20,
-            'aluminium' => 140,
-            'organics' => 9,
-            'tetrapak' => 2,
-            'steel' => 15,
-            'glass' => 7,
-        ];
-
-        // Water Saved factors
-        $waterFactors = [
-            'paper' => 7000,
-            'plastics' => 50,
-            'aluminium' => 0,
-            'organics' => 0,
-            'tetrapak' => 0,
-            'steel' => 0,
-            'glass' => 0,
-        ];
-
-        // Calculate treesSaved = totalPaperWeight * (20 / 1000)
-        $totalPaperWeight = $categoryWeights['paper'];
-        $treesSaved = round($totalPaperWeight * (20 / 1000), 2);
-
-        // Calculate energySaved = sum of (weight * energy factor) for each category
-        $energySaved = 0;
-        foreach ($categoryWeights as $category => $weight) {
-            $energySaved += $weight * $energyFactors[$category];
-        }
-        $energySaved = round($energySaved, 2);
-
-        // Calculate waterSaved = sum of (weight * water factor) for each category
-        $waterSaved = 0;
-        foreach ($categoryWeights as $category => $weight) {
-            $waterSaved += $weight * $waterFactors[$category];
-        }
-        // Convert to kL (kiloliters) - divide by 1000
-        $waterSaved = round($waterSaved / 1000, 2);
-
-        // Calculate CO2 saved (using lifecycle saving calculation)
-        $co2Saved = $this->calculateCO2Saved($categoryWeights);
-
-        return [
-            'treesSaved' => $treesSaved,
-            'energySaved' => $energySaved,
-            'waterSaved' => $waterSaved,
-            'co2Saved' => $co2Saved,
-        ];
-    }
-
-    /**
-     * Calculate CO2 saved using lifecycle saving calculation
-     */
-    private function calculateCO2Saved(array $categoryWeights): float
-    {
-        // Map categories to CO2 calculation keys
-        $weights = [
-            'paper' => $categoryWeights['paper'],
-            'plasticPPHD' => 0, // Would need to break down plastics further
-            'plasticPS' => 0,
-            'plasticLDPE' => 0,
-            'aluminium' => $categoryWeights['aluminium'],
-            'steel' => $categoryWeights['steel'],
-            'glass' => $categoryWeights['glass'],
-            'foodWaste' => $categoryWeights['organics'],
-            'gardenWaste' => 0,
-            'batteries' => 0,
-            'electronics' => 0,
-            'tetrapak' => $categoryWeights['tetrapak'],
-        ];
-
-        // Add plastics breakdown (simplified - using all plastics as PP/HD for now)
-        $weights['plasticPPHD'] = $categoryWeights['plastics'];
-
-        // Emission factors - Scope 3 EF
-        $scope3EFFactors = [
-            'paper' => 0.092,
-            'plasticPPHD' => 0.18,
-            'plasticPS' => 0.2,
-            'plasticLDPE' => 0.18,
-            'aluminium' => 0.5,
-            'steel' => 0.25,
-            'glass' => 0.09,
-            'foodWaste' => 0.05,
-            'gardenWaste' => 0.05,
-            'batteries' => 0.1,
-            'electronics' => 0.12,
-            'tetrapak' => 0.1,
-        ];
-
-        // Emission factors - Landfill Avoidance EF
-        $landfillAvoidanceEFFactors = [
-            'paper' => 0.78,
-            'plasticPPHD' => 0.08,
-            'plasticPS' => 0.05,
-            'plasticLDPE' => 0.06,
-            'aluminium' => 9,
-            'steel' => 2,
-            'glass' => 0.03,
-            'foodWaste' => 0.7,
-            'gardenWaste' => 0.5,
-            'batteries' => 1.5,
-            'electronics' => 1,
-            'tetrapak' => 0.25,
-        ];
-
-        // Other Offsets factors
-        $otherOffsetsFactors = [
-            'paper' => 15,
-            'plasticPPHD' => 20,
-            'plasticPS' => 22,
-            'plasticLDPE' => 25,
-            'aluminium' => 200,
-            'steel' => 45,
-            'glass' => 5,
-            'foodWaste' => 10,
-            'gardenWaste' => 8,
-            'batteries' => 30,
-            'electronics' => 25,
-            'tetrapak' => 5,
-        ];
-
-        $totalCO2 = 0;
-        foreach ($weights as $key => $weight) {
-            $scope3EF = $weight * ($scope3EFFactors[$key] ?? 0);
-            $landfillAvoidanceEF = $weight * ($landfillAvoidanceEFFactors[$key] ?? 0);
-            $otherOffsets = $weight * (($otherOffsetsFactors[$key] ?? 0) / 25);
-            $totalCO2 += $scope3EF + $landfillAvoidanceEF + $otherOffsets;
-        }
-
-        return round($totalCO2, 2);
     }
 
     /**

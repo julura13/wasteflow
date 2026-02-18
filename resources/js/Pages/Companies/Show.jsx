@@ -588,10 +588,10 @@ export default function Show({ company, companies = [], assignedUsers = [] }) {
             <Modal show={branchModalOpen} onClose={closeBranchModal} maxWidth="2xl">
                 <form onSubmit={handleBranchSubmit} className="p-6 space-y-6">
                     <div>
-                        <h2 className="text-lg font-semibold text-gray-900">
+                        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                             {branchMode === 'create' ? 'Create Branch' : 'Edit Branch'}
                         </h2>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
                             {branchMode === 'create' ? 'Create a new branch for this company.' : 'Update branch information.'}
                         </p>
                     </div>
@@ -668,9 +668,9 @@ export default function Show({ company, companies = [], assignedUsers = [] }) {
                                 type="checkbox"
                                 checked={branchForm.data.is_active}
                                 onChange={(e) => branchForm.setData('is_active', e.target.checked)}
-                                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded"
                             />
-                            <label htmlFor="branch-active" className="ml-2 block text-sm text-gray-900">
+                            <label htmlFor="branch-active" className="ml-2 block text-sm text-gray-900 dark:text-gray-300">
                                 Active
                             </label>
                         </div>
@@ -692,18 +692,18 @@ export default function Show({ company, companies = [], assignedUsers = [] }) {
             <Modal show={collectionPointModalOpen} onClose={closeCollectionPointModal} maxWidth="2xl">
                 <form onSubmit={handleCollectionPointSubmit} className="p-6 space-y-6">
                     <div>
-                        <h2 className="text-lg font-semibold text-gray-900">
+                        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                             {collectionPointMode === 'create' ? 'Create Collection Point' : 'Edit Collection Point'}
                         </h2>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
                             {collectionPointMode === 'create' ? 'Create a new collection point for a branch.' : 'Update collection point information.'}
                         </p>
                     </div>
 
                     <div className="space-y-4">
                         {/* Company and Branch Selection */}
-                        <div className="border-b pb-4">
-                            <h4 className="text-sm font-medium text-gray-900 mb-4">Company & Branch Association</h4>
+                        <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
+                            <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-4">Company & Branch Association</h4>
                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                 <div>
                                     <InputLabel htmlFor="cp-company" value="Select Company *" />
@@ -711,7 +711,7 @@ export default function Show({ company, companies = [], assignedUsers = [] }) {
                                         id="cp-company"
                                         value={selectedCompanyForCollectionPoint}
                                         onChange={(e) => handleCompanyChangeForCollectionPoint(e.target.value)}
-                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                                        className="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                                         required
                                     >
                                         {(companies.length > 0 ? companies : [company]).map((comp) => (
@@ -728,7 +728,7 @@ export default function Show({ company, companies = [], assignedUsers = [] }) {
                                         id="cp-branch"
                                         value={collectionPointForm.data.branch_id}
                                         onChange={(e) => collectionPointForm.setData('branch_id', e.target.value)}
-                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                                        className="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50 dark:disabled:bg-gray-600 sm:text-sm"
                                         required
                                         disabled={!selectedCompanyForCollectionPoint || availableBranches.length === 0}
                                     >
@@ -747,7 +747,7 @@ export default function Show({ company, companies = [], assignedUsers = [] }) {
                                     </select>
                                     <InputError message={collectionPointForm.errors.branch_id} className="mt-2" />
                                     {selectedCompanyForCollectionPoint && availableBranches.length === 0 && (
-                                        <p className="mt-1 text-xs text-gray-500">
+                                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                             This company has no branches. Please create a branch first.
                                         </p>
                                     )}
@@ -865,9 +865,9 @@ export default function Show({ company, companies = [], assignedUsers = [] }) {
                                 type="checkbox"
                                 checked={collectionPointForm.data.is_active}
                                 onChange={(e) => collectionPointForm.setData('is_active', e.target.checked)}
-                                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded"
                             />
-                            <label htmlFor="cp-active" className="ml-2 block text-sm text-gray-900">
+                            <label htmlFor="cp-active" className="ml-2 block text-sm text-gray-900 dark:text-gray-300">
                                 Active
                             </label>
                         </div>
