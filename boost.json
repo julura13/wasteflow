@@ -1,0 +1,12 @@
+{
+    "agents": [
+        "cursor",
+        "phpstorm"
+    ],
+    "editors": [
+        "cursor",
+        "phpstorm"
+    ],
+    "guidelines": [],
+    "sail": true
+}
