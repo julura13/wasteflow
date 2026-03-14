@@ -11,6 +11,10 @@
 /.phpunit.cache
 /.vscode
 /.zed
+/.ai
+/.cursor
+/.junie
+boost.json
 /auth.json
 /node_modules
 /public/build

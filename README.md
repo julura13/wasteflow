@@ -5,22 +5,22 @@ A modern waste management application built with Laravel, React, Inertia.js, and
 ## Tech Stack
 
 - **Backend**: Laravel 12
-- **Frontend**: React 18 with Inertia.js
-- **Styling**: Tailwind CSS v4 with Flowbite components
+- **Frontend**: React 18 with Inertia.js v2
+- **Styling**: Tailwind CSS v3 with Flowbite components
 - **Data Tables**: TanStack Table (headless, type-safe, powerful)
 - **Authentication & Authorization**: Spatie Laravel Permission
-- **Database**: SQLite (development)
+- **Database**: MySQL (default; Laravel Sail). SQLite supported for local dev and testing.
 
 ## Features
 
 - ✅ Modern Laravel 12 setup
 - ✅ React 18 with Inertia.js for SPA-like experience
-- ✅ Tailwind CSS v4 with custom WasteFlow color theme
+- ✅ Tailwind CSS v3 with custom WasteFlow color theme
 - ✅ Flowbite UI components
 - ✅ TanStack Table for powerful data tables with sorting, filtering, and pagination
 - ✅ Spatie Laravel Permission for roles and permissions
 - ✅ Pre-configured user roles: Admin, Manager, Operator, Client
-- ✅ Sample client management with data table
+- ✅ Client management with data table (server-driven data)
 - ✅ Comprehensive testing setup with Pest (Laravel) and Jest (React)
 - ✅ Laravel Sail for Docker development environment
 - ✅ Custom domain configuration (wasteflow.test)
@@ -65,6 +65,7 @@ A modern waste management application built with Laravel, React, Inertia.js, and
    cp .env.example .env
    php artisan key:generate
    ```
+   Configure your database in `.env` (e.g. MySQL for Sail, or SQLite for minimal local setup).
 
 5. **Run database migrations and seeders**
    ```bash
@@ -78,9 +79,8 @@ A modern waste management application built with Laravel, React, Inertia.js, and
    ```
 
 7. **Start the development server**
-   ```bash
-   php artisan serve
-   ```
+   - **With Sail (recommended):** `vendor/bin/sail up -d` then `vendor/bin/sail open`
+   - **Without Sail:** `php artisan serve` (and in another terminal `npm run dev` for Vite)
 
 ## Default Users
 
@@ -92,32 +92,47 @@ The following users are created by the seeder:
 
 ## Development
 
-- **Frontend development**: `npm run dev` (starts Vite dev server)
-- **Backend development**: `php artisan serve` (starts Laravel dev server)
+- **Full stack (Sail):** `vendor/bin/sail up -d` and `vendor/bin/sail npm run dev` (or `vendor/bin/sail composer run dev` if configured)
+- **Frontend only:** `vendor/bin/sail npm run dev` or `npm run dev` (Vite dev server)
+- **Backend only:** `vendor/bin/sail artisan serve` or `php artisan serve`
+
+If frontend changes don’t appear, run `vendor/bin/sail npm run build` or `npm run build`.
 
 ## Testing
 
 ### Backend Tests (Pest)
+
+Tests use MySQL and the `testing` database (see `phpunit.xml`). **With Sail:** create the database once, then run tests:
+
 ```bash
-# Run all tests
-./vendor/bin/pest
+# Create testing database (one-time, with Sail). From the host:
+#   vendor/bin/sail exec mysql mysql -u sail -p -e "CREATE DATABASE IF NOT EXISTS testing;"
+# (enter your DB password when prompted), or run the same SQL after `sail mysql`.
 
-# Run specific test file
-./vendor/bin/pest tests/Unit/ClientTest.php
+# Run all tests (run via Sail so the app uses the same MySQL host as your app)
+vendor/bin/sail artisan test
 
-# Run with coverage
-./vendor/bin/pest --coverage
+# Run a specific test file
+vendor/bin/sail artisan test tests/Feature/ClientControllerTest.php
+
+# Run with filter
+vendor/bin/sail artisan test --filter=ClientController
+
+# With coverage
+vendor/bin/sail artisan test --coverage
 ```
 
+Without Sail, use `php artisan test` or `./vendor/bin/pest` from the project root.
+
 ### Frontend Tests (Jest)
+
 ```bash
-# Run all tests
 npm test
 
-# Run tests in watch mode
+# Watch mode
 npm run test:watch
 
-# Run tests with coverage
+# Coverage
 npm run test:coverage
 ```
 
