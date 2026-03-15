@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class RoleController extends Controller
 {
@@ -58,6 +59,8 @@ class RoleController extends Controller
             $role->syncPermissions($validated['permissions']);
         }
 
+        ActivityLog::log('role_created', "Role {$role->name} created", $role, ['name' => $role->name]);
+
         return redirect()->route('roles.index')
             ->with('success', 'Role created successfully.');
     }
@@ -86,7 +89,7 @@ class RoleController extends Controller
     public function update(Request $request, Role $role)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:roles,name,' . $role->id,
+            'name' => 'required|string|max:255|unique:roles,name,'.$role->id,
             'permissions' => 'array',
             'permissions.*' => 'string|exists:permissions,name',
         ]);
@@ -94,6 +97,8 @@ class RoleController extends Controller
         $role->update(['name' => $validated['name']]);
 
         $role->syncPermissions($validated['permissions'] ?? []);
+
+        ActivityLog::log('role_updated', "Role {$role->name} updated", $role, ['name' => $role->name]);
 
         return redirect()->route('roles.index')
             ->with('success', 'Role updated successfully.');

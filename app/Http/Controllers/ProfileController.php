@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
 use App\Http\Requests\UploadAvatarRequest;
+use App\Models\ActivityLog;
 use App\Services\UserService;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
@@ -25,7 +26,7 @@ class ProfileController extends Controller
     public function edit(Request $request): Response
     {
         $user = $request->user()->load(['companies', 'roles']);
-        
+
         return Inertia::render('Profile/Edit', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => session('status'),
@@ -34,7 +35,7 @@ class ProfileController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'avatar' => $user->avatar_url,
-                'has_avatar' => !empty($user->avatar),
+                'has_avatar' => ! empty($user->avatar),
                 'phone' => $user->phone,
                 'companies' => $user->companies->map(function ($company) use ($user) {
                     return [
@@ -52,12 +53,15 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        $this->userService->updateUser($request->user(), $request->validated());
+        $user = $request->user();
+        $this->userService->updateUser($user, $request->validated());
 
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
-            $request->user()->save();
+        if ($user->isDirty('email')) {
+            $user->email_verified_at = null;
+            $user->save();
         }
+
+        ActivityLog::log('profile_updated', "Profile updated for user {$user->email}", $user, ['user_id' => $user->id]);
 
         return Redirect::route('profile.edit')->with('status', 'profile-updated');
     }
@@ -67,7 +71,10 @@ class ProfileController extends Controller
      */
     public function uploadAvatar(UploadAvatarRequest $request): RedirectResponse
     {
-        $this->userService->uploadAvatar($request->user(), $request->file('avatar'));
+        $user = $request->user();
+        $this->userService->uploadAvatar($user, $request->file('avatar'));
+
+        ActivityLog::log('profile_avatar_uploaded', "Avatar uploaded for user {$user->email}", $user, ['user_id' => $user->id]);
 
         return Redirect::route('profile.edit')->with('status', 'avatar-uploaded');
     }
@@ -77,7 +84,10 @@ class ProfileController extends Controller
      */
     public function deleteAvatar(Request $request): RedirectResponse
     {
-        $this->userService->deleteAvatar($request->user());
+        $user = $request->user();
+        $this->userService->deleteAvatar($user);
+
+        ActivityLog::log('profile_avatar_deleted', "Avatar deleted for user {$user->email}", $user, ['user_id' => $user->id]);
 
         return Redirect::route('profile.edit')->with('status', 'avatar-deleted');
     }
@@ -92,6 +102,7 @@ class ProfileController extends Controller
         ]);
 
         $user = $request->user();
+        ActivityLog::log('profile_destroyed', "Account deleted for user {$user->email}", $user, ['user_id' => $user->id, 'email' => $user->email]);
 
         Auth::logout();
 

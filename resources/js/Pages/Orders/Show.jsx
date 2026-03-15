@@ -1,7 +1,7 @@
 import { Head, Link, usePage, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import Modal from '@/Components/Modal';
-import { ArrowLeft, CheckCircle, Download, File, FileDown, Clock, PlayCircle, Package, FileText, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Download, File, FileDown, Clock, PlayCircle, Package, FileText, AlertTriangle, Pencil } from 'lucide-react';
 import { useState } from 'react';
 
 export default function Show({ order, canManageOrder = true }) {
@@ -77,6 +77,15 @@ export default function Show({ order, canManageOrder = true }) {
                     Back to Orders
                 </Link>
                 <div className="flex space-x-3">
+                    {canManageOrder && (order.status === 'pending' || order.status === 'scheduled') && (
+                        <Link
+                            href={route('orders.edit', order.id)}
+                            className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-700 bg-white dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
+                        >
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Edit order
+                        </Link>
+                    )}
                     <a
                         href={`/orders/${order.id}/download-pdf`}
                         target="_blank"
@@ -110,10 +119,21 @@ export default function Show({ order, canManageOrder = true }) {
                         </Link>
                     )}
                     {order.status === 'finalized' && (
-                        <span className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-md text-white bg-green-700">
-                            <CheckCircle className="h-4 w-4 mr-2" />
-                            Finalized
-                        </span>
+                        <>
+                            <span className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-md text-white bg-green-700">
+                                <CheckCircle className="h-4 w-4 mr-2" />
+                                Finalized
+                            </span>
+                            {canManageOrder && (
+                                <Link
+                                    href={route('orders.edit-collection-date', order.id)}
+                                    className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
+                                >
+                                    <Pencil className="h-4 w-4 mr-2" />
+                                    Correct collection date
+                                </Link>
+                            )}
+                        </>
                     )}
                 </div>
             </div>

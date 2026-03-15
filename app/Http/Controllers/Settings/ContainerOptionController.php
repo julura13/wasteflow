@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\ContainerOption;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -36,7 +37,8 @@ class ContainerOptionController extends Controller
         $data['is_active'] = $request->has('is_active') ? $request->boolean('is_active') : true;
         $data['default_weight'] = $request->filled('default_weight') ? (float) $request->input('default_weight') : null;
 
-        ContainerOption::create($data);
+        $containerOption = ContainerOption::create($data);
+        ActivityLog::log('container_option_created', "Container option {$containerOption->name} created", $containerOption, ['name' => $containerOption->name]);
 
         return back()->with('success', 'Container option created successfully.');
     }
@@ -44,7 +46,7 @@ class ContainerOptionController extends Controller
     public function update(Request $request, ContainerOption $containerOption): RedirectResponse
     {
         $data = $request->validate([
-            'name' => 'required|string|max:255|unique:container_options,name,' . $containerOption->id,
+            'name' => 'required|string|max:255|unique:container_options,name,'.$containerOption->id,
             'is_active' => 'sometimes|boolean',
             'default_weight' => 'nullable|numeric|min:0',
         ]);
@@ -53,12 +55,14 @@ class ContainerOptionController extends Controller
         $data['default_weight'] = $request->filled('default_weight') ? (float) $request->input('default_weight') : null;
 
         $containerOption->update($data);
+        ActivityLog::log('container_option_updated', "Container option {$containerOption->name} updated", $containerOption, ['name' => $containerOption->name]);
 
         return back()->with('success', 'Container option updated successfully.');
     }
 
     public function destroy(ContainerOption $containerOption): RedirectResponse
     {
+        ActivityLog::log('container_option_deleted', "Container option {$containerOption->name} deleted", $containerOption, ['name' => $containerOption->name]);
         $containerOption->delete();
 
         return back()->with('success', 'Container option deleted successfully.');

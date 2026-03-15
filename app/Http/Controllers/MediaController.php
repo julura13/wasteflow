@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Media;
 use App\Models\Order;
 use Illuminate\Http\Request;
@@ -34,12 +35,12 @@ class MediaController extends Controller
         $mimeType = $file->getMimeType();
         $fileSize = $file->getSize();
 
-        $fileName = Str::uuid() . '.' . $file->getClientOriginalExtension();
-        
+        $fileName = Str::uuid().'.'.$file->getClientOriginalExtension();
+
         $disk = config('filesystems.default');
-        
+
         $path = $file->storeAs(
-            'orders/' . $order->id . '/' . ($validated['collection'] ?? 'default'),
+            'orders/'.$order->id.'/'.($validated['collection'] ?? 'default'),
             $fileName,
             $disk
         );
@@ -57,6 +58,13 @@ class MediaController extends Controller
             'description' => $validated['description'] ?? null,
         ]);
 
+        ActivityLog::log('media_uploaded', "Document \"{$originalName}\" uploaded to order {$order->tracking_number}", $order, [
+            'order_id' => $order->id,
+            'tracking_number' => $order->tracking_number,
+            'media_id' => $media->id,
+            'original_name' => $originalName,
+        ]);
+
         return back()->with('success', 'File uploaded successfully.');
     }
 
@@ -66,8 +74,8 @@ class MediaController extends Controller
     public function download(Media $media)
     {
         $disk = Storage::disk($media->disk);
-        
-        if (!$disk->exists($media->path)) {
+
+        if (! $disk->exists($media->path)) {
             abort(404, 'File not found.');
         }
 
@@ -79,11 +87,20 @@ class MediaController extends Controller
      */
     public function destroy(Media $media)
     {
+        $order = $media->mediable_type === 'App\\Models\\Order' ? Order::find($media->mediable_id) : null;
+        $originalName = $media->original_name;
+
         $disk = Storage::disk($media->disk);
-        
+
         if ($disk->exists($media->path)) {
             $disk->delete($media->path);
         }
+
+        ActivityLog::log('media_deleted', "Document \"{$originalName}\" deleted".($order ? " from order {$order->tracking_number}" : ''), $order ?? $media, [
+            'media_id' => $media->id,
+            'original_name' => $originalName,
+            'order_id' => $media->mediable_id,
+        ]);
 
         $media->delete();
 

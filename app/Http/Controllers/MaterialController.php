@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Classification;
 use App\Models\Facility;
 use App\Models\Grade;
@@ -70,7 +71,10 @@ class MaterialController extends Controller
     {
         $validated = $this->validatePayload($request);
 
-        Material::create($validated);
+        $material = Material::create($validated);
+        $material->load(['grade:id,name', 'wasteStream:id,name']);
+        $label = ($material->grade->name ?? '').' / '.($material->wasteStream->name ?? '');
+        ActivityLog::log('material_created', "Material created: {$label}", $material, ['grade_id' => $material->grade_id, 'waste_stream_id' => $material->waste_stream_id]);
 
         return redirect()->route('materials.index')
             ->with('success', 'Material created successfully.');
@@ -122,6 +126,9 @@ class MaterialController extends Controller
         $validated = $this->validatePayload($request, $material->id);
 
         $material->update($validated);
+        $material->load(['grade:id,name', 'wasteStream:id,name']);
+        $label = ($material->grade->name ?? '').' / '.($material->wasteStream->name ?? '');
+        ActivityLog::log('material_updated', "Material updated: {$label}", $material, ['material_id' => $material->id]);
 
         return redirect()->route('materials.index')
             ->with('success', 'Material updated successfully.');
@@ -132,6 +139,9 @@ class MaterialController extends Controller
      */
     public function destroy(Material $material)
     {
+        $material->load(['grade:id,name', 'wasteStream:id,name']);
+        $label = ($material->grade->name ?? '').' / '.($material->wasteStream->name ?? '');
+        ActivityLog::log('material_deleted', "Material deleted: {$label}", $material, ['material_id' => $material->id]);
         $material->delete();
 
         return redirect()->route('materials.index')
@@ -147,9 +157,12 @@ class MaterialController extends Controller
             'rebate_rate' => 'required|numeric|min:0|max:999999.99',
         ]);
 
+        $oldRate = $material->rebate_rate;
         $material->update([
             'rebate_rate' => round((float) $validated['rebate_rate'], 2),
         ]);
+
+        ActivityLog::log('material_rebate_rate_updated', "Material id {$material->id} rebate rate changed from {$oldRate} to {$material->rebate_rate}", $material, ['material_id' => $material->id, 'old_rate' => $oldRate, 'new_rate' => $material->rebate_rate]);
 
         // Return JSON for Inertia to handle
         if ($request->wantsJson()) {
@@ -172,9 +185,12 @@ class MaterialController extends Controller
             'client_rebate_share' => 'required|numeric|min:0|max:100',
         ]);
 
+        $oldShare = $material->client_rebate_share;
         $material->update([
             'client_rebate_share' => round((float) $validated['client_rebate_share'], 2),
         ]);
+
+        ActivityLog::log('material_rebate_share_updated', "Material id {$material->id} client rebate share changed from {$oldShare}% to {$material->client_rebate_share}%", $material, ['material_id' => $material->id, 'old_share' => $oldShare, 'new_share' => $material->client_rebate_share]);
 
         if ($request->wantsJson()) {
             return response()->json([

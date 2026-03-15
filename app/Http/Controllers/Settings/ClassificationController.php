@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Classification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -35,7 +36,8 @@ class ClassificationController extends Controller
 
         $data['is_active'] = $request->has('is_active') ? $request->boolean('is_active') : true;
 
-        Classification::create($data);
+        $classification = Classification::create($data);
+        ActivityLog::log('classification_created', "Classification {$classification->name} created", $classification, ['name' => $classification->name]);
 
         return back()->with('success', 'Classification created successfully.');
     }
@@ -43,7 +45,7 @@ class ClassificationController extends Controller
     public function update(Request $request, Classification $classification): RedirectResponse
     {
         $data = $request->validate([
-            'name' => 'required|string|max:255|unique:classifications,name,' . $classification->id,
+            'name' => 'required|string|max:255|unique:classifications,name,'.$classification->id,
             'description' => 'nullable|string|max:1000',
             'is_active' => 'sometimes|boolean',
         ]);
@@ -51,12 +53,14 @@ class ClassificationController extends Controller
         $data['is_active'] = $request->has('is_active') ? $request->boolean('is_active') : true;
 
         $classification->update($data);
+        ActivityLog::log('classification_updated', "Classification {$classification->name} updated", $classification, ['name' => $classification->name]);
 
         return back()->with('success', 'Classification updated successfully.');
     }
 
     public function destroy(Classification $classification): RedirectResponse
     {
+        ActivityLog::log('classification_deleted', "Classification {$classification->name} deleted", $classification, ['name' => $classification->name]);
         $classification->delete();
 
         return back()->with('success', 'Classification deleted successfully.');

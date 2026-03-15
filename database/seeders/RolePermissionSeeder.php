@@ -2,10 +2,9 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class RolePermissionSeeder extends Seeder
 {
@@ -42,6 +41,7 @@ class RolePermissionSeeder extends Seeder
             'orders-capture-documents',   // upload slips/manifests
             'orders-capture-weights',    // capture weights (then status -> documents_required)
             'orders-finalize',
+            'view-activity-log',         // view activity log / audit trail (filter by order)
         ];
 
         foreach ($permissions as $permission) {
@@ -81,6 +81,7 @@ class RolePermissionSeeder extends Seeder
             'orders-capture-documents',
             'orders-capture-weights',
             'orders-finalize',
+            'view-activity-log',
         ]);
 
         $operatorRole->syncPermissions([
@@ -97,6 +98,7 @@ class RolePermissionSeeder extends Seeder
             'orders-capture-documents',
             'orders-capture-weights',
             'orders-finalize',
+            'view-activity-log',
         ]);
 
         // Order creator: create, schedule, generate consolidated

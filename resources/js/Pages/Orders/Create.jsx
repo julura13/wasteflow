@@ -527,7 +527,6 @@ export default function Create({ companies = [], branches = [], sites = [], mate
                                         id="requested_collection_date"
                                         value={data.requested_collection_date}
                                         onChange={(e) => setData('requested_collection_date', e.target.value)}
-                                        min={new Date().toISOString().split('T')[0]}
                                         className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
                                         required
                                     />
