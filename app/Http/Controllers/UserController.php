@@ -2,8 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
+use App\Models\ActivityLog;
 use App\Models\Company;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
@@ -78,6 +79,8 @@ class UserController extends Controller
             $user->syncRoles($validated['roles']);
         }
 
+        ActivityLog::log('user_created', "User {$user->email} created", $user, ['email' => $user->email]);
+
         return redirect()->route('users.index')
             ->with('success', 'User created successfully.');
     }
@@ -105,7 +108,7 @@ class UserController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+            'email' => 'required|string|email|max:255|unique:users,email,'.$user->id,
             'password' => ['nullable', 'confirmed', Password::defaults()],
             'roles' => 'array',
             'roles.*' => 'string|exists:roles,name',
@@ -129,6 +132,8 @@ class UserController extends Controller
         if (array_key_exists('roles', $validated)) {
             $user->syncRoles($validated['roles'] ?? []);
         }
+
+        ActivityLog::log('user_updated', "User {$user->email} updated", $user, ['email' => $user->email]);
 
         return redirect()->route('users.index')
             ->with('success', 'User updated successfully.');

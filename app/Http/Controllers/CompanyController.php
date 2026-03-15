@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Company;
 use App\Services\CompanyUserService;
 use Illuminate\Http\Request;
@@ -12,6 +13,7 @@ class CompanyController extends Controller
     public function __construct(
         private CompanyUserService $companyUserService
     ) {}
+
     /**
      * Display a listing of the resource.
      */
@@ -20,8 +22,8 @@ class CompanyController extends Controller
         $companies = Company::with(['branches.sites'])
             ->when($request->search, function ($query, $search) {
                 $query->where('name', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%")
-                      ->orWhere('contact_person', 'like', "%{$search}%");
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('contact_person', 'like', "%{$search}%");
             })
             ->when($request->status !== null, function ($query, $status) {
                 $query->where('is_active', $status);
@@ -59,7 +61,9 @@ class CompanyController extends Controller
             'is_active' => 'boolean',
         ]);
 
-        Company::create($validated);
+        $company = Company::create($validated);
+
+        ActivityLog::log('company_created', "Company {$company->name} created", $company, ['name' => $company->name]);
 
         return redirect()->route('companies.index')
             ->with('success', 'Company created successfully.');
@@ -72,7 +76,7 @@ class CompanyController extends Controller
     {
         $company->load(['branches.sites.orders']);
         $assignedUsers = $this->companyUserService->getUsersForCompany($company);
-        
+
         $companies = Company::with('branches')->where('is_active', true)->get();
 
         return Inertia::render('Companies/Show', [
@@ -120,6 +124,8 @@ class CompanyController extends Controller
 
         $company->update($validated);
 
+        ActivityLog::log('company_updated', "Company {$company->name} updated", $company, ['name' => $company->name]);
+
         return redirect()->route('companies.index')
             ->with('success', 'Company updated successfully.');
     }
@@ -129,6 +135,7 @@ class CompanyController extends Controller
      */
     public function destroy(Company $company)
     {
+        ActivityLog::log('company_deleted', "Company {$company->name} deleted", $company, ['name' => $company->name]);
         $company->delete();
 
         return redirect()->route('companies.index')

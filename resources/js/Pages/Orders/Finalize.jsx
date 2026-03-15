@@ -184,9 +184,7 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
     });
 
     const { data: finalizeData, setData: setFinalizeData, post: finalizePost, errors: finalizeErrors } = useForm({
-        actual_collection_date: order.actual_collection_date
-            ? new Date(order.actual_collection_date).toISOString().split('T')[0]
-            : (order.requested_collection_date ? new Date(order.requested_collection_date).toISOString().split('T')[0] : ''),
+        actual_collection_date: '',
         actual_quantity: order.actual_quantity || order.estimated_quantity || '',
         slip_number: order.slip_number || '',
     });
@@ -239,27 +237,6 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
         });
     }, [materials, order.order_type]);
 
-    const totalRebate = useMemo(() => {
-        if (!order.waste_streams || order.waste_streams.length === 0) {
-            return 0;
-        }
-        const companyRebatePercentage = order.site?.branch?.company?.rebate_percentage;
-
-        return order.waste_streams.reduce((total, ws) => {
-            if (ws.material?.rebate_offered && ws.material?.rebate_rate && ws.nett_weight) {
-                const rebateAmount = ws.nett_weight * ws.material.rebate_rate;
-                let clientShare;
-                if (companyRebatePercentage !== null && companyRebatePercentage !== undefined) {
-                    clientShare = companyRebatePercentage;
-                } else {
-                    clientShare = ws.material.client_rebate_share || 100;
-                }
-                return total + (rebateAmount * clientShare) / 100;
-            }
-            return total;
-        }, 0);
-    }, [order.waste_streams, order.site?.branch?.company?.rebate_percentage]);
-
     // Effective weight for a line: from containers (qty * default_weight) or direct weight. Waste orders only use containers when use_containers is true.
     const getLineWeight = (line) => {
         if (order.order_type === 'waste' && line.use_containers && line.container_option_id && line.container_quantity) {
@@ -273,19 +250,23 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
         return Number.isFinite(w) && w > 0 ? w : 0;
     };
 
-    // Total weight from current form lines (for double-check before save)
+    // Total weight from current form lines
     const totalWeightFromLines = useMemo(() => {
         return weightLines.reduce((sum, line) => sum + getLineWeight(line), 0);
     }, [weightLines, order.order_type, containerOptionsWithWeight]);
 
-    // Total weight from saved waste streams
-    const totalSavedWeight = useMemo(() => {
-        if (!order.waste_streams || order.waste_streams.length === 0) return 0;
-        return order.waste_streams.reduce((sum, ws) => {
-            const w = ws.nett_weight ?? ws.gross_weight ?? 0;
-            return sum + (Number(w) || 0);
+    // Total rebate from current form lines (for summary below table)
+    const totalRebateFromLines = useMemo(() => {
+        const companyRebatePercentage = order.site?.branch?.company?.rebate_percentage;
+        return weightLines.reduce((total, line) => {
+            const material = availableMaterials.find((m) => m.id == line.material_id);
+            if (!material?.rebate_offered || !material?.rebate_rate) return total;
+            const weight = getLineWeight(line);
+            if (weight <= 0) return total;
+            const clientShare = companyRebatePercentage != null ? companyRebatePercentage : (material.client_rebate_share ?? 100);
+            return total + (weight * material.rebate_rate * clientShare) / 100;
         }, 0);
-    }, [order.waste_streams]);
+    }, [weightLines, availableMaterials, order.site?.branch?.company?.rebate_percentage, order.order_type, containerOptionsWithWeight]);
 
     const addWeightLine = () => {
         const newId = Math.max(...weightLines.map(line => line.id || 0), 0) + 1;
@@ -293,9 +274,7 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
     };
 
     const removeWeightLine = (id) => {
-        if (weightLines.length > 1) {
-            setWeightLines(weightLines.filter(line => line.id !== id));
-        }
+        setWeightLines(weightLines.filter(line => line.id !== id));
     };
 
     const updateWeightLine = (id, field, value) => {
@@ -310,31 +289,27 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
     const handleSaveWeights = async (e) => {
         e.preventDefault();
 
-        // Validate: each line needs material and either direct weight or (containers + quantity for waste)
         const validWeightLines = weightLines.filter(line => {
             if (!line.material_id) return false;
             return getLineWeight(line) > 0;
         });
 
-        if (validWeightLines.length === 0) {
-            setValidationError('Please add at least one weight line with a material and either a weight or container count.');
-            return;
-        }
+        const payload = validWeightLines.map(line => ({
+            material_id: line.material_id,
+            weight: getLineWeight(line),
+            id: line.isExisting ? line.id : undefined,
+        }));
 
         setSavingWeights(true);
         setValidationError(null);
 
         try {
             await window.axios.post(route('orders.save-weights', order.id), {
-                weight_lines: validWeightLines.map(line => ({
-                    material_id: line.material_id,
-                    weight: getLineWeight(line),
-                    id: line.isExisting ? line.id : undefined,
-                })),
+                weight_lines: payload,
             });
             router.reload({ only: ['order'], preserveScroll: true });
-            setWeightLines(validWeightLines.map(line => ({ ...line, isExisting: true })));
-            setSuccessMessage('Weights saved successfully. Order status updated to Documents Required.');
+            setWeightLines(payload.length > 0 ? validWeightLines.map(line => ({ ...line, isExisting: true })) : [{ id: 1, material_id: '', weight: '', isExisting: false, use_containers: false, container_option_id: '', container_quantity: '' }]);
+            setSuccessMessage(payload.length > 0 ? 'Weights saved successfully. Order status updated to Documents Required.' : 'All weights cleared successfully.');
             setTimeout(() => setSuccessMessage(null), 5000);
         } catch (error) {
             console.error('Error saving weights:', error);
@@ -679,7 +654,7 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
                     <div className="px-4 py-5 sm:p-6">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                                Capture Weights
+                                Weights
                             </h3>
                             <button
                                 type="button"
@@ -693,8 +668,8 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
 
                         <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
                             {order.order_type === 'waste'
-                                ? 'Add weight line items with materials that have "Waste" in the name.'
-                                : 'Add weight line items with materials. Most recycling materials have rebate prices.'}
+                                ? 'Add, edit or remove weight lines. Use materials that have "Waste" in the name. Save to update.'
+                                : 'Add, edit or remove weight lines. Most recycling materials have rebate prices. Save to update.'}
                         </p>
 
                         {canManageOrder && (
@@ -718,10 +693,20 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
                                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                                     Rebate
                                                 </th>
+                                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-12">
+                                                    {' '}
+                                                </th>
                                             </tr>
                                         </thead>
                                         <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                            {weightLines.map((line) => {
+                                            {weightLines.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={order.order_type === 'waste' && containerOptionsWithWeight.length > 0 ? 5 : 4} className="px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                                                        No weight lines. Click Add Line to add one, or Save Weights to clear all.
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                            weightLines.map((line) => {
                                                 const selectedMaterial = availableMaterials.find(m => m.id == line.material_id);
                                                 const isWasteWithContainers = order.order_type === 'waste' && containerOptionsWithWeight.length > 0;
                                                 const useContainers = Boolean(line.use_containers);
@@ -813,20 +798,20 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
                                                                 <span className="text-gray-400">—</span>
                                                             )}
                                                         </td>
-                                                        {/*<td className="px-6 py-4 whitespace-nowrap text-sm font-medium">*/}
-                                                        {/*    {weightLines.length > 1 && (*/}
-                                                        {/*        <button*/}
-                                                        {/*            type="button"*/}
-                                                        {/*            onClick={() => removeWeightLine(line.id)}*/}
-                                                        {/*            className="text-red-600 hover:text-red-900"*/}
-                                                        {/*        >*/}
-                                                        {/*            <Trash2 className="h-4 w-4" />*/}
-                                                        {/*        </button>*/}
-                                                        {/*    )}*/}
-                                                        {/*</td>*/}
+                                                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => removeWeightLine(line.id)}
+                                                                className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                                                                title="Remove weight line"
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </button>
+                                                        </td>
                                                     </tr>
                                                 );
-                                            })}
+                                            })
+                                            )}
                                         </tbody>
                                     </table>
                                     </div>
@@ -848,81 +833,19 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
                             </form>
                         )}
 
-                        {/* Show existing waste streams if any */}
-                        {order.waste_streams && order.waste_streams.length > 0 && (
-                            <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-                                <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">
-                                    Saved Weights
-                                </h4>
-                                <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
-                                    <table className="min-w-full divide-y divide-gray-300 dark:divide-gray-700">
-                                        <thead className="bg-gray-50 dark:bg-gray-700">
-                                            <tr>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                                    Material
-                                                </th>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                                    Weight (kg)
-                                                </th>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                                    Rebate
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                            {order.waste_streams.map((ws) => {
-                                                const material = ws.material;
-                                                const companyRebatePercentage = order.site?.branch?.company?.rebate_percentage;
-                                                const clientShare = companyRebatePercentage !== null && companyRebatePercentage !== undefined
-                                                    ? companyRebatePercentage
-                                                    : (material?.client_rebate_share || 100);
-                                                const rebateAmount = material?.rebate_offered && material?.rebate_rate && ws.nett_weight
-                                                    ? Number(ws.nett_weight * material.rebate_rate * clientShare / 100).toFixed(2)
-                                                    : null;
-                                                return (
-                                                    <tr key={ws.id}>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                                                            {material ? getMaterialDisplayName(material) : `Material ID: ${ws.material_id || 'N/A'}`}
-                                                        </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                                                            {ws.nett_weight || ws.gross_weight || '—'} kg
-                                                        </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                                                            {rebateAmount ? (
-                                                                <span className="text-green-600 font-medium">
-                                                                    R{rebateAmount}
-                                                                </span>
-                                                            ) : (
-                                                                <span className="text-gray-400">—</span>
-                                                            )}
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <div className="mt-3 px-6 py-2 bg-gray-50 dark:bg-gray-700/50 rounded-b-lg border-t border-gray-200 dark:border-gray-600">
-                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                        Total weight: <span className="text-gray-900 dark:text-gray-100">{Number(totalSavedWeight).toFixed(3)} kg</span>
-                                    </span>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Total Rebate Summary */}
-                        {order.waste_streams && order.waste_streams.length > 0 && totalRebate > 0 && (
+                        {/* Total Rebate Summary - from current weight lines */}
+                        {totalRebateFromLines > 0 && (
                             <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
                                 <div className="bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-700 rounded-lg p-4">
                                     <div className="flex items-center justify-between">
                                         <div>
                                             <span className="text-xs uppercase tracking-wide text-green-700 dark:text-green-300">Total Rebate Amount</span>
                                             <p className="text-lg font-semibold text-green-900 dark:text-green-100 mt-1">
-                                                R {Number(totalRebate).toFixed(2)}
+                                                R {Number(totalRebateFromLines).toFixed(2)}
                                             </p>
                                         </div>
                                         <div className="text-right">
-                                            <span className="text-xs text-green-700 dark:text-green-300">Based on captured weights</span>
+                                            <span className="text-xs text-green-700 dark:text-green-300">Based on weights above (save to apply)</span>
                                         </div>
                                     </div>
                                 </div>
@@ -944,7 +867,7 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
                             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                                 <div>
                                     <label htmlFor="actual_collection_date" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                                        Actual Collection Date
+                                        Actual Collection Date <span className="text-red-600">*</span>
                                     </label>
                                     <input
                                         type="date"
@@ -952,10 +875,8 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
                                         value={finalizeData.actual_collection_date}
                                         onChange={(e) => setFinalizeData('actual_collection_date', e.target.value)}
                                         className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                        required
                                     />
-                                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                        Defaults to requested date: {order.requested_collection_date ? new Date(order.requested_collection_date).toLocaleDateString() : '—'}
-                                    </p>
                                     {finalizeErrors.actual_collection_date && (
                                         <p className="mt-1 text-sm text-red-600">{finalizeErrors.actual_collection_date}</p>
                                     )}

@@ -2,7 +2,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import DataTable from '@/Components/Dashboard/DataTable';
 import { useMemo, useState, useEffect } from 'react';
-import { Plus, Trash2, Eye, Search, Filter, Package, CheckCircle, X, FileDown, FileText, Inbox } from 'lucide-react';
+import { Plus, Trash2, Eye, Search, Filter, Package, CheckCircle, X, FileDown, FileText, FileSpreadsheet, Pencil, ChevronDown } from 'lucide-react';
 import axios from 'axios';
 
 export default function OrdersIndex({ orders, filters, serviceProviders = [], userCompanyRoles = {} }) {
@@ -53,6 +53,13 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
     }, [consolidatedDate, showConsolidatedForm]);
     const [search, setSearch] = useState(filters.search || '');
     const [statusFilter, setStatusFilter] = useState(filters.status || '');
+    const [orderTypeWaste, setOrderTypeWaste] = useState(
+        () => !filters.order_types?.length || filters.order_types.includes('waste')
+    );
+    const [orderTypeRecycling, setOrderTypeRecycling] = useState(
+        () => !filters.order_types?.length || filters.order_types.includes('recycling')
+    );
+    const [exportOpen, setExportOpen] = useState(false);
 
     const columns = useMemo(() => [
         {
@@ -192,6 +199,15 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
                         >
                             <Eye className="h-4 w-4" />
                         </Link>
+                        {canManageOrder && (order.status === 'pending' || order.status === 'scheduled') && (
+                            <Link
+                                href={`/orders/${order.id}/edit`}
+                                className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+                                title="Edit order (quantity or grade)"
+                            >
+                                <Pencil className="h-4 w-4" />
+                            </Link>
+                        )}
                         {order.status === 'documents_required' && (
                             <Link
                                 href={`/orders/${order.id}/finalize`}
@@ -210,7 +226,7 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
                         >
                             <FileDown className="h-4 w-4" />
                         </a>
-                        {canManageOrder && (order.status === 'pending' || order.status === 'scheduled') && (
+                        {canManageOrder && (
                             <button
                                 onClick={() => {
                                     setOrderToDelete(order);
@@ -261,9 +277,24 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
         setDeleteReasonDetails('');
     };
 
+    const getOrderTypesParam = () => {
+        const types = [];
+        if (orderTypeWaste) types.push('waste');
+        if (orderTypeRecycling) types.push('recycling');
+        return types;
+    };
+
+    const buildFilterParams = () => {
+        const params = { search: search || undefined, status: statusFilter || undefined };
+        const types = getOrderTypesParam();
+        if (types.length === 1) params.order_types = types;
+        else if (types.length === 2) params.order_types = ['waste', 'recycling'];
+        return params;
+    };
+
     const handleSearch = (e) => {
         e.preventDefault();
-        router.get('/orders', { search, status: statusFilter || undefined }, {
+        router.get('/orders', buildFilterParams(), {
             preserveState: true,
             replace: true,
         });
@@ -271,10 +302,31 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
 
     const handleStatusFilter = (status) => {
         setStatusFilter(status);
-        router.get('/orders', { search, status: status !== '' ? status : undefined }, {
+        router.get('/orders', { ...buildFilterParams(), status: status !== '' ? status : undefined }, {
             preserveState: true,
             replace: true,
         });
+    };
+
+    const handleOrderTypeChange = (waste, recycling) => {
+        setOrderTypeWaste(waste);
+        setOrderTypeRecycling(recycling);
+        const types = [];
+        if (waste) types.push('waste');
+        if (recycling) types.push('recycling');
+        const params = { search: search || undefined, status: statusFilter || undefined };
+        if (types.length === 1) params.order_types = types;
+        else if (types.length === 2) params.order_types = ['waste', 'recycling'];
+        router.get('/orders', params, { preserveState: true, replace: true });
+    };
+
+    const exportUrl = (format) => {
+        const params = new URLSearchParams();
+        if (search) params.set('search', search);
+        if (statusFilter) params.set('status', statusFilter);
+        getOrderTypesParam().forEach((t) => params.append('order_types[]', t));
+        const qs = params.toString();
+        return `/orders/export/${format}${qs ? `?${qs}` : ''}`;
     };
 
     const handleGenerateConsolidatedPDF = (e) => {
@@ -583,48 +635,112 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
 
             {/* Filters */}
             <div className="mb-6 bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
-                <form onSubmit={handleSearch} className="flex gap-4 items-end">
-                    <div className="flex-1">
-                        <label htmlFor="search" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
-                            Search
-                        </label>
+                <form onSubmit={handleSearch} className="space-y-4">
+                    <div className="flex flex-wrap gap-4 items-end">
+                        <div className="flex-1 min-w-[200px]">
+                            <label htmlFor="search" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+                                Search
+                            </label>
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
+                                <input
+                                    type="text"
+                                    id="search"
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    className="pl-10 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-400"
+                                    placeholder="Order number, company, branch, site, service provider..."
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <label htmlFor="status" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+                                Status
+                            </label>
+                            <select
+                                id="status"
+                                value={statusFilter}
+                                onChange={(e) => handleStatusFilter(e.target.value)}
+                                className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                            >
+                                <option value="">All Status</option>
+                                <option value="pending">Pending</option>
+                                <option value="scheduled">Scheduled</option>
+                                <option value="weight_required">Weight Required</option>
+                                <option value="documents_required">Documents Required</option>
+                                <option value="finalized">Finalized</option>
+                            </select>
+                        </div>
+                        <div>
+                            <span className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Order Type</span>
+                            <div className="flex gap-4">
+                                <label className="inline-flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={orderTypeWaste}
+                                        onChange={(e) => handleOrderTypeChange(e.target.checked, orderTypeRecycling)}
+                                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700"
+                                    />
+                                    <span className="text-sm text-gray-700 dark:text-gray-300">Waste Order</span>
+                                </label>
+                                <label className="inline-flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={orderTypeRecycling}
+                                        onChange={(e) => handleOrderTypeChange(orderTypeWaste, e.target.checked)}
+                                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700"
+                                    />
+                                    <span className="text-sm text-gray-700 dark:text-gray-300">Recycling Order</span>
+                                </label>
+                            </div>
+                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Both selected = show all</p>
+                        </div>
+                        <button
+                            type="submit"
+                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                        >
+                            <Filter className="h-4 w-4 mr-2" />
+                            Filter
+                        </button>
                         <div className="relative">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
-                            <input
-                                type="text"
-                                id="search"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="pl-10 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-400"
-                                placeholder="Search by tracking number, site, or slip number..."
-                            />
+                            <button
+                                type="button"
+                                onClick={() => setExportOpen((o) => !o)}
+                                className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                            >
+                                Export
+                                <ChevronDown className="ml-2 h-4 w-4" />
+                            </button>
+                            {exportOpen && (
+                                <>
+                                    <div className="fixed inset-0 z-10" onClick={() => setExportOpen(false)} aria-hidden="true" />
+                                    <div className="absolute right-0 mt-1 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 z-20">
+                                        <div className="py-1">
+                                            <a
+                                                href={exportUrl('pdf')}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                                onClick={() => setExportOpen(false)}
+                                            >
+                                                <FileText className="h-4 w-4 mr-2 text-red-600" />
+                                                Export to PDF
+                                            </a>
+                                            <a
+                                                href={exportUrl('csv')}
+                                                download
+                                                className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                                onClick={() => setExportOpen(false)}
+                                            >
+                                                <FileSpreadsheet className="h-4 w-4 mr-2 text-green-600" />
+                                                Export to CSV
+                                            </a>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
-                    <div>
-                        <label htmlFor="status" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
-                            Status
-                        </label>
-                        <select
-                            id="status"
-                            value={statusFilter}
-                            onChange={(e) => handleStatusFilter(e.target.value)}
-                            className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-                        >
-                            <option value="">All Status</option>
-                            <option value="pending">Pending</option>
-                            <option value="scheduled">Scheduled</option>
-                            <option value="weight_required">Weight Required</option>
-                            <option value="documents_required">Documents Required</option>
-                            <option value="finalized">Finalized</option>
-                        </select>
-                    </div>
-                    <button
-                        type="submit"
-                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-                    >
-                        <Filter className="h-4 w-4 mr-2" />
-                        Filter
-                    </button>
                 </form>
             </div>
 

@@ -2,14 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Company;
 use App\Models\Order;
 use App\Models\ServiceProvider;
 use App\Models\Site;
-use Illuminate\Http\Request;
-use Inertia\Inertia;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
 
 class OrderSeederController extends Controller
 {
@@ -39,7 +40,7 @@ class OrderSeederController extends Controller
         ]);
 
         $company = Company::findOrFail($validated['company_id']);
-        
+
         // Get all sites for the company (through branches)
         $sites = Site::whereHas('branch', function ($query) use ($company) {
             $query->where('company_id', $company->id);
@@ -47,20 +48,20 @@ class OrderSeederController extends Controller
 
         if ($sites->isEmpty()) {
             return back()->withErrors([
-                'company_id' => 'The selected company has no active sites. Please create sites first.'
+                'company_id' => 'The selected company has no active sites. Please create sites first.',
             ]);
         }
 
         // Get active service providers
         $serviceProviders = ServiceProvider::active()->get();
-        
+
         if ($serviceProviders->isEmpty()) {
             return back()->withErrors([
-                'service_providers' => 'No active service providers found. Please create service providers first.'
+                'service_providers' => 'No active service providers found. Please create service providers first.',
             ]);
         }
 
-        $month = Carbon::parse($validated['month'] . '-01');
+        $month = Carbon::parse($validated['month'].'-01');
         $startDate = $month->copy()->startOfMonth();
         $endDate = $month->copy()->endOfMonth();
 
@@ -76,7 +77,7 @@ class OrderSeederController extends Controller
 
         if (empty($workdays)) {
             return back()->withErrors([
-                'month' => 'The selected month has no weekdays.'
+                'month' => 'The selected month has no weekdays.',
             ]);
         }
 
@@ -98,7 +99,7 @@ class OrderSeederController extends Controller
                         [
                             'quantity_type' => collect(['scrap_load', 'loose_bags', 'cage_8m3', 'cage_20m3'])->random(),
                             'quantity' => rand(1, 10),
-                        ]
+                        ],
                     ];
 
                     $order = Order::create([
@@ -117,7 +118,7 @@ class OrderSeederController extends Controller
 
                     $createdOrders[] = $order->tracking_number;
                 } catch (\Exception $e) {
-                    $errors[] = 'Failed to create recycling order ' . ($i + 1) . ': ' . $e->getMessage();
+                    $errors[] = 'Failed to create recycling order '.($i + 1).': '.$e->getMessage();
                 }
             }
 
@@ -133,7 +134,7 @@ class OrderSeederController extends Controller
                         [
                             'quantity_type' => collect(['rel_skip', 'wheelie_bins', 'skips_30m2'])->random(),
                             'quantity' => rand(1, 10),
-                        ]
+                        ],
                     ];
 
                     $order = Order::create([
@@ -152,11 +153,26 @@ class OrderSeederController extends Controller
 
                     $createdOrders[] = $order->tracking_number;
                 } catch (\Exception $e) {
-                    $errors[] = 'Failed to create waste order ' . ($i + 1) . ': ' . $e->getMessage();
+                    $errors[] = 'Failed to create waste order '.($i + 1).': '.$e->getMessage();
                 }
             }
 
             DB::commit();
+
+            ActivityLog::log('orders_seeded', sprintf(
+                'Order seeder created %d orders for %s in %s',
+                count($createdOrders),
+                $company->name,
+                $month->format('F Y')
+            ), null, [
+                'company_id' => $company->id,
+                'company_name' => $company->name,
+                'order_count' => count($createdOrders),
+                'recycling_count' => $validated['recycling_order_count'],
+                'waste_count' => $validated['waste_order_count'],
+                'month' => $validated['month'],
+                'tracking_numbers' => $createdOrders,
+            ]);
 
             $message = sprintf(
                 'Successfully created %d orders (%d recycling, %d waste) for %s in %s.',
@@ -167,15 +183,16 @@ class OrderSeederController extends Controller
                 $month->format('F Y')
             );
 
-            if (!empty($errors)) {
-                $message .= ' However, some errors occurred: ' . implode('; ', $errors);
+            if (! empty($errors)) {
+                $message .= ' However, some errors occurred: '.implode('; ', $errors);
             }
 
             return back()->with('success', $message);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return back()->withErrors([
-                'general' => 'An error occurred while generating orders: ' . $e->getMessage()
+                'general' => 'An error occurred while generating orders: '.$e->getMessage(),
             ]);
         }
     }

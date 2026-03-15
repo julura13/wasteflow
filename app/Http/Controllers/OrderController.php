@@ -3,23 +3,23 @@
 namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
-use App\Models\Order;
-use App\Models\Site;
-use App\Models\Company;
 use App\Models\Branch;
-use App\Models\WasteType;
-use App\Models\Material;
+use App\Models\Company;
 use App\Models\ContainerOption;
-use App\Models\ServiceProvider;
+use App\Models\Material;
+use App\Models\Order;
 use App\Models\OrderWasteStream;
+use App\Models\ServiceProvider;
+use App\Models\Site;
 use App\Repositories\OrderStatusHistoryRepository;
+use App\Services\ClientMonthlySummaryService;
 use App\Traits\ScopeByClientTrait;
+use Carbon\Carbon;
+use Dompdf\Dompdf;
+use Dompdf\Options;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
-use Dompdf\Dompdf;
-use Dompdf\Options;
-use Carbon\Carbon;
 
 class OrderController extends Controller
 {
@@ -51,41 +51,28 @@ class OrderController extends Controller
             if ($status) {
                 session(['orders_status_filter' => $status]);
             } else {
-                // If status is empty, clear the session filter
                 session()->forget('orders_status_filter');
             }
         } else {
-            // If no status in request, use session value if available
             $status = session('orders_status_filter', null);
         }
 
-        $query = Order::with(['site.branch.company', 'company', 'branch', 'creator', 'serviceProvider']);
+        // Order types: array of 'waste'|'recycling'. Empty or both = show all.
+        $orderTypes = $request->has('order_types') ? (array) $request->input('order_types') : [];
+        $orderTypes = array_values(array_unique(array_filter(array_map('strtolower', $orderTypes), fn ($t) => in_array($t, ['waste', 'recycling'], true))));
 
-        // Client-scoped: only orders for their company
-        $user = auth()->user();
-        if ($user && $user->company_id) {
-            $query->where('company_id', $user->company_id);
-        }
+        $query = $this->ordersIndexQuery($request->input('search'), $status, $orderTypes);
 
         $orders = $query
-            ->when($request->search, function ($q, $search) {
-                $q->where('tracking_number', 'like', "%{$search}%")
-                    ->orWhere('slip_number', 'like', "%{$search}%")
-                    ->orWhereHas('site', function ($siteQ) use ($search) {
-                        $siteQ->where('name', 'like', "%{$search}%");
-                    });
-            })
-            ->when($status, function ($q, $status) {
-                $q->where('status', $status);
-            })
             ->orderBy('created_at', 'desc')
             ->paginate(100)
             ->withQueryString();
 
+        $user = auth()->user();
         $serviceProviders = ServiceProvider::active()->get();
 
         $userCompanyRoles = [];
-        if (!$user->isAdmin()) {
+        if (! $user->isAdmin()) {
             $userCompanies = $user->companies()->get();
             foreach ($userCompanies as $company) {
                 $userCompanyRoles[$company->id] = $company->pivot->role;
@@ -97,10 +84,47 @@ class OrderController extends Controller
             'filters' => [
                 'search' => $request->input('search'),
                 'status' => $status,
+                'order_types' => $orderTypes,
             ],
             'serviceProviders' => $serviceProviders,
             'userCompanyRoles' => $userCompanyRoles,
         ]);
+    }
+
+    /**
+     * Build the base query for orders index/export with search, status and order_type filters.
+     *
+     * @param  array<int, string>  $orderTypes  ['waste'], ['recycling'], or ['waste','recycling']/[] for all
+     */
+    private function ordersIndexQuery(?string $search, ?string $status, array $orderTypes): \Illuminate\Database\Eloquent\Builder
+    {
+        $query = Order::with(['site.branch.company', 'company', 'branch', 'creator', 'serviceProvider']);
+
+        $user = auth()->user();
+        if ($user && $user->company_id) {
+            $query->where('company_id', $user->company_id);
+        }
+
+        $query->when($search, function ($q, $search) {
+            $term = '%'.trim($search).'%';
+            $q->where(function ($q) use ($term) {
+                $q->where('orders.tracking_number', 'like', $term)
+                    ->orWhere('orders.slip_number', 'like', $term)
+                    ->orWhereHas('site', fn ($siteQ) => $siteQ->where('sites.name', 'like', $term))
+                    ->orWhereHas('branch', fn ($branchQ) => $branchQ->where('branches.name', 'like', $term))
+                    ->orWhereHas('company', fn ($companyQ) => $companyQ->where('companies.name', 'like', $term))
+                    ->orWhereHas('serviceProvider', fn ($spQ) => $spQ->where('service_providers.name', 'like', $term));
+            });
+        });
+
+        $query->when($status, fn ($q, $status) => $q->where('orders.status', $status));
+
+        // Filter by order type only when exactly one type is selected (one checkbox = filter; both or none = all)
+        if (count($orderTypes) === 1) {
+            $query->where('orders.order_type', $orderTypes[0]);
+        }
+
+        return $query;
     }
 
     public function create()
@@ -108,9 +132,9 @@ class OrderController extends Controller
         $user = auth()->user();
 
         if ($user->isAdmin()) {
-        $companies = Company::where('is_active', true)->orderBy('name')->get();
-        $branches = Branch::with('company')->where('is_active', true)->orderBy('name')->get();
-        $sites = Site::with(['branch.company'])->where('is_active', true)->orderBy('name')->get();
+            $companies = Company::where('is_active', true)->orderBy('name')->get();
+            $branches = Branch::with('company')->where('is_active', true)->orderBy('name')->get();
+            $sites = Site::with(['branch.company'])->where('is_active', true)->orderBy('name')->get();
         } else {
             $companyIds = $this->companyUserService->getCompanyIdsForUser($user);
             $managerCompanyIds = collect($companyIds)->filter(function ($companyId) use ($user) {
@@ -177,7 +201,7 @@ class OrderController extends Controller
             'order_type' => 'required|in:waste,recycling',
             'quantity_lines' => 'required|array|min:1',
             'quantity_lines.*.quantity' => 'required|integer|min:1',
-            'requested_collection_date' => 'required|date|after_or_equal:today',
+            'requested_collection_date' => 'required|date',
             'notes' => 'nullable|string|max:1000',
         ];
 
@@ -208,7 +232,7 @@ class OrderController extends Controller
             foreach ($validated['quantity_lines'] as $index => $line) {
                 if (($line['quantity_type'] ?? '') === 'other' && empty($line['description'] ?? '')) {
                     return back()->withErrors([
-                        "quantity_lines.{$index}.description" => 'Description is required when selecting "Other" container type.'
+                        "quantity_lines.{$index}.description" => 'Description is required when selecting "Other" container type.',
                     ]);
                 }
             }
@@ -222,6 +246,7 @@ class OrderController extends Controller
             $containerOptions = ContainerOption::whereIn('id', $containerOptionIds)->get()->keyBy('id');
             $validated['quantity_lines'] = collect($validated['quantity_lines'])->map(function ($line) use ($containerOptions) {
                 $option = $containerOptions->get($line['container_option_id']);
+
                 return [
                     'container_option_id' => (int) $line['container_option_id'],
                     'container_option_name' => $option ? $option->name : '',
@@ -237,8 +262,16 @@ class OrderController extends Controller
 
         $order = Order::create($validated);
 
+        ActivityLog::log('order_created', "Order {$order->tracking_number} created", $order, [
+            'tracking_number' => $order->tracking_number,
+            'order_type' => $order->order_type,
+            'requested_collection_date' => $order->requested_collection_date,
+            'quantity_lines' => $order->quantity_lines,
+            'estimated_quantity' => $order->estimated_quantity,
+        ]);
+
         return redirect()->route('orders.show', $order)
-            ->with('success', 'Order created successfully! Tracking number: ' . $order->tracking_number);
+            ->with('success', 'Order created successfully! Tracking number: '.$order->tracking_number);
     }
 
     public function show(Order $order)
@@ -254,7 +287,7 @@ class OrderController extends Controller
             'wasteStreams.material.wasteStream',
             'wasteStreams.material.grade',
             'supportingDocuments',
-            'statusHistory.changedBy'
+            'statusHistory.changedBy',
         ]);
 
         $order->append(['can_be_finalized', 'has_required_supporting_documents', 'total_rebate']);
@@ -273,24 +306,23 @@ class OrderController extends Controller
     {
         $user = auth()->user();
 
-        $order->load(['site.branch.company', 'company', 'branch', 'wasteStreams.wasteType']);
+        if (! in_array($order->status, ['pending', 'scheduled'], true)) {
+            return redirect()->route('orders.show', $order)
+                ->with('error', 'Only pending or scheduled orders can be edited. For other changes, delete the order and create a new one.');
+        }
+
+        $order->load(['site.branch.company', 'company', 'branch', 'serviceProvider']);
         $companyId = $order->site?->branch?->company?->id ?? $order->company_id;
 
-        if (!$user->canManageOrdersForCompany($companyId)) {
+        if (! $user->canManageOrdersForCompany($companyId)) {
             abort(403, 'Only managers can edit orders for this company. Viewers can only view orders.');
         }
-        $sites = Site::with(['branch.company'])->get();
 
-        $sites->each(function ($site) {
-            $site->company_name = $site->getCompanyNameAttribute();
-        });
-
-        $wasteTypes = WasteType::active()->get();
+        $containerOptions = ContainerOption::where('is_active', true)->orderBy('name')->get(['id', 'name', 'slug']);
 
         return Inertia::render('Orders/Edit', [
             'order' => $order,
-            'sites' => $sites,
-            'wasteTypes' => $wasteTypes,
+            'containerOptions' => $containerOptions,
         ]);
     }
 
@@ -298,44 +330,153 @@ class OrderController extends Controller
     {
         $this->ensureOrderInScope($order);
 
-        $validated = $request->validate([
-            'site_id' => 'required|exists:sites,id',
-            'order_type' => 'required|in:waste,recycling',
-            'status' => 'required|in:pending,scheduled,weight_required,documents_required,finalized',
-            'requested_collection_date' => 'required|date',
-            'actual_collection_date' => 'nullable|date',
-            'service_provider' => 'nullable|string|max:255',
-            'slip_number' => 'nullable|string|max:255',
-            'estimated_quantity' => 'nullable|integer|min:1',
-            'actual_quantity' => 'nullable|integer|min:0',
-            'notes' => 'nullable|string|max:1000',
-        ]);
+        if (! in_array($order->status, ['pending', 'scheduled'], true)) {
+            return redirect()->route('orders.show', $order)
+                ->with('error', 'Only pending or scheduled orders can be edited.');
+        }
 
-        if ($request->has('status') && $request->status !== $order->status) {
-            $newStatus = $request->status;
-            $permission = match ($newStatus) {
-                'scheduled' => 'orders-schedule',
-                'weight_required' => 'orders-status-weight-required',
-                'documents_required' => 'orders-status-documents-required',
-                'finalized' => 'orders-finalize',
-                default => null,
-            };
-            if ($permission && ! auth()->user()->can($permission)) {
-                return back()->withErrors([
-                    'status' => 'You do not have permission to change status to ' . str_replace('_', ' ', $newStatus) . '.'
-                ]);
-            }
-            if (!$order->canTransitionTo($newStatus)) {
-                return back()->withErrors([
-                    'status' => 'Invalid status transition from ' . $order->status . ' to ' . $newStatus
-                ]);
+        $orderType = $order->order_type;
+        $recyclingQuantityTypes = 'scrap_load,loose_bags,cage_8m3,cage_20m3,other';
+        $editReasonRules = $this->getEditReasonValidationRules();
+
+        $rules = [
+            'quantity_lines' => 'required|array|min:1',
+            'quantity_lines.*.quantity' => 'required|integer|min:1',
+            'notes' => 'nullable|string|max:1000',
+            ...$editReasonRules,
+        ];
+
+        if ($orderType === 'waste') {
+            $rules['quantity_lines.*.container_option_id'] = 'required|exists:container_options,id';
+        } else {
+            $rules['quantity_lines.*.quantity_type'] = "required|in:{$recyclingQuantityTypes}";
+            $rules['quantity_lines.*.description'] = 'nullable|string|max:255';
+        }
+
+        $validated = $request->validate($rules);
+
+        if ($orderType === 'recycling') {
+            foreach ($validated['quantity_lines'] as $index => $line) {
+                if (($line['quantity_type'] ?? '') === 'other' && empty($line['description'] ?? '')) {
+                    return back()->withErrors([
+                        "quantity_lines.{$index}.description" => 'Description is required when selecting "Other" container type.',
+                    ]);
+                }
             }
         }
 
-        $order->update($validated);
+        if ($orderType === 'waste') {
+            $containerOptionIds = collect($validated['quantity_lines'])->pluck('container_option_id')->unique()->filter()->all();
+            $containerOptions = ContainerOption::whereIn('id', $containerOptionIds)->get()->keyBy('id');
+            $validated['quantity_lines'] = collect($validated['quantity_lines'])->map(function ($line) use ($containerOptions) {
+                $option = $containerOptions->get($line['container_option_id']);
+
+                return [
+                    'container_option_id' => (int) $line['container_option_id'],
+                    'container_option_name' => $option ? $option->name : '',
+                    'quantity' => (int) $line['quantity'],
+                ];
+            })->all();
+        }
+
+        $validated['estimated_quantity'] = collect($validated['quantity_lines'])->sum('quantity');
+
+        $oldQuantityLines = $order->quantity_lines;
+        $oldEstimatedQuantity = $order->estimated_quantity;
+        $oldNotes = $order->notes;
+
+        $order->update([
+            'quantity_lines' => $validated['quantity_lines'],
+            'estimated_quantity' => $validated['estimated_quantity'],
+            'notes' => $validated['notes'] ?? $order->notes,
+        ]);
+
+        $reasonLabel = $this->getEditReasonLabel($validated['reason'], $validated['reason_details'] ?? '');
+
+        ActivityLog::log('order_updated', "Order {$order->tracking_number} details updated (quantity lines / notes) ({$reasonLabel})", $order, [
+            'tracking_number' => $order->tracking_number,
+            'old_quantity_lines' => $oldQuantityLines,
+            'new_quantity_lines' => $validated['quantity_lines'],
+            'old_estimated_quantity' => $oldEstimatedQuantity,
+            'new_estimated_quantity' => $validated['estimated_quantity'],
+            'old_notes' => $oldNotes,
+            'new_notes' => $validated['notes'] ?? $order->notes,
+            'reason' => $validated['reason'],
+            'reason_details' => $validated['reason_details'] ?? null,
+        ]);
 
         return redirect()->route('orders.show', $order)
             ->with('success', 'Order updated successfully.');
+    }
+
+    /**
+     * Edit actual collection date on a finalized order (e.g. to fix dates set incorrectly).
+     * Updating the date recalculates client monthly material summaries so they show in the correct month.
+     */
+    public function editCollectionDate(Order $order)
+    {
+        $this->ensureOrderInScope($order);
+
+        if ($order->status !== 'finalized') {
+            return redirect()->route('orders.show', $order)
+                ->with('error', 'Only finalized orders can have their collection date corrected.');
+        }
+
+        $user = auth()->user();
+        $companyId = $order->site?->branch?->company?->id ?? $order->company_id;
+        if (! $user->canManageOrdersForCompany($companyId)) {
+            abort(403, 'You do not have permission to edit this order.');
+        }
+
+        return Inertia::render('Orders/EditCollectionDate', [
+            'order' => $order,
+        ]);
+    }
+
+    public function updateCollectionDate(Request $request, Order $order)
+    {
+        $this->ensureOrderInScope($order);
+
+        if ($order->status !== 'finalized') {
+            return redirect()->route('orders.show', $order)
+                ->with('error', 'Only finalized orders can have their collection date corrected.');
+        }
+
+        $user = auth()->user();
+        $companyId = $order->site?->branch?->company?->id ?? $order->company_id;
+        if (! $user->canManageOrdersForCompany($companyId)) {
+            abort(403, 'You do not have permission to edit this order.');
+        }
+
+        $validated = $request->validate([
+            'actual_collection_date' => 'required|date',
+            ...$this->getEditReasonValidationRules(),
+        ]);
+
+        $oldActualCollectionDate = $order->actual_collection_date;
+
+        $order->update([
+            'actual_collection_date' => $validated['actual_collection_date'],
+        ]);
+
+        $order->refresh();
+        app(ClientMonthlySummaryService::class)->moveOrderSummariesToActualCollectionDate($order, $oldActualCollectionDate);
+
+        $oldDateFormatted = $oldActualCollectionDate ? Carbon::parse($oldActualCollectionDate)->format('Y-m-d') : null;
+        $newDateFormatted = Carbon::parse($validated['actual_collection_date'])->format('Y-m-d');
+
+        $reasonLabel = $this->getEditReasonLabel($validated['reason'], $validated['reason_details'] ?? '');
+
+        ActivityLog::log('order_collection_date_updated', "Order {$order->tracking_number} collection date changed from {$oldDateFormatted} to {$newDateFormatted} ({$reasonLabel})", $order, [
+            'tracking_number' => $order->tracking_number,
+            'old_date' => $oldDateFormatted,
+            'new_date' => $newDateFormatted,
+            'reason' => $validated['reason'],
+            'reason_details' => $validated['reason_details'] ?? null,
+        ]);
+
+        return redirect()->route('orders.show', $order)
+            ->with('success', 'Collection date updated. Client monthly material summaries have been recalculated for the correct month.');
     }
 
     public function updateStatus(Request $request, Order $order)
@@ -356,20 +497,21 @@ class OrderController extends Controller
             default => null,
         };
         if ($permission && ! auth()->user()->can($permission)) {
-            abort(403, 'You do not have permission to change status to ' . str_replace('_', ' ', $newStatus) . '.');
+            abort(403, 'You do not have permission to change status to '.str_replace('_', ' ', $newStatus).'.');
         }
 
-        if (!$order->canTransitionTo($newStatus)) {
+        if (! $order->canTransitionTo($newStatus)) {
             return back()->withErrors([
-                'status' => 'Invalid status transition from ' . $order->status . ' to ' . $newStatus
+                'status' => 'Invalid status transition from '.$order->status.' to '.$newStatus,
             ]);
         }
 
+        $oldStatus = $order->status;
         $order->update([
             'status' => $newStatus,
         ]);
 
-        if (!empty($validated['notes'])) {
+        if (! empty($validated['notes'])) {
             $this->statusHistoryRepository->createForOrder(
                 $order->id,
                 $newStatus,
@@ -377,6 +519,12 @@ class OrderController extends Controller
                 $validated['notes']
             );
         }
+
+        ActivityLog::log('order_status_changed', "Order {$order->tracking_number} status changed from {$oldStatus} to {$newStatus}", $order, [
+            'tracking_number' => $order->tracking_number,
+            'old_status' => $oldStatus,
+            'new_status' => $newStatus,
+        ]);
 
         return redirect()->route('orders.show', $order)
             ->with('success', 'Order status updated successfully.');
@@ -404,10 +552,10 @@ class OrderController extends Controller
             'serviceProvider',
             'wasteStreams.material.wasteStream',
             'wasteStreams.material.grade',
-            'supportingDocuments'
+            'supportingDocuments',
         ]);
 
-        if (!$order->relationLoaded('site')) {
+        if (! $order->relationLoaded('site')) {
             $order->load('site.branch.company');
         }
 
@@ -456,22 +604,16 @@ class OrderController extends Controller
         ]);
 
         $query = Order::where('slip_number', $validated['slip_number']);
-        if (!empty($validated['exclude_order_id'])) {
+        if (! empty($validated['exclude_order_id'])) {
             $query->where('id', '!=', $validated['exclude_order_id']);
         }
         $exists = $query->exists();
 
         if ($exists) {
-            ActivityLog::create([
-                'log_name' => 'duplicate_slip_number',
-                'description' => 'Duplicate slip number attempted: ' . $validated['slip_number'],
-                'subject_type' => Order::class,
-                'subject_id' => $validated['exclude_order_id'] ?? null,
-                'causer_id' => $request->user()?->id,
-                'properties' => [
-                    'slip_number' => $validated['slip_number'],
-                    'exclude_order_id' => $validated['exclude_order_id'] ?? null,
-                ],
+            $subjectOrder = ! empty($validated['exclude_order_id']) ? Order::find($validated['exclude_order_id']) : null;
+            ActivityLog::log('duplicate_slip_number', 'Duplicate slip number attempted: '.$validated['slip_number'], $subjectOrder, [
+                'slip_number' => $validated['slip_number'],
+                'exclude_order_id' => $validated['exclude_order_id'] ?? null,
             ]);
         }
 
@@ -485,12 +627,12 @@ class OrderController extends Controller
 
         if ($order->status === 'finalized') {
             return response()->json([
-                'message' => 'Cannot modify weights for finalized orders.'
+                'message' => 'Cannot modify weights for finalized orders.',
             ], 422);
         }
 
         $validated = $request->validate([
-            'weight_lines' => 'required|array|min:1',
+            'weight_lines' => 'required|array',
             'weight_lines.*.material_id' => 'required|exists:materials,id',
             'weight_lines.*.weight' => 'required|numeric|min:0',
             'weight_lines.*.id' => 'nullable|exists:order_waste_streams,id',
@@ -505,7 +647,15 @@ class OrderController extends Controller
             ->whereNotIn('id', $existingIds)
             ->delete();
 
+        $materialIds = collect($validated['weight_lines'])->pluck('material_id')->unique()->filter()->all();
+        $materials = Material::with(['grade', 'wasteStream'])->whereIn('id', $materialIds)->get()->keyBy('id');
+
         foreach ($validated['weight_lines'] as $line) {
+            $material = $materials->get($line['material_id']);
+            $rebateRate = $material && $material->rebate_offered && $material->rebate_rate !== null
+                ? round((float) $material->rebate_rate, 2)
+                : null;
+
             if (isset($line['id']) && $line['id']) {
                 $wasteStream = \App\Models\OrderWasteStream::find($line['id']);
                 if ($wasteStream) {
@@ -513,6 +663,7 @@ class OrderController extends Controller
                         'material_id' => $line['material_id'],
                         'nett_weight' => $line['weight'],
                         'gross_weight' => $line['weight'],
+                        'rebate_rate' => $rebateRate,
                     ]);
                 }
             } else {
@@ -521,13 +672,30 @@ class OrderController extends Controller
                     'material_id' => $line['material_id'],
                     'nett_weight' => $line['weight'],
                     'gross_weight' => $line['weight'],
+                    'rebate_rate' => $rebateRate,
                 ]);
             }
         }
 
         if ($order->status !== 'finalized') {
-        $order->update(['status' => 'documents_required']);
+            $order->update(['status' => 'documents_required']);
         }
+
+        $weightLinesSnapshot = collect($validated['weight_lines'])->map(function ($line) use ($materials) {
+            $material = $materials->get($line['material_id']);
+            $materialLabel = $material && $material->grade ? $material->grade->name : ($material ? "Material #{$material->id}" : "Material #{$line['material_id']}");
+
+            return [
+                'material_id' => (int) $line['material_id'],
+                'material_name' => $materialLabel,
+                'weight' => (float) $line['weight'],
+            ];
+        })->values()->all();
+
+        ActivityLog::log('order_weights_saved', "Weights captured for order {$order->tracking_number}", $order, [
+            'tracking_number' => $order->tracking_number,
+            'weight_lines' => $weightLinesSnapshot,
+        ]);
 
         return response()->json([
             'message' => 'Weights saved successfully.',
@@ -542,30 +710,30 @@ class OrderController extends Controller
 
         if ($order->status === 'finalized') {
             return back()->withErrors([
-                'status' => 'Order is already finalized.'
+                'status' => 'Order is already finalized.',
             ]);
         }
 
         if ($order->status !== 'documents_required') {
             return back()->withErrors([
-                'status' => 'Order must be in "Documents Required" status before finalization. Current status: ' . $order->status
+                'status' => 'Order must be in "Documents Required" status before finalization. Current status: '.$order->status,
             ]);
         }
 
         if ($order->wasteStreams()->count() === 0) {
             return back()->withErrors([
-                'weights' => 'Weights must be captured before finalizing the order.'
+                'weights' => 'Weights must be captured before finalizing the order.',
             ]);
         }
 
-        if (!$order->hasRequiredSupportingDocuments()) {
+        if (! $order->hasRequiredSupportingDocuments()) {
             return back()->withErrors([
-                'documents' => 'At least one supporting document is required to finalize the order.'
+                'documents' => 'At least one supporting document is required to finalize the order.',
             ]);
         }
 
         $validated = $request->validate([
-            'actual_collection_date' => 'nullable|date',
+            'actual_collection_date' => 'required|date',
             'actual_quantity' => 'nullable|integer|min:0',
             'slip_number' => 'required|string|max:255',
         ]);
@@ -573,8 +741,8 @@ class OrderController extends Controller
         $prefix = $order->serviceProvider?->slip_number_prefix;
         $prefix = $prefix ? trim((string) $prefix) : '';
         $slipInput = trim($validated['slip_number']);
-        $fullSlipNumber = ($prefix !== '' && ! str_starts_with($slipInput, $prefix . '-'))
-            ? $prefix . '-' . $slipInput
+        $fullSlipNumber = ($prefix !== '' && ! str_starts_with($slipInput, $prefix.'-'))
+            ? $prefix.'-'.$slipInput
             : $slipInput;
 
         $request->validate([
@@ -592,17 +760,40 @@ class OrderController extends Controller
 
         $oldActualCollectionDate = $order->actual_collection_date;
 
+        $company = $order->site?->branch?->company;
+        $companyRebatePercentage = $company && isset($company->rebate_percentage) && $company->rebate_percentage !== null && $company->rebate_percentage !== ''
+            ? round((float) $company->rebate_percentage, 2)
+            : null;
+
         $order->update([
             'status' => 'finalized',
-            'actual_collection_date' => $validated['actual_collection_date'] ?? $order->requested_collection_date,
+            'actual_collection_date' => $validated['actual_collection_date'],
             'actual_quantity' => $validated['actual_quantity'] ?? $order->estimated_quantity,
             'slip_number' => $fullSlipNumber,
+            'company_rebate_percentage' => $companyRebatePercentage,
         ]);
+
+        $order->load('wasteStreams.material');
+        foreach ($order->wasteStreams as $stream) {
+            $rebateRate = $stream->material && $stream->material->rebate_offered && $stream->material->rebate_rate !== null
+                ? round((float) $stream->material->rebate_rate, 2)
+                : null;
+            $stream->update(['rebate_rate' => $rebateRate]);
+        }
 
         // Move monthly summary weights from requested (or previous actual) month to actual collection month
         // so Grade Summary by month uses actual collection date
         $order->refresh();
         app(\App\Services\ClientMonthlySummaryService::class)->moveOrderSummariesToActualCollectionDate($order, $oldActualCollectionDate);
+
+        $actualQuantity = $validated['actual_quantity'] ?? $order->estimated_quantity;
+
+        ActivityLog::log('order_finalized', "Order {$order->tracking_number} finalized (slip: {$fullSlipNumber})", $order, [
+            'tracking_number' => $order->tracking_number,
+            'slip_number' => $fullSlipNumber,
+            'actual_collection_date' => $validated['actual_collection_date'],
+            'actual_quantity' => $actualQuantity,
+        ]);
 
         return redirect()->route('orders.show', $order)
             ->with('success', 'Order finalized successfully.');
@@ -616,44 +807,114 @@ class OrderController extends Controller
             ini_set('memory_limit', '256M');
             set_time_limit(30);
 
-        $order->load([
-            'site.branch.company',
-            'company',
-            'branch',
-            'creator',
-            'serviceProvider',
+            $order->load([
+                'site.branch.company',
+                'company',
+                'branch',
+                'creator',
+                'serviceProvider',
                 'wasteStreams.material.grade',
                 'wasteStreams.material.wasteStream',
-        ]);
+            ]);
 
             $order->append('total_rebate');
 
-        $options = new Options();
-        $options->set('isHtml5ParserEnabled', true);
+            $options = new Options;
+            $options->set('isHtml5ParserEnabled', true);
             $options->set('isRemoteEnabled', false);
-        $options->set('defaultFont', 'DejaVu Sans');
+            $options->set('defaultFont', 'DejaVu Sans');
 
-        $dompdf = new Dompdf($options);
-        $html = view('orders.pdf', ['order' => $order])->render();
+            $dompdf = new Dompdf($options);
+            $html = view('orders.pdf', ['order' => $order])->render();
 
-        $dompdf->loadHtml($html);
-        $dompdf->setPaper('A4', 'portrait');
-        $dompdf->render();
+            $dompdf->loadHtml($html);
+            $dompdf->setPaper('A4', 'portrait');
+            $dompdf->render();
 
-        $filename = 'Order_' . $order->tracking_number . '_' . now()->format('Y-m-d') . '.pdf';
+            $filename = 'Order_'.$order->tracking_number.'_'.now()->format('Y-m-d').'.pdf';
             $output = $dompdf->output();
 
             unset($dompdf, $html, $order);
 
             return response()->streamDownload(function () use ($output) {
                 echo $output;
+            }, $filename, [
+                'Content-Type' => 'application/pdf',
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('PDF Generation Error: '.$e->getMessage());
+
+            return back()->withErrors(['pdf' => 'Failed to generate PDF. Please try again.']);
+        }
+    }
+
+    public function exportPdf(Request $request)
+    {
+        $status = $request->input('status');
+        $orderTypes = $request->has('order_types') ? (array) $request->input('order_types') : [];
+        $orderTypes = array_values(array_unique(array_filter(array_map('strtolower', $orderTypes), fn ($t) => in_array($t, ['waste', 'recycling'], true))));
+
+        $query = $this->ordersIndexQuery($request->input('search'), $status, $orderTypes);
+        $orders = $query->orderBy('created_at', 'desc')->get();
+
+        $options = new Options;
+        $options->set('isHtml5ParserEnabled', true);
+        $options->set('isRemoteEnabled', false);
+        $options->set('defaultFont', 'DejaVu Sans');
+
+        $dompdf = new Dompdf($options);
+        $html = view('orders.export-pdf', ['orders' => $orders])->render();
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'landscape');
+        $dompdf->render();
+
+        $filename = 'orders_export_'.now()->format('Y-m-d_His').'.pdf';
+
+        return response()->streamDownload(function () use ($dompdf) {
+            echo $dompdf->output();
         }, $filename, [
             'Content-Type' => 'application/pdf',
         ]);
-        } catch (\Exception $e) {
-            \Log::error('PDF Generation Error: ' . $e->getMessage());
-            return back()->withErrors(['pdf' => 'Failed to generate PDF. Please try again.']);
-        }
+    }
+
+    public function exportCsv(Request $request)
+    {
+        $status = $request->input('status');
+        $orderTypes = $request->has('order_types') ? (array) $request->input('order_types') : [];
+        $orderTypes = array_values(array_unique(array_filter(array_map('strtolower', $orderTypes), fn ($t) => in_array($t, ['waste', 'recycling'], true))));
+
+        $query = $this->ordersIndexQuery($request->input('search'), $status, $orderTypes);
+        $orders = $query->with(['site.branch.company', 'company', 'branch', 'serviceProvider'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $filename = 'orders_export_'.now()->format('Y-m-d_His').'.csv';
+
+        return response()->streamDownload(function () use ($orders) {
+            $out = fopen('php://output', 'w');
+            fputcsv($out, ['Tracking Number', 'Company', 'Branch', 'Site', 'Service Provider', 'Order Type', 'Status', 'Requested Date', 'Actual Date', 'Slip Number']);
+            foreach ($orders as $order) {
+                $site = $order->site;
+                $branch = $site?->branch ?? $order->branch;
+                $company = $branch?->company ?? $order->company;
+                fputcsv($out, [
+                    $order->tracking_number,
+                    $company?->name ?? '',
+                    $branch?->name ?? '',
+                    $site?->name ?? '',
+                    $order->serviceProvider?->name ?? (is_string($order->service_provider) ? $order->service_provider : ''),
+                    $order->order_type === 'waste' ? 'Waste Order' : 'Recycling Order',
+                    $order->status,
+                    $order->requested_collection_date?->format('Y-m-d') ?? '',
+                    $order->actual_collection_date?->format('Y-m-d') ?? '',
+                    $order->slip_number ?? '',
+                ]);
+            }
+            fclose($out);
+        }, $filename, [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+        ]);
     }
 
     public function getServiceProvidersByDate(Request $request)
@@ -698,13 +959,18 @@ class OrderController extends Controller
         foreach ($orders as $order) {
             if ($order->status === 'pending') {
                 $order->update(['status' => 'scheduled']);
+                ActivityLog::log('order_consolidated_pdf_scheduled', "Order {$order->tracking_number} set to scheduled via consolidated PDF", $order, [
+                    'tracking_number' => $order->tracking_number,
+                    'collection_date' => $collectionDate->format('Y-m-d'),
+                    'service_provider_id' => $serviceProvider->id,
+                ]);
             }
         }
 
         $orders->fresh();
         $orders->load(['site.branch.company', 'company', 'branch']);
 
-        $options = new Options();
+        $options = new Options;
         $options->set('isHtml5ParserEnabled', true);
         $options->set('isRemoteEnabled', true);
         $options->set('defaultFont', 'DejaVu Sans');
@@ -720,7 +986,7 @@ class OrderController extends Controller
         $dompdf->setPaper('A4', 'portrait');
         $dompdf->render();
 
-        $filename = 'Consolidated_Order_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $serviceProvider->name) . '_' . $collectionDate->format('Y-m-d') . '.pdf';
+        $filename = 'Consolidated_Order_'.preg_replace('/[^a-zA-Z0-9_-]/', '_', $serviceProvider->name).'_'.$collectionDate->format('Y-m-d').'.pdf';
 
         return response()->streamDownload(function () use ($dompdf) {
             echo $dompdf->output();
@@ -734,7 +1000,7 @@ class OrderController extends Controller
         $user = $request->user();
         $companyIds = $user->isAdmin() ? [] : $this->companyUserService->getCompanyIdsForUser($user);
 
-        if (!$user->isAdmin() && empty($companyIds)) {
+        if (! $user->isAdmin() && empty($companyIds)) {
             abort(403, 'No company assigned. Please contact administrator.');
         }
 
@@ -780,7 +1046,7 @@ class OrderController extends Controller
 
         $rebateData = $this->getRebateTrackerData($startDate, $endDate, $companyId, $branchId, $siteId, $user, $companyIds);
 
-        $options = new \Dompdf\Options();
+        $options = new \Dompdf\Options;
         $options->set('isHtml5ParserEnabled', true);
         $options->set('isRemoteEnabled', false);
         $options->set('defaultFont', 'DejaVu Sans');
@@ -803,7 +1069,7 @@ class OrderController extends Controller
         $dompdf->setPaper('A4', 'landscape');
         $dompdf->render();
 
-        $filename = 'Rebate_Tracker_' . $startDate . '_to_' . $endDate . '.pdf';
+        $filename = 'Rebate_Tracker_'.$startDate.'_to_'.$endDate.'.pdf';
 
         return response()->streamDownload(function () use ($dompdf) {
             echo $dompdf->output();
@@ -820,39 +1086,43 @@ class OrderController extends Controller
             'material.grade',
             'material.wasteStream',
         ])
-        ->whereHas('order', function ($q) use ($startDate, $endDate, $companyId, $branchId, $siteId, $user, $companyIds) {
-            $q->where('status', 'finalized')
-              ->where(function ($query) use ($startDate, $endDate) {
-                  $query->whereBetween('actual_collection_date', [$startDate, $endDate])
-                        ->orWhere(function ($q) use ($startDate, $endDate) {
-                            $q->whereNull('actual_collection_date')
-                              ->whereBetween('requested_collection_date', [$startDate, $endDate]);
-                        });
-              });
-            if ($companyId) {
-                $q->where('company_id', $companyId);
-            }
-            if ($branchId) {
-                $q->where('branch_id', $branchId);
-            }
-            if ($siteId) {
-                $q->where('site_id', $siteId);
-            }
-            if (!$user->isAdmin()) {
-                $q->whereHas('site.branch.company', function ($q) use ($companyIds) {
-                    $q->whereIn('companies.id', $companyIds);
-                });
-            }
-        })
-        ->whereHas('material', function ($q) {
-            $q->where('rebate_offered', true);
-        });
+            ->whereHas('order', function ($q) use ($startDate, $endDate, $companyId, $branchId, $siteId, $user, $companyIds) {
+                $q->where('status', 'finalized')
+                    ->where(function ($query) use ($startDate, $endDate) {
+                        $query->whereBetween('actual_collection_date', [$startDate, $endDate])
+                            ->orWhere(function ($q) use ($startDate, $endDate) {
+                                $q->whereNull('actual_collection_date')
+                                    ->whereBetween('requested_collection_date', [$startDate, $endDate]);
+                            });
+                    });
+                if ($companyId) {
+                    $q->where('company_id', $companyId);
+                }
+                if ($branchId) {
+                    $q->where('branch_id', $branchId);
+                }
+                if ($siteId) {
+                    $q->where('site_id', $siteId);
+                }
+                if (! $user->isAdmin()) {
+                    $q->whereHas('site.branch.company', function ($q) use ($companyIds) {
+                        $q->whereIn('companies.id', $companyIds);
+                    });
+                }
+            })
+            ->where(function ($q) {
+                $q->whereNotNull('rebate_rate')->where('rebate_rate', '>', 0)
+                    ->orWhereHas('material', function ($mq) {
+                        $mq->where('rebate_offered', true);
+                    });
+            });
 
         return $query->get()->map(function ($stream) {
             $collectionDate = $stream->order->actual_collection_date ?? $stream->order->requested_collection_date;
             $site = $stream->order->site;
             $branch = $site?->branch;
             $company = $branch?->company;
+
             return [
                 'id' => $stream->id,
                 'order_id' => $stream->order_id,
@@ -863,7 +1133,7 @@ class OrderController extends Controller
                 'site_name' => $site?->name ?? '—',
                 'grade' => $stream->material->grade->name ?? '—',
                 'weight' => $stream->nett_weight,
-                'rate' => $stream->material->rebate_rate ?? 0,
+                'rate' => $stream->rebate_rate ?? $stream->material?->rebate_rate ?? 0,
                 'total' => $stream->client_rebate_amount,
                 'material_id' => $stream->material_id,
                 'supporting_documents' => $stream->order->supportingDocuments->map(function ($doc) {
@@ -875,7 +1145,7 @@ class OrderController extends Controller
                 })->values()->toArray(),
             ];
         })->groupBy(function ($item) {
-            return Carbon::parse($item['date'])->format('Y-m-d') . '|' . ($item['company_name'] ?? '') . '|' . ($item['branch_name'] ?? '') . '|' . ($item['site_name'] ?? '') . '|' . $item['grade'];
+            return Carbon::parse($item['date'])->format('Y-m-d').'|'.($item['company_name'] ?? '').'|'.($item['branch_name'] ?? '').'|'.($item['site_name'] ?? '').'|'.$item['grade'];
         })->map(function ($group) {
             return [
                 'date' => $group->first()['date'],
@@ -916,28 +1186,28 @@ class OrderController extends Controller
         $user = $request->user();
         $companyIds = $user->isAdmin() ? [] : $this->companyUserService->getCompanyIdsForUser($user);
 
-        if (!$user->isAdmin() && empty($companyIds)) {
+        if (! $user->isAdmin() && empty($companyIds)) {
             abort(403, 'No company assigned. Please contact administrator.');
         }
 
         $query = OrderWasteStream::with(['order.site', 'material'])
             ->whereHas('order', function ($q) use ($startDate, $endDate, $validated, $containerType, $companyIds, $user) {
                 $q->where('status', 'finalized')
-                  ->where(function ($query) use ($startDate, $endDate) {
-                      $query->whereBetween('actual_collection_date', [$startDate, $endDate])
+                    ->where(function ($query) use ($startDate, $endDate) {
+                        $query->whereBetween('actual_collection_date', [$startDate, $endDate])
                             ->orWhere(function ($q) use ($startDate, $endDate) {
                                 $q->whereNull('actual_collection_date')
-                                  ->whereBetween('requested_collection_date', [$startDate, $endDate]);
+                                    ->whereBetween('requested_collection_date', [$startDate, $endDate]);
                             });
-                  })
-                  ->where(function ($query) use ($containerType) {
-                      $query->whereJsonContains('quantity_lines', [['quantity_type' => $containerType]])
+                    })
+                    ->where(function ($query) use ($containerType) {
+                        $query->whereJsonContains('quantity_lines', [['quantity_type' => $containerType]])
                             ->orWhere('quantity_type', $containerType);
-                  });
+                    });
                 if (isset($validated['site_id'])) {
                     $q->where('site_id', $validated['site_id']);
                 }
-                if (!$user->isAdmin()) {
+                if (! $user->isAdmin()) {
                     $q->whereHas('site.branch.company', function ($q) use ($companyIds) {
                         $q->whereIn('companies.id', $companyIds);
                     });
@@ -948,7 +1218,7 @@ class OrderController extends Controller
 
         $sites = Site::with(['branch.company'])
             ->where('is_active', true)
-            ->when(!$user->isAdmin(), function ($query) use ($companyIds) {
+            ->when(! $user->isAdmin(), function ($query) use ($companyIds) {
                 $query->whereHas('branch.company', function ($q) use ($companyIds) {
                     $q->whereIn('companies.id', $companyIds);
                 });
@@ -979,8 +1249,10 @@ class OrderController extends Controller
             $quantityLines = $order->quantity_lines ?? [];
             if (is_array($quantityLines)) {
                 $containerLine = collect($quantityLines)->firstWhere('quantity_type', $containerType);
+
                 return $containerLine['quantity'] ?? 0;
             }
+
             return 0;
         });
 
@@ -1008,7 +1280,7 @@ class OrderController extends Controller
     public function destroy(Order $order)
     {
         return redirect()->route('orders.index')
-            ->with('error', 'Please use the delete button and select a reason. Only pending or scheduled orders can be deleted.');
+            ->with('error', 'Please use the delete button in the actions column and select a reason.');
     }
 
     public function deleteOrder(Request $request, Order $order)
@@ -1018,13 +1290,8 @@ class OrderController extends Controller
         $order->load('site.branch.company');
         $companyId = $order->site?->branch?->company?->id ?? $order->company_id;
 
-        if (!$user->canManageOrdersForCompany($companyId)) {
+        if (! $user->canManageOrdersForCompany($companyId)) {
             abort(403, 'Only managers can delete orders for this company. Viewers can only view orders.');
-        }
-
-        if (!in_array($order->status, ['pending', 'scheduled'], true)) {
-            return redirect()->route('orders.index')
-                ->with('error', 'Only pending or scheduled orders can be deleted.');
         }
 
         $validated = $request->validate([
@@ -1041,18 +1308,11 @@ class OrderController extends Controller
 
         $reasonLabel = $this->getDeletionReasonLabel($validated['reason'], $validated['reason_details'] ?? '');
 
-        ActivityLog::create([
-            'log_name' => 'order_deleted',
-            'description' => "Order {$order->tracking_number} deleted: {$reasonLabel}",
-            'subject_type' => Order::class,
-            'subject_id' => $order->id,
-            'causer_id' => $user->id,
-            'properties' => [
-                'order_id' => $order->id,
-                'tracking_number' => $order->tracking_number,
-                'reason' => $validated['reason'],
-                'reason_details' => $validated['reason_details'] ?? null,
-            ],
+        ActivityLog::log('order_deleted', "Order {$order->tracking_number} deleted: {$reasonLabel}", $order, [
+            'order_id' => $order->id,
+            'tracking_number' => $order->tracking_number,
+            'reason' => $validated['reason'],
+            'reason_details' => $validated['reason_details'] ?? null,
         ]);
 
         $order->delete();
@@ -1069,7 +1329,34 @@ class OrderController extends Controller
             'wrong_date' => 'Wrong collection date',
             'wrong_site' => 'Wrong site / collection point',
             'cancelled_by_client' => 'Cancelled by client',
-            'other' => 'Other' . ($details ? ": {$details}" : ''),
+            'other' => 'Other'.($details ? ": {$details}" : ''),
+        ];
+
+        return $labels[$reason] ?? $reason;
+    }
+
+    /**
+     * Validation rules for "reason for edit" (order update, weights, collection date).
+     *
+     * @return array<string, mixed>
+     */
+    private function getEditReasonValidationRules(): array
+    {
+        return [
+            'reason' => 'required|string|in:client_request,wrong_quantity,wrong_container_type,date_correction,data_entry_error,other',
+            'reason_details' => 'required_if:reason,other|nullable|string|max:1000',
+        ];
+    }
+
+    private function getEditReasonLabel(string $reason, string $details): string
+    {
+        $labels = [
+            'client_request' => 'Client request',
+            'wrong_quantity' => 'Wrong quantity entered',
+            'wrong_container_type' => 'Wrong container type',
+            'date_correction' => 'Date correction',
+            'data_entry_error' => 'Data entry error',
+            'other' => 'Other'.($details ? ": {$details}" : ''),
         ];
 
         return $labels[$reason] ?? $reason;

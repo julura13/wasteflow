@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\ServiceProvider;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -69,7 +70,9 @@ class ServiceProviderController extends Controller
             ? trim((string) $validated['slip_number_prefix'])
             : null;
 
-        ServiceProvider::create($validated);
+        $serviceProvider = ServiceProvider::create($validated);
+
+        ActivityLog::log('service_provider_created', "Service provider {$serviceProvider->name} created", $serviceProvider, ['name' => $serviceProvider->name]);
 
         return redirect()->route('service-providers.index')
             ->with('success', 'Service provider created successfully.');
@@ -123,6 +126,8 @@ class ServiceProviderController extends Controller
 
         $serviceProvider->update($validated);
 
+        ActivityLog::log('service_provider_updated', "Service provider {$serviceProvider->name} updated", $serviceProvider, ['name' => $serviceProvider->name]);
+
         return redirect()->route('service-providers.index')
             ->with('success', 'Service provider updated successfully.');
     }
@@ -139,6 +144,7 @@ class ServiceProviderController extends Controller
                 ->with('error', 'Cannot delete a service provider that has been used on existing orders.');
         }
 
+        ActivityLog::log('service_provider_deleted', "Service provider {$serviceProvider->name} deleted", $serviceProvider, ['name' => $serviceProvider->name]);
         $serviceProvider->delete();
 
         return redirect()->route('service-providers.index')

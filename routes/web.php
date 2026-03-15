@@ -6,7 +6,6 @@ use App\Http\Controllers\Settings\ContainerOptionController;
 use App\Http\Controllers\Settings\FacilityController;
 use App\Http\Controllers\Settings\GradeController;
 use App\Http\Controllers\Settings\WasteStreamController;
-use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -28,6 +27,9 @@ Route::get('/dashboard/grade-month-detail', [App\Http\Controllers\DashboardContr
 
 Route::get('/dashboard/orders-for-day', [App\Http\Controllers\DashboardController::class, 'getOrdersForDay'])
     ->middleware(['auth', 'verified', 'permission:view-dashboard'])->name('dashboard.orders-for-day');
+
+Route::get('/activity-log', [App\Http\Controllers\ActivityLogController::class, 'index'])
+    ->middleware(['auth', 'verified', 'permission:view-activity-log'])->name('activity-log.index');
 
 Route::get('/clients', function () {
     return Inertia::render('Clients/Index');
@@ -59,14 +61,21 @@ Route::post('orders/{order}/update-status', [App\Http\Controllers\OrderControlle
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.update-status');
 Route::get('orders/{order}/download-pdf', [App\Http\Controllers\OrderController::class, 'downloadPDF'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.download-pdf');
+Route::get('orders/{order}/edit-collection-date', [App\Http\Controllers\OrderController::class, 'editCollectionDate'])
+    ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.edit-collection-date');
+Route::put('orders/{order}/collection-date', [App\Http\Controllers\OrderController::class, 'updateCollectionDate'])
+    ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.update-collection-date');
 Route::post('orders/{order}/delete', [App\Http\Controllers\OrderController::class, 'deleteOrder'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.delete');
+Route::get('orders/export/pdf', [App\Http\Controllers\OrderController::class, 'exportPdf'])
+    ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.export.pdf');
+Route::get('orders/export/csv', [App\Http\Controllers\OrderController::class, 'exportCsv'])
+    ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.export.csv');
 Route::get('orders/seeder/index', [App\Http\Controllers\OrderSeederController::class, 'index'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.seeder.index');
 Route::post('orders/seeder/generate', [App\Http\Controllers\OrderSeederController::class, 'store'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.seeder.generate');
 Route::resource('orders', App\Http\Controllers\OrderController::class)
-    ->except(['edit', 'update'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"]);
 Route::resource('waste-types', App\Http\Controllers\WasteTypeController::class)
     ->middleware(['auth', 'verified', 'permission:manage-services']);
@@ -96,7 +105,7 @@ Route::middleware(['auth', 'verified', 'permission:view-reports'])->prefix('repo
     Route::get('/waste-management', [App\Http\Controllers\ReportController::class, 'wasteManagement'])->name('waste-management');
     Route::get('/waste-management/pdf', [App\Http\Controllers\ReportController::class, 'wasteManagementPdf'])->name('waste-management-pdf');
     Route::get('/waste-management/summary', [App\Http\Controllers\ReportController::class, 'wasteManagementSummary'])->name('waste-management-summary');
-    
+
     // API endpoints for cascading dropdowns
     Route::get('/waste-management/branches', [App\Http\Controllers\ReportController::class, 'getBranches'])->name('waste-management-branches');
     Route::get('/waste-management/sites', [App\Http\Controllers\ReportController::class, 'getSites'])->name('waste-management-sites');

@@ -22,6 +22,7 @@ import {
     Moon,
     UserCog,
     Shield,
+    History,
 } from 'lucide-react';
 
 export default function DashboardLayout({ children }) {
@@ -100,6 +101,7 @@ export default function DashboardLayout({ children }) {
             ],
         },
         { name: 'Reports', href: '/reports', icon: FileText, permissions: ['view-reports'] },
+        { name: 'Activity Log', href: '/activity-log', icon: History, permissions: ['view-activity-log'] },
         { name: 'Companies', href: '/companies', icon: Users, permissions: ['manage-clients'] },
         { name: 'Users', href: '/users', icon: UserCog, permissions: ['manage-users'] },
         { name: 'Roles', href: '/roles', icon: Shield, permissions: ['manage-roles'] },

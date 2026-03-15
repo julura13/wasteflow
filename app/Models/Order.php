@@ -7,13 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
-use App\Models\Site;
-use App\Models\Company;
-use App\Models\Branch;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Order extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'tracking_number',
@@ -56,15 +54,15 @@ class Order extends Model
             if (empty($order->tracking_number)) {
                 $order->tracking_number = static::generateTrackingNumber($order->order_type ?? 'waste');
             }
-            
+
             // Auto-populate company_id and branch_id from site if not set
-            if ($order->site_id && (!$order->company_id || !$order->branch_id)) {
+            if ($order->site_id && (! $order->company_id || ! $order->branch_id)) {
                 $site = Site::with('branch')->find($order->site_id);
                 if ($site) {
-                    if (!$order->branch_id && $site->branch_id) {
+                    if (! $order->branch_id && $site->branch_id) {
                         $order->branch_id = $site->branch_id;
                     }
-                    if (!$order->company_id && $site->branch && $site->branch->company_id) {
+                    if (! $order->company_id && $site->branch && $site->branch->company_id) {
                         $order->company_id = $site->branch->company_id;
                     }
                 }
@@ -80,7 +78,18 @@ class Order extends Model
                 );
             }
         });
+
+        static::deleting(function ($order) {
+            // Delete each waste stream via model so OrderWasteStream::deleted fires and
+            // ClientMonthlySummaryService::removeWeight runs (bulk delete would skip model events).
+            foreach ($order->wasteStreams as $stream) {
+                $stream->delete();
+            }
+            // Delete media (documents) and their files from storage.
+            $order->media()->delete();
+        });
     }
+
     public static function generateTrackingNumber(string $orderType = 'waste'): string
     {
         $prefix = $orderType === 'recycling' ? 'RO' : 'WO';
@@ -89,7 +98,7 @@ class Order extends Model
 
         // Use one global sequence for the date code so the numeric part is always in order
         // (no duplicate sequence numbers across RO and WO, e.g. 30001, 30002, 30003...)
-        $maxSeq = (int) static::where('tracking_number', 'like', '%-' . $dateCode . '-%')
+        $maxSeq = (int) static::where('tracking_number', 'like', '%-'.$dateCode.'-%')
             ->selectRaw('MAX(CAST(SUBSTRING(tracking_number, -5) AS UNSIGNED)) as max_seq')
             ->value('max_seq');
 
@@ -141,33 +150,34 @@ class Order extends Model
     public function getTotalRebateAttribute(): float
     {
         $companyRebatePercentage = null;
-        
+
         if ($this->status === 'finalized' && $this->company_rebate_percentage !== null) {
             $companyRebatePercentage = $this->company_rebate_percentage;
         } else {
-            if (!$this->relationLoaded('site')) {
+            if (! $this->relationLoaded('site')) {
                 $this->load('site.branch.company');
             }
-            
+
             $company = $this->site->branch->company ?? null;
-            
+
             if ($company && isset($company->rebate_percentage)) {
                 $companyRebatePercentage = $company->rebate_percentage;
             }
         }
-        
+
         return $this->wasteStreams->sum(function ($stream) use ($companyRebatePercentage) {
             if ($stream->material && $stream->material->rebate_offered && $stream->material->rebate_rate) {
                 $rebateAmount = $stream->nett_weight * $stream->material->rebate_rate;
-                
+
                 if ($companyRebatePercentage !== null && $companyRebatePercentage !== '' && is_numeric($companyRebatePercentage)) {
                     $clientShare = (float) $companyRebatePercentage;
                 } else {
                     $clientShare = $stream->material->client_rebate_share ?? 100;
                 }
-                
+
                 return ($rebateAmount * $clientShare) / 100;
             }
+
             return 0;
         });
     }
@@ -185,7 +195,7 @@ class Order extends Model
 
     public function canBeFinalized(): bool
     {
-        return $this->status === 'documents_required' 
+        return $this->status === 'documents_required'
             && $this->wasteStreams()->count() > 0
             && $this->hasRequiredSupportingDocuments();
     }

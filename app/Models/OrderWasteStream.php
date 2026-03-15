@@ -18,6 +18,7 @@ class OrderWasteStream extends Model
         'gross_weight',
         'tare_weight',
         'nett_weight',
+        'rebate_rate',
         'quantity',
         'notes',
     ];
@@ -28,6 +29,7 @@ class OrderWasteStream extends Model
             'gross_weight' => 'decimal:3',
             'tare_weight' => 'decimal:3',
             'nett_weight' => 'decimal:3',
+            'rebate_rate' => 'decimal:2',
         ];
     }
 
@@ -36,7 +38,7 @@ class OrderWasteStream extends Model
         parent::boot();
 
         static::saving(function ($wasteStream) {
-            if (empty($wasteStream->nett_weight) && !empty($wasteStream->gross_weight)) {
+            if (empty($wasteStream->nett_weight) && ! empty($wasteStream->gross_weight)) {
                 $wasteStream->nett_weight = $wasteStream->gross_weight - ($wasteStream->tare_weight ?? 0);
             }
         });
@@ -51,15 +53,15 @@ class OrderWasteStream extends Model
         // Update summaries after save (create or update)
         static::saved(function ($wasteStream) {
             // Ensure order relationship is loaded
-            if (!$wasteStream->relationLoaded('order')) {
+            if (! $wasteStream->relationLoaded('order')) {
                 $wasteStream->load('order');
             }
 
             $service = app(\App\Services\ClientMonthlySummaryService::class);
-            
+
             // Check if this was a new record (wasRecentlyCreated is set by Laravel)
             $isNewRecord = $wasteStream->wasRecentlyCreated;
-            
+
             // If this was an update, subtract old weight first
             if (isset($wasteStream->old_nett_weight) && isset($wasteStream->old_material_id)) {
                 $service->updateSummaries(
@@ -77,7 +79,7 @@ class OrderWasteStream extends Model
         // Remove weight from summaries when deleted
         static::deleted(function ($wasteStream) {
             // Ensure order relationship is loaded before deletion
-            if (!$wasteStream->relationLoaded('order')) {
+            if (! $wasteStream->relationLoaded('order')) {
                 $wasteStream->load('order');
             }
 
@@ -98,44 +100,47 @@ class OrderWasteStream extends Model
 
     public function getRebateAmountAttribute(): float
     {
-        if (!$this->material || !$this->material->rebate_offered || !$this->material->rebate_rate) {
+        $rate = $this->rebate_rate;
+        if ($rate === null && $this->material && $this->material->rebate_offered && $this->material->rebate_rate !== null) {
+            $rate = $this->material->rebate_rate;
+        }
+        if ($rate === null || (float) $rate <= 0) {
             return 0;
         }
 
-        return $this->nett_weight * $this->material->rebate_rate;
+        return $this->nett_weight * (float) $rate;
     }
 
     public function getClientRebateAmountAttribute(): float
     {
         $rebateAmount = $this->rebate_amount;
-        
+
         $companyRebatePercentage = null;
-        
-        if (!$this->relationLoaded('order')) {
+
+        if (! $this->relationLoaded('order')) {
             $this->load('order');
         }
-        
+
         if ($this->order->status === 'finalized' && $this->order->company_rebate_percentage !== null) {
             $companyRebatePercentage = $this->order->company_rebate_percentage;
         } else {
-            if (!$this->order->relationLoaded('site')) {
+            if (! $this->order->relationLoaded('site')) {
                 $this->order->load('site.branch.company');
             }
-            
+
             $company = $this->order->site->branch->company ?? null;
-            
+
             if ($company && isset($company->rebate_percentage)) {
                 $companyRebatePercentage = $company->rebate_percentage;
             }
         }
-        
+
         if ($companyRebatePercentage !== null && $companyRebatePercentage !== '' && is_numeric($companyRebatePercentage)) {
             $clientShare = (float) $companyRebatePercentage;
         } else {
-            $clientShare = $this->material->client_rebate_share ?? 100;
+            $clientShare = $this->material?->client_rebate_share ?? 100;
         }
-        
+
         return ($rebateAmount * $clientShare) / 100;
     }
 }
-

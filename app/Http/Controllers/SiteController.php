@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Site;
+use App\Models\ActivityLog;
 use App\Models\Branch;
 use App\Models\Company;
+use App\Models\Site;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -18,9 +19,9 @@ class SiteController extends Controller
         $sites = Site::with(['branch.company'])
             ->when($request->search, function ($query, $search) {
                 $query->where('name', 'like', "%{$search}%")
-                      ->orWhereHas('branch.company', function ($q) use ($search) {
-                          $q->where('name', 'like', "%{$search}%");
-                      });
+                    ->orWhereHas('branch.company', function ($q) use ($search) {
+                        $q->where('name', 'like', "%{$search}%");
+                    });
             })
             ->when($request->company_id, function ($query, $companyId) {
                 $query->whereHas('branch', function ($branchQuery) use ($companyId) {
@@ -75,6 +76,8 @@ class SiteController extends Controller
         ]);
 
         $site = Site::create($validated);
+
+        ActivityLog::log('collection_point_created', "Collection point {$site->name} created", $site, ['name' => $site->name, 'branch_id' => $site->branch_id]);
 
         $branch = Branch::find($validated['branch_id']);
         $companyId = $branch ? $branch->company_id : null;
@@ -140,6 +143,8 @@ class SiteController extends Controller
 
         $site->update($validated);
 
+        ActivityLog::log('collection_point_updated', "Collection point {$site->name} updated", $site, ['name' => $site->name]);
+
         $branch = Branch::find($validated['branch_id']);
         $companyId = $branch ? $branch->company_id : null;
 
@@ -164,7 +169,8 @@ class SiteController extends Controller
 
         $branch = $site->branch;
         $companyId = $branch ? $branch->company_id : null;
-        
+
+        ActivityLog::log('collection_point_deleted', "Collection point {$site->name} deleted", $site, ['name' => $site->name]);
         $site->delete();
 
         if (request()->header('X-Inertia') && $companyId) {
