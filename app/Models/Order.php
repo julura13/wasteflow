@@ -95,16 +95,27 @@ class Order extends Model
         $prefix = $orderType === 'recycling' ? 'RO' : 'WO';
         $dateCode = date('ym');
         $sequenceStart = 30001;
+        $sequence = $sequenceStart;
 
         // Use one global sequence for the date code so the numeric part is always in order
         // (no duplicate sequence numbers across RO and WO, e.g. 30001, 30002, 30003...)
-        $maxSeq = (int) static::where('tracking_number', 'like', '%-'.$dateCode.'-%')
+        $maxSeq = (int) static::withTrashed()
+            ->where('tracking_number', 'like', '%-'.$dateCode.'-%')
             ->selectRaw('MAX(CAST(SUBSTRING(tracking_number, -5) AS UNSIGNED)) as max_seq')
             ->value('max_seq');
 
-        $nextSequence = max($sequenceStart, $maxSeq + 1);
+        $sequence = max($sequence, $maxSeq + 1);
 
-        return sprintf('%s-%s-%05d', $prefix, $dateCode, $nextSequence);
+        do {
+            $trackingNumber = sprintf('%s-%s-%05d', $prefix, $dateCode, $sequence);
+            $exists = static::withTrashed()
+                ->where('tracking_number', $trackingNumber)
+                ->exists();
+            if (! $exists) {
+                return $trackingNumber;
+            }
+            $sequence++;
+        } while (true);
     }
 
     public function company(): BelongsTo
