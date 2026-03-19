@@ -2,20 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Branch;
+use App\Models\ClientMonthlyMaterialSummary;
+use App\Models\Company;
+use App\Models\Site;
+use App\Services\CarbonCalculator;
 use App\Services\ChartImageService;
 use App\Services\WasteImpactCalculator;
-use App\Models\Company;
 use App\Traits\ScopeByClientTrait;
-use App\Models\Branch;
-use App\Models\Site;
-use App\Models\OrderWasteStream;
-use App\Models\ClientMonthlyMaterialSummary;
-use Illuminate\Http\Request;
-use Inertia\Inertia;
+use Carbon\Carbon;
 use Dompdf\Dompdf;
 use Dompdf\Options;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Carbon\Carbon;
+use Inertia\Inertia;
 
 class ReportController extends Controller
 {
@@ -25,10 +25,16 @@ class ReportController extends Controller
 
     protected WasteImpactCalculator $wasteImpactCalculator;
 
-    public function __construct(ChartImageService $chartService, WasteImpactCalculator $wasteImpactCalculator)
-    {
+    protected CarbonCalculator $carbonCalculator;
+
+    public function __construct(
+        ChartImageService $chartService,
+        WasteImpactCalculator $wasteImpactCalculator,
+        CarbonCalculator $carbonCalculator
+    ) {
         $this->chartService = $chartService;
         $this->wasteImpactCalculator = $wasteImpactCalculator;
+        $this->carbonCalculator = $carbonCalculator;
     }
 
     /**
@@ -43,7 +49,7 @@ class ReportController extends Controller
         $year = $request->input('year', date('Y'));
 
         // If no filters provided, show the filter form
-        if (!$companyId && !$branchId && !$siteId) {
+        if (! $companyId && ! $branchId && ! $siteId) {
             $companies = $this->scopeCompaniesForUser();
 
             return Inertia::render('Reports/WasteManagement', [
@@ -95,7 +101,7 @@ class ReportController extends Controller
         $reportData = $this->getReportData($company, $branch, $site, (int) $month, (int) $year);
         $chartPaths = $this->generateCharts($reportData);
 
-        $options = new Options();
+        $options = new Options;
         $options->set('isHtml5ParserEnabled', true);
         $options->set('isRemoteEnabled', true);
         $options->set('defaultFont', 'DejaVu Sans');
@@ -110,7 +116,7 @@ class ReportController extends Controller
         $dompdf->setPaper('A4', 'portrait');
         $dompdf->render();
 
-        $filename = 'Waste_Management_Report_' . $reportData['reportDate'] . '.pdf';
+        $filename = 'Waste_Management_Report_'.$reportData['reportDate'].'.pdf';
 
         return response()->streamDownload(function () use ($dompdf) {
             echo $dompdf->output();
@@ -150,6 +156,45 @@ class ReportController extends Controller
                 'month' => $month,
                 'year' => $year,
             ],
+        ]);
+    }
+
+    /**
+     * Display the carbon calculator proofing page (manual weights, same formulas as reports).
+     */
+    public function carbonCalculator()
+    {
+        return Inertia::render('Reports/CarbonCalculator');
+    }
+
+    /**
+     * Run carbon calculation from manually entered weights (same logic as reports).
+     */
+    public function carbonCalculatorCalculate(Request $request)
+    {
+        $validated = $request->validate([
+            'weights' => ['required', 'array'],
+            'weights.paper' => ['nullable', 'numeric', 'min:0'],
+            'weights.plasticPPHD' => ['nullable', 'numeric', 'min:0'],
+            'weights.plasticPS' => ['nullable', 'numeric', 'min:0'],
+            'weights.plasticLDPE' => ['nullable', 'numeric', 'min:0'],
+            'weights.aluminium' => ['nullable', 'numeric', 'min:0'],
+            'weights.steel' => ['nullable', 'numeric', 'min:0'],
+            'weights.glass' => ['nullable', 'numeric', 'min:0'],
+            'weights.foodWaste' => ['nullable', 'numeric', 'min:0'],
+            'weights.gardenWaste' => ['nullable', 'numeric', 'min:0'],
+            'weights.batteries' => ['nullable', 'numeric', 'min:0'],
+            'weights.electronics' => ['nullable', 'numeric', 'min:0'],
+            'weights.tetrapak' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $weights = array_map(fn ($v) => (float) ($v ?? 0), $validated['weights'] ?? []);
+
+        $result = $this->carbonCalculator->calculateMaterialsCO2e($weights);
+
+        return response()->json([
+            'materials' => $result['materials'],
+            'totals' => $result['totals'],
         ]);
     }
 
@@ -223,7 +268,7 @@ class ReportController extends Controller
             $monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
             $monthName = $monthNames[$month - 1] ?? 'XXX';
             $yearShort = substr($year, -2);
-            $reportDate = $monthName . '-' . $yearShort;
+            $reportDate = $monthName.'-'.$yearShort;
         }
 
         // Get material weights from finalized orders
@@ -324,7 +369,7 @@ class ReportController extends Controller
      */
     private function getMaterialSummaries(?Company $company = null, ?Branch $branch = null, ?Site $site = null, ?int $month = null, ?int $year = null)
     {
-        if ((!$company && !$branch && !$site) || !$month || !$year) {
+        if ((! $company && ! $branch && ! $site) || ! $month || ! $year) {
             return collect([]);
         }
 
@@ -339,7 +384,7 @@ class ReportController extends Controller
      */
     private function getCategorySummaries(?Company $company = null, ?Branch $branch = null, ?Site $site = null, ?int $month = null, ?int $year = null)
     {
-        if ((!$company && !$branch && !$site) || !$month || !$year) {
+        if ((! $company && ! $branch && ! $site) || ! $month || ! $year) {
             return collect([]);
         }
 
@@ -352,7 +397,7 @@ class ReportController extends Controller
     /**
      * Build order query filter based on company, branch, and site
      */
-    private function buildOrderFilter($query, ?Company $company = null, ?Branch $branch = null, ?Site $site = null, $startDate, $endDate)
+    private function buildOrderFilter($query, ?Company $company, ?Branch $branch, ?Site $site, $startDate, $endDate)
     {
         $query->where('status', 'finalized')
             ->where(function ($q) use ($startDate, $endDate) {
@@ -382,7 +427,7 @@ class ReportController extends Controller
      */
     private function getGrades(?Company $company = null, ?Branch $branch = null, ?Site $site = null, ?int $month = null, ?int $year = null): array
     {
-        if ((!$company && !$branch && !$site) || !$month || !$year) {
+        if ((! $company && ! $branch && ! $site) || ! $month || ! $year) {
             return [
                 'generalWaste' => 0,
                 'nonCompactableWaste' => 0,
@@ -402,7 +447,7 @@ class ReportController extends Controller
         ];
 
         foreach ($summaries as $summary) {
-            if (!$summary->material || !$summary->material->wasteStream || !$summary->material->grade) {
+            if (! $summary->material || ! $summary->material->wasteStream || ! $summary->material->grade) {
                 continue;
             }
 
@@ -442,7 +487,7 @@ class ReportController extends Controller
      */
     private function getMaterialWeights(?Company $company = null, ?Branch $branch = null, ?Site $site = null, ?int $month = null, ?int $year = null): array
     {
-        if ((!$company && !$branch && !$site) || !$month || !$year) {
+        if ((! $company && ! $branch && ! $site) || ! $month || ! $year) {
             return [];
         }
 
@@ -452,12 +497,12 @@ class ReportController extends Controller
         // Group by grade name and sum total_weight
         $materialWeights = [];
         foreach ($summaries as $summary) {
-            if (!$summary->material || !$summary->material->grade) {
+            if (! $summary->material || ! $summary->material->grade) {
                 continue;
             }
 
             $gradeName = $summary->material->grade->name;
-            if (!isset($materialWeights[$gradeName])) {
+            if (! isset($materialWeights[$gradeName])) {
                 $materialWeights[$gradeName] = 0;
             }
             $materialWeights[$gradeName] += (float) $summary->total_weight;
@@ -499,7 +544,7 @@ class ReportController extends Controller
      */
     private function getLandfillSpaceSaved(?Company $company = null, ?Branch $branch = null, ?Site $site = null, ?int $month = null, ?int $year = null, float $organicsRecovered = 0): array
     {
-        if ((!$company && !$branch && !$site) || !$month || !$year) {
+        if ((! $company && ! $branch && ! $site) || ! $month || ! $year) {
             return [
                 'tetrapak' => ['total' => 0, 'spaceSaved' => 0],
                 'plastics' => ['total' => 0, 'spaceSaved' => 0],
@@ -523,7 +568,7 @@ class ReportController extends Controller
         ];
 
         foreach ($summaries as $summary) {
-            if (!$summary->material || !$summary->material->grade || !$summary->material->wasteStream) {
+            if (! $summary->material || ! $summary->material->grade || ! $summary->material->wasteStream) {
                 continue;
             }
 
@@ -597,7 +642,7 @@ class ReportController extends Controller
      */
     private function getMaterialsCO2e(?Company $company = null, ?Branch $branch = null, ?Site $site = null, ?int $month = null, ?int $year = null, float $organicsRecovered = 0): array
     {
-        if ((!$company && !$branch && !$site) || !$month || !$year) {
+        if ((! $company && ! $branch && ! $site) || ! $month || ! $year) {
             return $this->getEmptyMaterialsCO2e();
         }
 
@@ -621,7 +666,7 @@ class ReportController extends Controller
         ];
 
         foreach ($summaries as $summary) {
-            if (!$summary->material || !$summary->material->grade || !$summary->material->wasteStream) {
+            if (! $summary->material || ! $summary->material->grade || ! $summary->material->wasteStream) {
                 continue;
             }
 
@@ -639,8 +684,8 @@ class ReportController extends Controller
             }
             // Plastic PP / HD: HD grades and PP grades
             elseif ($wasteStreamName === 'Plastic' && (
-                strpos($gradeName, 'HD') === 0 || 
-                $gradeName === 'PP' || 
+                strpos($gradeName, 'HD') === 0 ||
+                $gradeName === 'PP' ||
                 $gradeName === 'PP Caps'
             )) {
                 $weights['plasticPPHD'] += $weight;
@@ -659,9 +704,9 @@ class ReportController extends Controller
             }
             // Steel: waste stream = "Metal" with steel grades
             elseif ($wasteStreamName === 'Metal' && (
-                $gradeName === 'Heavy Steel' || 
-                $gradeName === 'Light Steel' || 
-                $gradeName === 'Light Steel Cans' || 
+                $gradeName === 'Heavy Steel' ||
+                $gradeName === 'Light Steel' ||
+                $gradeName === 'Light Steel Cans' ||
                 $gradeName === 'Light Steel Drums'
             )) {
                 $weights['steel'] += $weight;
@@ -684,139 +729,11 @@ class ReportController extends Controller
             }
         }
 
-        // Emission factors - Scope 3 EF (orange column)
-        $scope3EFFactors = [
-            'paper' => 0.092,
-            'plasticPPHD' => 0.18,
-            'plasticPS' => 0.2,
-            'plasticLDPE' => 0.18,
-            'aluminium' => 0.5,
-            'steel' => 0.25,
-            'glass' => 0.09,
-            'foodWaste' => 0.05,
-            'gardenWaste' => 0.05,
-            'batteries' => 0.1,
-            'electronics' => 0.12,
-            'tetrapak' => 0.1,
-        ];
-
-        // Emission factors - Landfill Avoidance EF (green column)
-        $landfillAvoidanceEFFactors = [
-            'paper' => 0.78,
-            'plasticPPHD' => 0.08,
-            'plasticPS' => 0.05,
-            'plasticLDPE' => 0.06,
-            'aluminium' => 9,
-            'steel' => 2,
-            'glass' => 0.03,
-            'foodWaste' => 0.7,
-            'gardenWaste' => 0.5,
-            'batteries' => 1.5,
-            'electronics' => 1,
-            'tetrapak' => 0.25,
-        ];
-
-        // Other Offsets factors (yellow column)
-        $otherOffsetsFactors = [
-            'paper' => 15,
-            'plasticPPHD' => 20,
-            'plasticPS' => 22,
-            'plasticLDPE' => 25,
-            'aluminium' => 200,
-            'steel' => 45,
-            'glass' => 5,
-            'foodWaste' => 10,
-            'gardenWaste' => 8,
-            'batteries' => 30,
-            'electronics' => 25,
-            'tetrapak' => 5,
-        ];
-
-        // Material name to key mapping
-        $materialKeyMap = [
-            'Paper' => 'paper',
-            'Plastic PP / HD' => 'plasticPPHD',
-            'Plastic PS (Polystyrene)' => 'plasticPS',
-            'Plastic LDPE Film' => 'plasticLDPE',
-            'Aluminium' => 'aluminium',
-            'Steel' => 'steel',
-            'Glass' => 'glass',
-            'Food Waste' => 'foodWaste',
-            'Garden Waste' => 'gardenWaste',
-            'Batteries' => 'batteries',
-            'Electronics (E-waste)' => 'electronics',
-            'Tetrapak' => 'tetrapak',
-        ];
-
-        // Initialize totals
-        $totals = [
-            'scope3EF' => 0,
-            'landfillAvoidanceEF' => 0,
-            'otherOffsets' => 0,
-            'lifecycleSaving' => 0,
-        ];
-
-        // Build materials CO2e array and calculate values
-        // Use raw weights for calculations, round to whole number for display
-        $materials = [];
-        $materialOrder = [
-            'Paper' => 'paper',
-            'Plastic PP / HD' => 'plasticPPHD',
-            'Plastic PS (Polystyrene)' => 'plasticPS',
-            'Plastic LDPE Film' => 'plasticLDPE',
-            'Aluminium' => 'aluminium',
-            'Steel' => 'steel',
-            'Glass' => 'glass',
-            'Food Waste' => 'foodWaste',
-            'Garden Waste' => 'gardenWaste',
-            'Batteries' => 'batteries',
-            'Electronics (E-waste)' => 'electronics',
-            'Tetrapak' => 'tetrapak',
-        ];
-
-        foreach ($materialOrder as $materialName => $key) {
-            // Use raw weight for calculations
-            $rawWeight = $weights[$key];
-            // Round weight to whole number for display (cast to int to ensure no decimals)
-            $displayWeight = (int) round($rawWeight, 0);
-
-            // Calculate using raw weight for accuracy
-            $scope3EF = $rawWeight * $scope3EFFactors[$key];
-            $landfillAvoidanceEF = $rawWeight * $landfillAvoidanceEFFactors[$key];
-            $otherOffsets = $rawWeight * ($otherOffsetsFactors[$key] / 25);
-            $lifecycleSaving = $scope3EF + $landfillAvoidanceEF + $otherOffsets;
-
-            // Round calculated values to 2 decimal places
-            $scope3EF = round($scope3EF, 2);
-            $landfillAvoidanceEF = round($landfillAvoidanceEF, 2);
-            $otherOffsets = round($otherOffsets, 2);
-            $lifecycleSaving = round($lifecycleSaving, 2);
-
-            // Add to totals
-            $totals['scope3EF'] += $scope3EF;
-            $totals['landfillAvoidanceEF'] += $landfillAvoidanceEF;
-            $totals['otherOffsets'] += $otherOffsets;
-            $totals['lifecycleSaving'] += $lifecycleSaving;
-
-            $materials[] = [
-                'material' => $materialName,
-                'weight' => $displayWeight,
-                'scope3EF' => $scope3EF,
-                'landfillAvoidanceEF' => $landfillAvoidanceEF,
-                'otherOffsets' => $otherOffsets,
-                'lifecycleSaving' => $lifecycleSaving,
-            ];
-        }
-
-        // Round totals to 2 decimal places
-        $totals['scope3EF'] = round($totals['scope3EF'], 2);
-        $totals['landfillAvoidanceEF'] = round($totals['landfillAvoidanceEF'], 2);
-        $totals['otherOffsets'] = round($totals['otherOffsets'], 2);
-        $totals['lifecycleSaving'] = round($totals['lifecycleSaving'], 2);
+        $carbonData = $this->carbonCalculator->calculateMaterialsCO2e($weights);
 
         return [
-            'materials' => $materials,
-            'totals' => $totals,
+            'materials' => $carbonData['materials'],
+            'totals' => $carbonData['totals'],
         ];
     }
 
@@ -856,7 +773,7 @@ class ReportController extends Controller
      */
     private function getEnvironmentalImpact(?Company $company = null, ?Branch $branch = null, ?Site $site = null, ?int $month = null, ?int $year = null, float $organicsRecovered = 0): array
     {
-        if ((!$company && !$branch && !$site) || !$month || !$year) {
+        if ((! $company && ! $branch && ! $site) || ! $month || ! $year) {
             return [
                 'treesSaved' => 0,
                 'energySaved' => 0,
@@ -884,6 +801,7 @@ class ReportController extends Controller
         // Convert lifecycleSaving (kg CO₂e) to km
         // Assuming 1 kg CO₂e = ~0.17 km (this may need adjustment based on requirements)
         $lifecycleSaving = $materialsCO2eTotals['lifecycleSaving'] ?? 0;
+
         return round($lifecycleSaving * 0.17, 2);
     }
 
@@ -910,7 +828,7 @@ class ReportController extends Controller
      */
     private function calculateRecyclingBreakdown(?Company $company = null, ?Branch $branch = null, ?Site $site = null, ?int $month = null, ?int $year = null, float $organicsRecovered = 0, float $recyclingRecovered = 0): array
     {
-        if ((!$company && !$branch && !$site) || !$month || !$year || $recyclingRecovered == 0) {
+        if ((! $company && ! $branch && ! $site) || ! $month || ! $year || $recyclingRecovered == 0) {
             return [
                 ['name' => 'Paper', 'value' => 0, 'color' => '#60a5fa'],
                 ['name' => 'Plastics', 'value' => 0, 'color' => '#a3e635'],
@@ -937,7 +855,7 @@ class ReportController extends Controller
         ];
 
         foreach ($summaries as $summary) {
-            if (!$summary->material || !$summary->material->grade || !$summary->material->wasteStream) {
+            if (! $summary->material || ! $summary->material->grade || ! $summary->material->wasteStream) {
                 continue;
             }
 
@@ -963,9 +881,9 @@ class ReportController extends Controller
             }
             // Steel: waste stream = "Metal" with steel grades
             elseif ($wasteStreamName === 'Metal' && (
-                $gradeName === 'Heavy Steel' || 
-                $gradeName === 'Light Steel' || 
-                $gradeName === 'Light Steel Cans' || 
+                $gradeName === 'Heavy Steel' ||
+                $gradeName === 'Light Steel' ||
+                $gradeName === 'Light Steel Cans' ||
                 $gradeName === 'Light Steel Drums'
             )) {
                 $categoryWeights['steel'] += $weight;
@@ -978,7 +896,7 @@ class ReportController extends Controller
 
         // Calculate total for percentage calculation
         $totalWeight = array_sum($categoryWeights);
-        
+
         // Calculate percentages
         $breakdown = [];
         if ($totalWeight > 0) {
@@ -1015,7 +933,7 @@ class ReportController extends Controller
         $chartPaths = [];
 
         // Ensure storage link exists
-        if (!\Storage::disk('public')->exists('charts')) {
+        if (! \Storage::disk('public')->exists('charts')) {
             \Storage::disk('public')->makeDirectory('charts');
         }
 
@@ -1060,8 +978,6 @@ class ReportController extends Controller
         $stackedBarData = [
             'scope3EF' => $materialsCO2eTotals['scope3EF'] ?? 0,
             'landfillAvoidanceEF' => $materialsCO2eTotals['landfillAvoidanceEF'] ?? 0,
-            'otherOffsets' => $materialsCO2eTotals['otherOffsets'] ?? 0,
-            'lifecycleSaving' => $materialsCO2eTotals['lifecycleSaving'] ?? 0,
         ];
 
         $chartPaths['page3_stacked'] = $this->chartService->generateStackedBarChart([
@@ -1078,16 +994,6 @@ class ReportController extends Controller
                     'label' => 'Landfill Avoidance EF (kg CO₂e/kg)³',
                     'data' => [$stackedBarData['landfillAvoidanceEF']],
                     'backgroundColor' => '#9ca3af',
-                ],
-                [
-                    'label' => 'Other Offsets (kg CO₂e)',
-                    'data' => [$stackedBarData['otherOffsets']],
-                    'backgroundColor' => '#3b82f6',
-                ],
-                [
-                    'label' => 'Lifecycle Saving (kg CO₂e)',
-                    'data' => [$stackedBarData['lifecycleSaving']],
-                    'backgroundColor' => '#3b82f6',
                 ],
             ],
             'options' => [
@@ -1107,7 +1013,7 @@ class ReportController extends Controller
         // Page 3: Single Bar Chart
         $carbonEmissionsAvoided = $reportData['carbonEmissionsAvoided'] ?? 0;
         $maxCarbonValue = max($carbonEmissionsAvoided * 1.1, 18000); // Add 10% padding, minimum 18000
-        
+
         $chartPaths['page3_single'] = $this->chartService->generateBarChart([
             'title' => 'Total Carbon Emissions Avoided in KM',
             'labels' => ['1'],

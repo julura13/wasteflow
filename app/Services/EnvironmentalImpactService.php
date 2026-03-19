@@ -2,55 +2,56 @@
 
 namespace App\Services;
 
-use App\Models\OrderWasteStream;
 use Illuminate\Support\Collection;
 
 class EnvironmentalImpactService
 {
     private const TREES_PER_TONNE_PAPER = 17;
+
     private const ENERGY_PER_KG_PAPER = 4.4;
+
     private const WATER_PER_KG_PAPER = 10;
-    
+
     private const CO2E_FACTORS = [
         'paper' => [
-            'scope3' => 0.092,
+            'scope3' => 0.5,
             'landfill_avoidance' => 0.78,
-            'other_offsets' => 0.6,
+            'other_offsets' => 1.3,
         ],
         'plastic_pp_hd' => [
-            'scope3' => 0.18,
+            'scope3' => 2.0,
             'landfill_avoidance' => 0.08,
-            'other_offsets' => 0.8,
+            'other_offsets' => 2.5,
         ],
         'plastic_ps' => [
-            'scope3' => 0.2,
+            'scope3' => 3.0,
             'landfill_avoidance' => 0.05,
-            'other_offsets' => 0.88,
+            'other_offsets' => 3.5,
         ],
         'plastic_ldpe' => [
-            'scope3' => 0.18,
+            'scope3' => 2.0,
             'landfill_avoidance' => 0.06,
-            'other_offsets' => 1.0,
+            'other_offsets' => 2.5,
         ],
         'aluminium' => [
-            'scope3' => 0.5,
+            'scope3' => 10.0,
             'landfill_avoidance' => 9.0,
-            'other_offsets' => 8.0,
+            'other_offsets' => 12.0,
         ],
         'steel' => [
-            'scope3' => 0.25,
+            'scope3' => 2.0,
             'landfill_avoidance' => 2.0,
-            'other_offsets' => 1.8,
+            'other_offsets' => 2.0,
         ],
         'glass' => [
-            'scope3' => 0.09,
+            'scope3' => 0.3,
             'landfill_avoidance' => 0.03,
-            'other_offsets' => 0.2,
+            'other_offsets' => 0.5,
         ],
         'tetrapak' => [
-            'scope3' => 0.1,
+            'scope3' => 0.7,
             'landfill_avoidance' => 0.25,
-            'other_offsets' => 0.2,
+            'other_offsets' => 1.0,
         ],
     ];
 
@@ -63,7 +64,7 @@ class EnvironmentalImpactService
         $carbonBreakdown = [];
 
         foreach ($wasteStreams as $stream) {
-            if (!$stream->material || !$stream->material->wasteStream) {
+            if (! $stream->material || ! $stream->material->wasteStream) {
                 continue;
             }
 
@@ -78,8 +79,8 @@ class EnvironmentalImpactService
             }
 
             $materialType = $this->categorizeMaterial($wasteStreamName, $gradeName);
-            
-            if (!isset($materialBreakdown[$materialType])) {
+
+            if (! isset($materialBreakdown[$materialType])) {
                 $materialBreakdown[$materialType] = 0;
             }
             $materialBreakdown[$materialType] += $weight;
@@ -90,7 +91,7 @@ class EnvironmentalImpactService
 
             $carbonData = $this->calculateCarbonForMaterial($materialType, $weight);
             if ($carbonData) {
-                if (!isset($carbonBreakdown[$materialType])) {
+                if (! isset($carbonBreakdown[$materialType])) {
                     $carbonBreakdown[$materialType] = [
                         'weight' => 0,
                         'scope3' => 0,
@@ -112,8 +113,8 @@ class EnvironmentalImpactService
         $waterSaved = $paperWeight * self::WATER_PER_KG_PAPER;
 
         $totalIncomingWaste = $totalWasteWeight + $totalRecyclingWeight;
-        $divertedFromLandfill = $totalIncomingWaste > 0 
-            ? ($totalRecyclingWeight / $totalIncomingWaste) * 100 
+        $divertedFromLandfill = $totalIncomingWaste > 0
+            ? ($totalRecyclingWeight / $totalIncomingWaste) * 100
             : 0;
 
         $landfillSpaceSaved = $totalRecyclingWeight * 0.003;
@@ -146,7 +147,7 @@ class EnvironmentalImpactService
 
     private function categorizeMaterial(string $wasteStreamName, string $gradeName): string
     {
-        $combined = strtolower($wasteStreamName . ' ' . $gradeName);
+        $combined = strtolower($wasteStreamName.' '.$gradeName);
 
         if (str_contains($combined, 'paper') || str_contains($combined, 'hl') || str_contains($combined, 'tissue')) {
             return 'paper';
@@ -178,16 +179,16 @@ class EnvironmentalImpactService
 
     private function calculateCarbonForMaterial(string $materialType, float $weight): ?array
     {
-        if (!isset(self::CO2E_FACTORS[$materialType])) {
+        if (! isset(self::CO2E_FACTORS[$materialType])) {
             return null;
         }
 
         $factors = self::CO2E_FACTORS[$materialType];
-        
+
         $scope3 = $weight * $factors['scope3'];
         $landfillAvoidance = $weight * $factors['landfill_avoidance'];
         $otherOffsets = $weight * $factors['other_offsets'];
-        $lifecycleSaving = $scope3 + $landfillAvoidance + $otherOffsets;
+        $lifecycleSaving = $scope3 + $landfillAvoidance;
 
         return [
             'scope3' => $scope3,
@@ -199,7 +200,7 @@ class EnvironmentalImpactService
 
     public function getMaterialDisplayName(string $materialType): string
     {
-        return match($materialType) {
+        return match ($materialType) {
             'paper' => 'Paper',
             'plastic_pp_hd' => 'Plastic PP / HD',
             'plastic_ps' => 'Plastic PS (Polystyrene)',
@@ -212,4 +213,3 @@ class EnvironmentalImpactService
         };
     }
 }
-

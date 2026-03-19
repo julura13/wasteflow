@@ -105,6 +105,8 @@ Route::middleware(['auth', 'verified', 'permission:view-reports'])->prefix('repo
     Route::get('/waste-management', [App\Http\Controllers\ReportController::class, 'wasteManagement'])->name('waste-management');
     Route::get('/waste-management/pdf', [App\Http\Controllers\ReportController::class, 'wasteManagementPdf'])->name('waste-management-pdf');
     Route::get('/waste-management/summary', [App\Http\Controllers\ReportController::class, 'wasteManagementSummary'])->name('waste-management-summary');
+    Route::get('/carbon-calculator', [App\Http\Controllers\ReportController::class, 'carbonCalculator'])->name('carbon-calculator');
+    Route::post('/carbon-calculator/calculate', [App\Http\Controllers\ReportController::class, 'carbonCalculatorCalculate'])->name('carbon-calculator.calculate');
 
     // API endpoints for cascading dropdowns
     Route::get('/waste-management/branches', [App\Http\Controllers\ReportController::class, 'getBranches'])->name('waste-management-branches');

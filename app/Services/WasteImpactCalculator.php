@@ -39,18 +39,18 @@ class WasteImpactCalculator
 
     /** Scope 3 emission factors (kg CO₂e per kg) for lifecycle carbon calculation */
     private const SCOPE3_EF_FACTORS = [
-        'paper' => 0.092,
-        'plasticPPHD' => 0.18,
-        'plasticPS' => 0.2,
-        'plasticLDPE' => 0.18,
-        'aluminium' => 0.5,
-        'steel' => 0.25,
-        'glass' => 0.09,
-        'foodWaste' => 0.05,
-        'gardenWaste' => 0.05,
-        'batteries' => 0.1,
-        'electronics' => 0.12,
-        'tetrapak' => 0.1,
+        'paper' => 0.5,
+        'plasticPPHD' => 2.0,
+        'plasticPS' => 3.0,
+        'plasticLDPE' => 2.0,
+        'aluminium' => 10.0,
+        'steel' => 2.0,
+        'glass' => 0.3,
+        'foodWaste' => 0.2,
+        'gardenWaste' => 0.15,
+        'batteries' => 4.0,
+        'electronics' => 6.0,
+        'tetrapak' => 0.7,
     ];
 
     /** Landfill avoidance emission factors (kg CO₂e per kg) */
@@ -107,8 +107,8 @@ class WasteImpactCalculator
      * Build category weights from material summaries (waste stream + grade mapping).
      * Use organicsRecoveredOverride when organics come from elsewhere (e.g. grades table).
      *
-     * @param iterable<object> $summaries Each item must have: total_weight, material.wasteStream.name, material.grade.name
-     * @param float $organicsRecoveredOverride Optional override for organics weight (e.g. from grades)
+     * @param  iterable<object>  $summaries  Each item must have: total_weight, material.wasteStream.name, material.grade.name
+     * @param  float  $organicsRecoveredOverride  Optional override for organics weight (e.g. from grades)
      * @return array<string, float>
      */
     public function buildCategoryWeightsFromSummaries(iterable $summaries, float $organicsRecoveredOverride = 0): array
@@ -120,7 +120,7 @@ class WasteImpactCalculator
         }
 
         foreach ($summaries as $summary) {
-            if (!$summary->material || !$summary->material->grade || !$summary->material->wasteStream) {
+            if (! $summary->material || ! $summary->material->grade || ! $summary->material->wasteStream) {
                 continue;
             }
 
@@ -152,7 +152,7 @@ class WasteImpactCalculator
      * Calculate environmental impact from category weights.
      * Returns trees saved, energy saved (same unit as factors), water saved (kL), and lifecycle carbon saved (kg CO₂e).
      *
-     * @param array<string, float> $categoryWeights Keys: paper, plastics, aluminium, organics, tetrapak, steel, glass
+     * @param  array<string, float>  $categoryWeights  Keys: paper, plastics, aluminium, organics, tetrapak, steel, glass
      * @return array{treesSaved: float, energySaved: float, waterSaved: float, co2Saved: float}
      */
     public function calculateImpactFromCategoryWeights(array $categoryWeights): array
@@ -185,9 +185,12 @@ class WasteImpactCalculator
     }
 
     /**
-     * Lifecycle carbon saved (kg CO₂e): scope3EF + landfillAvoidanceEF + (otherOffsets/25) per material.
+     * Lifecycle carbon saved (kg CO₂e): scope3EF + landfillAvoidanceEF per material.
      *
-     * @param array<string, float> $categoryWeights
+     * Spreadsheet reference column (recycling substitution factor) is not included
+     * in lifecycle totals.
+     *
+     * @param  array<string, float>  $categoryWeights
      */
     public function calculateLifecycleCarbonSaved(array $categoryWeights): float
     {
@@ -210,8 +213,7 @@ class WasteImpactCalculator
         foreach ($weights as $key => $weight) {
             $scope3EF = $weight * (self::SCOPE3_EF_FACTORS[$key] ?? 0);
             $landfillAvoidanceEF = $weight * (self::LANDFILL_AVOIDANCE_EF_FACTORS[$key] ?? 0);
-            $otherOffsets = $weight * ((self::OTHER_OFFSETS_FACTORS[$key] ?? 0) / 25);
-            $totalCO2 += $scope3EF + $landfillAvoidanceEF + $otherOffsets;
+            $totalCO2 += $scope3EF + $landfillAvoidanceEF;
         }
 
         return round($totalCO2, 2);

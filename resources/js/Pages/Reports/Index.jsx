@@ -1,6 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
-import { FileText, TrendingUp, BarChart3, Leaf } from 'lucide-react';
+import { FileText, TrendingUp, BarChart3, Leaf, Calculator } from 'lucide-react';
 
 export default function Index() {
     const reports = [
@@ -11,6 +11,14 @@ export default function Index() {
             icon: Leaf,
             color: 'bg-emerald-600',
             details: 'Shows: Trees saved, energy saved, water saved, recycling breakdown, and landfill diversion rate',
+        },
+        {
+            title: 'Carbon Calculator',
+            description: 'Enter weights per material to see the same carbon calculations as the report—no orders or data required. Ideal for proofing and customer demos.',
+            href: '/reports/carbon-calculator',
+            icon: Calculator,
+            color: 'bg-teal-600',
+            details: 'Manual weight inputs; uses report formulas for Scope 3, landfill avoidance, and lifecycle saving',
         },
         {
             title: 'Monthly Rebate Tracker',
