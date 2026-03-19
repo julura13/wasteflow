@@ -241,7 +241,7 @@
             </div>
             <div class="env-icon">
                 <div class="env-icon-circle">💧</div>
-                <div class="env-icon-label">Litres of Water Saved</div>
+                <div class="env-icon-label">Water Saved (kL)</div>
                 <div class="env-icon-value">{{ number_format($reportData['environmentalImpact']['waterSaved'], 2) }}</div>
             </div>
         </div>
@@ -329,7 +329,7 @@
                                 <td style="text-align: right; font-weight: bold;">{{ $reportData['summary']['landfillSpaceSaved'] }}</td>
                             </tr>
                             <tr>
-                                <td style="font-weight: 600;">Lifecycle Saving (kg CO<sub>2</sub>e)</td>
+                                <td style="font-weight: 600;">Total Lifecycle Carbon Avoided (kg CO<sub>2</sub>e)</td>
                                 <td style="text-align: right; font-weight: bold;">{{ $reportData['summary']['lifecycleSaving'] }}</td>
                             </tr>
                         </tbody>
@@ -370,11 +370,10 @@
                 <thead>
                     <tr>
                         <th>Material</th>
-                        <th style="text-align: right;">Weight</th>
-                        <th style="text-align: right;">Scope 3 EF (kg CO₂e/kg)²</th>
-                        <th style="text-align: right;">Landfill Avoidance EF (kg CO₂e/kg)³</th>
-                        <th style="text-align: right;">Other Offsets (kg CO₂e)</th>
-                        <th style="text-align: right;">Lifecycle Saving (kg CO₂e)</th>
+                        <th style="text-align: right;">Weight (kg)</th>
+                        <th style="text-align: right;">Upstream (Scope 3) Emissions Avoided (kg CO₂e)</th>
+                        <th style="text-align: right;">Landfill Emissions Avoided (kg CO₂e)</th>
+                        <th style="text-align: right;">Total Lifecycle Carbon Avoided (kg CO₂e)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -384,7 +383,6 @@
                             <td style="text-align: right;">{{ number_format($material['weight'], 0) }}</td>
                             <td style="text-align: right;">{{ number_format($material['scope3EF'], 2) }}</td>
                             <td style="text-align: right;">{{ number_format($material['landfillAvoidanceEF'], 2) }}</td>
-                            <td style="text-align: right;">{{ number_format($material['otherOffsets'], 2) }}</td>
                             <td style="text-align: right; font-weight: 600;">{{ number_format($material['lifecycleSaving'], 2) }}</td>
                         </tr>
                     @endforeach
@@ -392,7 +390,6 @@
                         <td colspan="2" style="font-weight: bold;">TOTALS</td>
                         <td style="text-align: right; font-weight: bold;">{{ number_format($reportData['materialsCO2eTotals']['scope3EF'], 2) }}</td>
                         <td style="text-align: right; font-weight: bold;">{{ number_format($reportData['materialsCO2eTotals']['landfillAvoidanceEF'], 2) }}</td>
-                        <td style="text-align: right; font-weight: bold;">{{ number_format($reportData['materialsCO2eTotals']['otherOffsets'], 2) }}</td>
                         <td style="text-align: right; font-weight: bold;">{{ number_format($reportData['materialsCO2eTotals']['lifecycleSaving'], 2) }}</td>
                     </tr>
                 </tbody>
@@ -402,24 +399,19 @@
                 <h3 style="text-align: center; font-weight: bold; font-size: 12px; margin-bottom: 10px; padding-top: 10px;">Summary</h3>
                 <div style="padding: 0 15px 15px; font-size: 10px;">
                     <p style="margin-bottom: 8px;">
-                        <strong>Scope 3 CO₂e (kg)</strong>
+                        <strong>Total Upstream (Scope 3) Avoided (kg CO₂e)</strong>
                         <strong style="color: #dc2626;">{{ number_format($reportData['materialsCO2eTotals']['scope3EF'], 2) }}</strong>
-                        Indirect Carbon Emissions from Sending Waste Generated for Recyclable
+                        Indirect carbon emissions avoided from sending waste for recycling (spreadsheet column D total).
                     </p>
                     <p style="margin-bottom: 8px;">
-                        <strong>Landfill Avoidance CO₂e (kg)</strong>
+                        <strong>Total Landfill Emissions Avoided (kg CO₂e)</strong>
                         <strong style="color: #dc2626;">{{ number_format($reportData['materialsCO2eTotals']['landfillAvoidanceEF'], 2) }}</strong>
-                        Carbon Emission Savings Due to Landfill Avoidance
+                        Carbon emission savings due to landfill avoidance (spreadsheet column F total).
                     </p>
                     <p style="margin-bottom: 8px;">
-                        <strong>Other Offsets CO₂e (kg)</strong>
-                        <strong style="color: #dc2626;">{{ number_format($reportData['materialsCO2eTotals']['otherOffsets'], 2) }}</strong>
-                        Reference only (not included in Lifecycle Saving).
-                    </p>
-                    <p style="margin-bottom: 8px;">
-                        <strong>Lifecycle Saving CO₂e (kg)</strong>
+                        <strong>Total Lifecycle Carbon Avoided (kg CO₂e)</strong>
                         <strong style="color: #dc2626;">{{ number_format($reportData['materialsCO2eTotals']['lifecycleSaving'], 2) }}</strong>
-                        Overall carbon benefit from managing all materials sustainably.
+                        Sum of upstream and landfill avoided (spreadsheet column H total).
                     </p>
                 </div>
             </div>

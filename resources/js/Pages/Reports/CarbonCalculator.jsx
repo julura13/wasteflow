@@ -21,14 +21,28 @@ const MATERIALS = [
 
 const initialWeights = Object.fromEntries(MATERIALS.map((m) => [m.key, '']));
 
+function formatSummaryKgCo2e(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) {
+        return '—';
+    }
+    if (Number.isInteger(n)) {
+        return n.toLocaleString('en-US');
+    }
+    return n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+
 const COLUMN_TOOLTIPS = {
-    material: 'Material category used to select the spreadsheet emission factors for this calculator.',
-    weight: 'Input weight in kg. Used in: Weight × (Scope 3 factor) and Weight × (Landfill avoidance factor).',
-    scope3: 'Scope 3 EF = Weight × Scope 3 factor (kg CO₂e per kg), taken from docs/Carbon Calculator.xlsx column C.',
-    landfill: 'Landfill Avoidance EF = Weight × Landfill avoidance factor (kg CO₂e per kg), taken from docs/Carbon Calculator.xlsx column E.',
-    otherOffsets:
-        'Other Offsets = Weight × Recycling substitution factor (reference only). This is NOT included in Lifecycle Saving.',
-    lifecycle: 'Lifecycle Saving = Scope 3 EF + Landfill Avoidance EF (Other Offsets excluded), matching the spreadsheet formula.',
+    material: 'Material category used to select the emission factors from docs/Carbon Calculator.xlsx.',
+    weight: 'Weight in kg (spreadsheet column B).',
+    scope3:
+        'Upstream (Scope 3) Emissions Avoided = weight × upstream factor (column C). Same value as spreadsheet column D.',
+    landfill:
+        'Landfill Emissions Avoided = weight × landfill avoidance factor (column E). Same value as spreadsheet column F.',
+    substitution:
+        'Recycling substitution factor (column G): fixed kg CO₂e per kg reference value from the workbook. Not multiplied by weight in the sheet and not included in the total (column H).',
+    lifecycle:
+        'Total Lifecycle Carbon Avoided = column D + column F (spreadsheet column H). Column G is reference only.',
 };
 
 export default function CarbonCalculator() {
@@ -176,7 +190,9 @@ export default function CarbonCalculator() {
                                                 className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
                                             >
                                                 <div className="flex items-center justify-end gap-1">
-                                                    <span>Scope 3 EF (kg CO₂e)</span>
+                                                    <span className="text-right leading-tight">
+                                                        Upstream (Scope 3) Emissions Avoided (kg CO₂e)
+                                                    </span>
                                                     <div className="relative inline-flex items-center">
                                                         <button
                                                             type="button"
@@ -209,7 +225,9 @@ export default function CarbonCalculator() {
                                                 className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
                                             >
                                                 <div className="flex items-center justify-end gap-1">
-                                                    <span>Landfill Avoidance (kg CO₂e)</span>
+                                                    <span className="text-right leading-tight">
+                                                        Landfill Emissions Avoided (kg CO₂e)
+                                                    </span>
                                                     <div className="relative inline-flex items-center">
                                                         <button
                                                             type="button"
@@ -241,21 +259,24 @@ export default function CarbonCalculator() {
                                                 scope="col"
                                                 className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
                                             >
-                                                <div className="flex items-center justify-end gap-1">
-                                                    <span>Other Offsets (ref.)</span>
-                                                    <div className="relative inline-flex items-center">
+                                                <div className="flex items-center justify-end gap-1 max-w-[14rem] ml-auto">
+                                                    <span className="text-right leading-tight normal-case">
+                                                        Recycling Substitution Factor (Reference Only – Not Included in
+                                                        Total)
+                                                    </span>
+                                                    <div className="relative inline-flex shrink-0 items-center">
                                                         <button
                                                             type="button"
                                                             className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] leading-none focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                                            aria-label="Other offsets tooltip"
-                                                            onClick={() => setActiveHeaderTooltip('otherOffsets')}
+                                                            aria-label="Recycling substitution tooltip"
+                                                            onClick={() => setActiveHeaderTooltip('substitution')}
                                                         >
                                                             ?
                                                         </button>
-                                                        {activeHeaderTooltip === 'otherOffsets' && (
+                                                        {activeHeaderTooltip === 'substitution' && (
                                                             <div className="absolute z-20 right-0 top-full mt-1 w-64 bg-gray-900 text-white text-[11px] leading-snug rounded-md px-2 py-2 shadow">
                                                                 <div className="flex items-start justify-between gap-2">
-                                                                    <p className="flex-1">{COLUMN_TOOLTIPS.otherOffsets}</p>
+                                                                    <p className="flex-1">{COLUMN_TOOLTIPS.substitution}</p>
                                                                     <button
                                                                         type="button"
                                                                         className="inline-flex items-center justify-center w-5 h-5 rounded bg-gray-700/60 hover:bg-gray-700 text-white/90"
@@ -275,7 +296,9 @@ export default function CarbonCalculator() {
                                                 className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
                                             >
                                                 <div className="flex items-center justify-end gap-1">
-                                                    <span>Lifecycle Saving (kg CO₂e)</span>
+                                                    <span className="text-right leading-tight">
+                                                        Total Lifecycle Carbon Avoided (kg CO₂e)
+                                                    </span>
                                                     <div className="relative inline-flex items-center">
                                                         <button
                                                             type="button"
@@ -332,8 +355,16 @@ export default function CarbonCalculator() {
                                                     <td className="px-4 py-2 text-sm text-right text-gray-900 dark:text-gray-100">
                                                         {row ? row.landfillAvoidanceEF.toFixed(2) : '—'}
                                                     </td>
-                                                    <td className="px-4 py-2 text-sm text-right text-gray-500 dark:text-gray-400">
-                                                        {row ? row.otherOffsets.toFixed(2) : '—'}
+                                                    <td className="px-4 py-2 text-sm text-right text-red-600 dark:text-red-400 tabular-nums">
+                                                        {row
+                                                            ? Number(row.recyclingSubstitutionFactor).toLocaleString(
+                                                                  'en-US',
+                                                                  {
+                                                                      minimumFractionDigits: 0,
+                                                                      maximumFractionDigits: 2,
+                                                                  },
+                                                              )
+                                                            : '—'}
                                                     </td>
                                                     <td className="px-4 py-2 text-sm text-right font-semibold text-gray-900 dark:text-gray-100">
                                                         {row ? row.lifecycleSaving.toFixed(2) : '—'}
@@ -351,8 +382,8 @@ export default function CarbonCalculator() {
                                             <td className="px-4 py-2 text-sm text-right text-gray-900 dark:text-gray-100">
                                                 {result ? result.totals.landfillAvoidanceEF.toFixed(2) : '—'}
                                             </td>
-                                            <td className="px-4 py-2 text-sm text-right text-gray-500 dark:text-gray-400">
-                                                {result ? result.totals.otherOffsets.toFixed(2) : '—'}
+                                            <td className="px-4 py-2 text-sm text-right font-normal text-gray-400 dark:text-gray-500">
+                                                —
                                             </td>
                                             <td className="px-4 py-2 text-sm text-right text-gray-900 dark:text-gray-100">
                                                 {result ? result.totals.lifecycleSaving.toFixed(2) : '—'}
@@ -387,37 +418,48 @@ export default function CarbonCalculator() {
 
                 {result && (
                     <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden mb-4">
-                        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                                Summary (same formulas as report)
-                            </h2>
-                        </div>
-                        <div className="px-4 py-4 border-t border-gray-200 dark:border-gray-700 space-y-2 text-sm">
-                            <p className="text-gray-700 dark:text-gray-300">
-                                <strong>Scope 3 CO₂e (kg):</strong>{' '}
-                                <span className="text-red-600 dark:text-red-400 font-semibold">
-                                    {result.totals.scope3EF.toFixed(2)}
-                                </span>{' '}
-                                — Indirect carbon from sending waste for recycling
-                            </p>
-                            <p className="text-gray-700 dark:text-gray-300">
-                                <strong>Landfill Avoidance CO₂e (kg):</strong>{' '}
-                                <span className="text-red-600 dark:text-red-400 font-semibold">
-                                    {result.totals.landfillAvoidanceEF.toFixed(2)}
-                                </span>{' '}
-                                — Savings from avoiding landfill
-                            </p>
-                            <p className="text-gray-600 dark:text-gray-400">
-                                <strong>Other Offsets CO₂e (kg):</strong>{' '}
-                                {result.totals.otherOffsets.toFixed(2)} — Reference only (not included
-                                in Lifecycle Saving)
-                            </p>
-                            <p className="text-gray-700 dark:text-gray-300">
-                                <strong>Lifecycle Saving CO₂e (kg):</strong>{' '}
-                                <span className="text-red-600 dark:text-red-400 font-semibold">
-                                    {result.totals.lifecycleSaving.toFixed(2)}
-                                </span>{' '}
-                                — Total carbon benefit (Scope 3 + Landfill Avoidance)
+                        <div className="px-4 py-6 sm:px-6">
+                            <table className="w-full border-collapse text-sm text-gray-900 dark:text-gray-100">
+                                <tbody>
+                                    <tr className="border-b border-gray-200 dark:border-gray-600">
+                                        <td className="py-2 pr-4 align-middle">
+                                            Total Upstream (Scope 3) Avoided
+                                        </td>
+                                        <td className="py-2 px-2 text-right align-middle tabular-nums font-medium">
+                                            {formatSummaryKgCo2e(result.totals.scope3EF)}
+                                        </td>
+                                        <td className="py-2 pl-2 text-right align-middle whitespace-nowrap">
+                                            kg CO<sub className="text-[0.85em]">2</sub>e
+                                        </td>
+                                    </tr>
+                                    <tr className="border-b border-gray-200 dark:border-gray-600">
+                                        <td className="py-2 pr-4 align-middle">
+                                            Total Landfill Emissions Avoided
+                                        </td>
+                                        <td className="py-2 px-2 text-right align-middle tabular-nums font-medium">
+                                            {formatSummaryKgCo2e(result.totals.landfillAvoidanceEF)}
+                                        </td>
+                                        <td className="py-2 pl-2 text-right align-middle whitespace-nowrap">
+                                            kg CO<sub className="text-[0.85em]">2</sub>e
+                                        </td>
+                                    </tr>
+                                    <tr className="font-bold">
+                                        <td className="py-2 pr-4 align-middle">Total Lifecycle Carbon Avoided</td>
+                                        <td className="py-2 px-2 text-right align-middle tabular-nums">
+                                            {formatSummaryKgCo2e(result.totals.lifecycleSaving)}
+                                        </td>
+                                        <td className="py-2 pl-2 text-right align-middle whitespace-nowrap">
+                                            kg CO<sub className="text-[0.85em]">2</sub>e
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <p className="mx-auto mt-6 max-w-4xl text-center text-sm font-bold leading-relaxed text-gray-900 dark:text-gray-100">
+                                Carbon emission factors and avoided emission assumptions are based on internationally
+                                recognised standards, including DEFRA (UK Government), the EPA WARM model, and
+                                peer-reviewed global life cycle assessment (LCA) datasets (e.g. Ecoinvent).
+                                Calculations are aligned with best practice under the GHG Protocol, ensuring
+                                consistency, transparency, and the avoidance of double counting.
                             </p>
                         </div>
                     </div>

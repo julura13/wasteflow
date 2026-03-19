@@ -7,21 +7,21 @@
 - ✅ **organicsRecovered**: From grades calculation (Organic Waste stream, Organics Recovered grade)
 - ✅ **totalIncomingWaste**: generalWaste + organicsRecovered + recyclingRecovered
 - ✅ **divertedFromLandfill**: (recyclingRecovered + organicsRecovered) / totalIncomingWaste * 100
-- ✅ **landfillSpaceSaved**: Sum of all category calculations (tetrapak/200 + plastics/150 + paper/300 + glass/450 + metal/500 + foodWaste/350)
+- ✅ **landfillSpaceSaved**: Sum of rounded per-row airspace: weight (kg) ÷ density (kg/m³) per category (`LandfillSpaceCalculator`), matching `docs/Landfill space saved m3.xlsx`. Densities: Paper 100, Plastics 65, Aluminium 1300, Steel 300, Glass 400, Tetrapak 150, Organics 500.
 - ✅ **lifecycleSaving**: From materialsCO2eTotals
 
-### Materials CO2e Section
-- ✅ **Weights**: Calculated from actual waste stream data
-- ✅ **scope3EF**: weight × factor (orange column factors)
-- ✅ **landfillAvoidanceEF**: weight × factor (green column factors)
-- ✅ **otherOffsets**: weight × (otherOffsets value / 25)
-- ✅ **lifecycleSaving**: scope3EF + landfillAvoidanceEF + otherOffsets
-- ✅ **Totals**: All totals calculated and available in `materialsCO2eTotals`
+### Materials CO2e Section (docs/Carbon Calculator.xlsx)
+- ✅ **Weights**: Calculated from actual waste stream data (column B)
+- ✅ **scope3EF**: Upstream (Scope 3) Emissions Avoided — weight × upstream factor (column D)
+- ✅ **landfillAvoidanceEF**: Landfill Emissions Avoided — weight × landfill factor (column F)
+- ✅ **recyclingSubstitutionFactor** (carbon calculator API only): Fixed reference factor per material (column G); not summed in workbook row 14 and not in `materialsCO2eTotals`
+- ✅ **lifecycleSaving**: Total Lifecycle Carbon Avoided — column D + column F (column H)
+- ✅ **Totals**: `scope3EF`, `landfillAvoidanceEF`, `lifecycleSaving` in `materialsCO2eTotals`
 
 ### Environmental Impact Section
 - ✅ **treesSaved**: totalPaperWeight × (20 / 1000)
 - ✅ **energySaved**: Sum of (weight × energy factor) for each category
-- ✅ **waterSaved**: Sum of (weight × water factor) for each category, converted to kL
+- ✅ **waterSaved**: Sum of (weight kg × water factor L/kg) for each category (`WaterCalculator`, docs/Water Calculator.xlsx), then ÷ 1000 → **kL**. Factors: Paper 1800, Plastics 80, Aluminium 1300, Steel 50, Glass 25, Tetrapak 400, Organics 45. Report label: **Water Saved (kL)** (value was always kL; not litres).
 
 ### Landfill Space Saved Breakdown
 - ✅ All category calculations with totals and space saved per category
@@ -33,10 +33,8 @@
 
 ## ⚠️ Values That May Need Adjustment
 
-### 1. carbonEmissionsAvoided
-**Current Implementation**: `lifecycleSaving * 0.17` (converts kg CO₂e to km)
-**Location**: `calculateCarbonEmissionsAvoided()` method
-**Action Required**: Confirm the conversion factor (0.17) is correct for your requirements
+### 1. carbonEmissionsAvoided (transport equivalent km)
+**Implementation**: `lifecycleSaving (kg CO₂e) ÷ 0.192` — matches docs/Dashboard & Reports - Metrics (1).docx (transport equivalent). Same basis as `LifecycleCarbonEquivalency`.
 
 ### 2. cumulativeImpact
 **Current Implementation**: Returns actual values (not percentages)
@@ -93,7 +91,7 @@
 3. **Material Categorization**
    - Paper excludes Tetrapak (handled correctly)
    - Plastics includes all Plastic waste stream materials
-   - Metals categorized by waste stream = "Metal" with steel grades
+   - Landfill space: Aluminium stream → aluminium density; Metal stream with steel grades → steel density (split per spreadsheet)
    - Organics uses organicsRecovered from grades
 
 ## 📊 Data Structure
@@ -125,19 +123,19 @@ The report data structure includes:
         'lifecycleSaving' => float,
     ],
     'landfillSpaceSavedBreakdown' => [
-        'tetrapak' => ['total' => float, 'spaceSaved' => float],
-        'plastics' => ['total' => float, 'spaceSaved' => float],
-        'paper' => ['total' => float, 'spaceSaved' => float],
-        'glass' => ['total' => float, 'spaceSaved' => float],
-        'metal' => ['total' => float, 'spaceSaved' => float],
-        'foodWaste' => ['total' => float, 'spaceSaved' => float],
+        'paper' => ['total' => float, 'densityKgPerM3' => float, 'spaceSaved' => float],
+        'plastics' => ['total' => float, 'densityKgPerM3' => float, 'spaceSaved' => float],
+        'aluminium' => ['total' => float, 'densityKgPerM3' => float, 'spaceSaved' => float],
+        'steel' => ['total' => float, 'densityKgPerM3' => float, 'spaceSaved' => float],
+        'glass' => ['total' => float, 'densityKgPerM3' => float, 'spaceSaved' => float],
+        'tetrapak' => ['total' => float, 'densityKgPerM3' => float, 'spaceSaved' => float],
+        'organics' => ['total' => float, 'densityKgPerM3' => float, 'spaceSaved' => float],
         'total' => float,
     ],
     'materialsCO2e' => array of material objects,
     'materialsCO2eTotals' => [
         'scope3EF' => float,
         'landfillAvoidanceEF' => float,
-        'otherOffsets' => float,
         'lifecycleSaving' => float,
     ],
     'carbonEmissionsAvoided' => float,

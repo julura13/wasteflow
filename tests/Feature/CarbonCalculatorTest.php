@@ -47,15 +47,16 @@ it('returns carbon calculation from posted weights', function () {
     $response->assertOk();
     $response->assertJsonStructure([
         'materials' => [
-            ['material', 'weight', 'scope3EF', 'landfillAvoidanceEF', 'otherOffsets', 'lifecycleSaving'],
+            ['material', 'weight', 'scope3EF', 'landfillAvoidanceEF', 'recyclingSubstitutionFactor', 'lifecycleSaving'],
         ],
-        'totals' => ['scope3EF', 'landfillAvoidanceEF', 'otherOffsets', 'lifecycleSaving'],
+        'totals' => ['scope3EF', 'landfillAvoidanceEF', 'lifecycleSaving'],
     ]);
-    // Paper 85 kg: scope3 = 85*0.5 = 42.5, landfill = 85*0.78 = 66.3, lifecycle = 108.8
+    // Paper 85 kg: scope3 = 85*0.5 = 42.5, landfill = 85*0.78 = 66.3, lifecycle = 108.8; G = fixed 1.3
     expect($response->json('totals.lifecycleSaving'))->toBeGreaterThan(0);
     expect($response->json('totals.scope3EF'))->toBe(42.5);
     expect($response->json('totals.landfillAvoidanceEF'))->toBe(66.3);
     expect($response->json('totals.lifecycleSaving'))->toBe(108.8);
+    expect($response->json('materials.0.recyclingSubstitutionFactor'))->toBe(1.3);
 });
 
 it('rejects carbon calculation when weights are missing', function () {

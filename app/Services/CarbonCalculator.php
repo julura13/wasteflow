@@ -5,10 +5,8 @@ namespace App\Services;
 class CarbonCalculator
 {
     /**
-     * Spreadsheet (docs/Carbon Calculator.xlsx) upstream avoided emission factor
-     * (column C): kg CO2e per kg.
-     *
-     * Keys match ReportController material weights.
+     * Spreadsheet (docs/Carbon Calculator.xlsx) column C — upstream (Scope 3) avoided emission factor
+     * (kg CO₂e per kg).
      *
      * @var array<string, float>
      */
@@ -28,8 +26,7 @@ class CarbonCalculator
     ];
 
     /**
-     * Spreadsheet (docs/Carbon Calculator.xlsx) landfill avoidance emission factor
-     * (column E): kg CO2e per kg.
+     * Spreadsheet (docs/Carbon Calculator.xlsx) column E — landfill avoidance factor (kg CO₂e per kg).
      *
      * @var array<string, float>
      */
@@ -49,12 +46,12 @@ class CarbonCalculator
     ];
 
     /**
-     * Spreadsheet (docs/Carbon Calculator.xlsx) recycling substitution factor
-     * (column G). Reference only, not included in lifecycle total.
+     * Spreadsheet (docs/Carbon Calculator.xlsx) column G — fixed recycling substitution factors
+     * (kg CO₂e per kg), reference only; not multiplied into column H.
      *
      * @var array<string, float>
      */
-    private const SUBSTITUTION_FACTOR_EF_FACTORS = [
+    private const RECYCLING_SUBSTITUTION_FACTORS = [
         'paper' => 1.3,
         'plasticPPHD' => 2.5,
         'plasticPS' => 3.5,
@@ -70,18 +67,13 @@ class CarbonCalculator
     ];
 
     /**
-     * Calculate per-material carbon values.
-     *
-     * Lifecycle total must match spreadsheet column H:
-     * - D (Weight * Scope3 factor)
-     * - F (Weight * Landfill factor)
-     * - H = D + F
-     * Column G is reference only and must NOT be included.
+     * Per spreadsheet: column D = B×C, column F = B×E, column H = D+F.
+     * Column G is a fixed reference factor per material (not summed in row 14 of the workbook).
      *
      * @param  array<string, float>  $weightsByMaterialKey
      * @return array{
-     *     materials: array<int, array{material: string, weight: int, scope3EF: float, landfillAvoidanceEF: float, otherOffsets: float, lifecycleSaving: float}>,
-     *     totals: array{scope3EF: float, landfillAvoidanceEF: float, otherOffsets: float, lifecycleSaving: float}
+     *     materials: array<int, array{material: string, weight: int, scope3EF: float, landfillAvoidanceEF: float, recyclingSubstitutionFactor: float, lifecycleSaving: float}>,
+     *     totals: array{scope3EF: float, landfillAvoidanceEF: float, lifecycleSaving: float}
      * }
      */
     public function calculateMaterialsCO2e(array $weightsByMaterialKey): array
@@ -105,7 +97,6 @@ class CarbonCalculator
         $totals = [
             'scope3EF' => 0.0,
             'landfillAvoidanceEF' => 0.0,
-            'otherOffsets' => 0.0,
             'lifecycleSaving' => 0.0,
         ];
 
@@ -115,17 +106,15 @@ class CarbonCalculator
 
             $scope3Factor = self::SCOPE3_EF_FACTORS[$key] ?? 0.0;
             $landfillFactor = self::LANDFILL_AVOIDANCE_EF_FACTORS[$key] ?? 0.0;
-            $substitutionFactor = self::SUBSTITUTION_FACTOR_EF_FACTORS[$key] ?? 0.0;
+            $substitutionFactor = self::RECYCLING_SUBSTITUTION_FACTORS[$key] ?? 0.0;
 
             $scope3EF = round($rawWeight * $scope3Factor, 2);
             $landfillAvoidanceEF = round($rawWeight * $landfillFactor, 2);
-            $otherOffsets = round($rawWeight * $substitutionFactor, 2);
 
             $lifecycleSaving = round($scope3EF + $landfillAvoidanceEF, 2);
 
             $totals['scope3EF'] += $scope3EF;
             $totals['landfillAvoidanceEF'] += $landfillAvoidanceEF;
-            $totals['otherOffsets'] += $otherOffsets;
             $totals['lifecycleSaving'] += $lifecycleSaving;
 
             $materials[] = [
@@ -133,7 +122,7 @@ class CarbonCalculator
                 'weight' => $displayWeight,
                 'scope3EF' => $scope3EF,
                 'landfillAvoidanceEF' => $landfillAvoidanceEF,
-                'otherOffsets' => $otherOffsets,
+                'recyclingSubstitutionFactor' => round($substitutionFactor, 2),
                 'lifecycleSaving' => $lifecycleSaving,
             ];
         }

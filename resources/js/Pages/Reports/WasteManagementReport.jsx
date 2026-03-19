@@ -84,39 +84,37 @@ export default function WasteManagementReport() {
             totalIncomingWaste: 2417,
             divertedFromLandfill: 77.24,
             landfillSpaceSaved: 7.41,
-            lifecycleSaving: 2892,
+            lifecycleSaving: 1892,
         },
-        // Page 2: Materials CO2e data
+        // Page 2: Materials CO2e data (kg values per row, same shape as CarbonCalculator API)
         materialsCO2e: [
-            { material: 'Paper', weight: 89.884, scope3EF: 0.5, landfillAvoidanceEF: 0.3, otherOffsets: 0.2, lifecycleSaving: 89.884 },
-            { material: 'Plastic PP / HD', weight: 142, scope3EF: 2.1, landfillAvoidanceEF: 1.2, otherOffsets: 0.8, lifecycleSaving: 582.2 },
-            { material: 'Plastic PS (Polystyrene)', weight: 16, scope3EF: 3.2, landfillAvoidanceEF: 1.5, otherOffsets: 1.0, lifecycleSaving: 91.2 },
-            { material: 'Plastic LDPE Film', weight: 190, scope3EF: 1.8, landfillAvoidanceEF: 1.0, otherOffsets: 0.6, lifecycleSaving: 646 },
-            { material: 'Aluminium', weight: 36, scope3EF: 8.2, landfillAvoidanceEF: 4.5, otherOffsets: 2.8, lifecycleSaving: 558 },
-            { material: 'Steel', weight: 48, scope3EF: 1.5, landfillAvoidanceEF: 0.8, otherOffsets: 0.5, lifecycleSaving: 134.4 },
-            { material: 'Glass', weight: 300, scope3EF: 0.6, landfillAvoidanceEF: 0.3, otherOffsets: 0.2, lifecycleSaving: 330 },
-            { material: 'Food Waste', weight: 0, scope3EF: 0, landfillAvoidanceEF: 0, otherOffsets: 0, lifecycleSaving: 0 },
-            { material: 'Garden Waste', weight: 0, scope3EF: 0, landfillAvoidanceEF: 0, otherOffsets: 0, lifecycleSaving: 0 },
-            { material: 'Batteries', weight: 0, scope3EF: 0, landfillAvoidanceEF: 0, otherOffsets: 0, lifecycleSaving: 0 },
-            { material: 'Electronics (E-waste)', weight: 0, scope3EF: 0, landfillAvoidanceEF: 0, otherOffsets: 0, lifecycleSaving: 0 },
-            { material: 'Tetrapak', weight: 74, scope3EF: 0.4, landfillAvoidanceEF: 0.2, otherOffsets: 0.15, lifecycleSaving: 55.5 },
+            { material: 'Paper', weight: 89.884, scope3EF: 44.94, landfillAvoidanceEF: 66.31, lifecycleSaving: 111.25 },
+            { material: 'Plastic PP / HD', weight: 142, scope3EF: 284.0, landfillAvoidanceEF: 11.36, lifecycleSaving: 295.36 },
+            { material: 'Plastic PS (Polystyrene)', weight: 16, scope3EF: 48.0, landfillAvoidanceEF: 0.8, lifecycleSaving: 48.8 },
+            { material: 'Plastic LDPE Film', weight: 190, scope3EF: 380.0, landfillAvoidanceEF: 11.4, lifecycleSaving: 391.4 },
+            { material: 'Aluminium', weight: 36, scope3EF: 360.0, landfillAvoidanceEF: 324.0, lifecycleSaving: 684.0 },
+            { material: 'Steel', weight: 48, scope3EF: 96.0, landfillAvoidanceEF: 96.0, lifecycleSaving: 192.0 },
+            { material: 'Glass', weight: 300, scope3EF: 90.0, landfillAvoidanceEF: 9.0, lifecycleSaving: 99.0 },
+            { material: 'Food Waste', weight: 0, scope3EF: 0, landfillAvoidanceEF: 0, lifecycleSaving: 0 },
+            { material: 'Garden Waste', weight: 0, scope3EF: 0, landfillAvoidanceEF: 0, lifecycleSaving: 0 },
+            { material: 'Batteries', weight: 0, scope3EF: 0, landfillAvoidanceEF: 0, lifecycleSaving: 0 },
+            { material: 'Electronics (E-waste)', weight: 0, scope3EF: 0, landfillAvoidanceEF: 0, lifecycleSaving: 0 },
+            { material: 'Tetrapak', weight: 74, scope3EF: 51.8, landfillAvoidanceEF: 18.5, lifecycleSaving: 70.3 },
         ],
         // Page 3: Chart data
         stackedBarData: [
             {
                 name: 'Total',
-                scope3EF: 232.364,
-                landfillAvoidanceEF: 1239.84,
-                otherOffsets: 1420.28,
-                lifecycleSaving: 2892.484,
-            }
+                scope3EF: 1354.74,
+                landfillAvoidanceEF: 537.37,
+            },
         ],
         carbonEmissionsAvoided: 16528,
         // Page 4: Donut chart data
         cumulativeImpact: [
             { name: 'Water Saved', value: 19, color: '#3b82f6' },
             { name: 'Energy Saved', value: 73, color: '#a3e635' },
-            { name: 'Lifecycle Saving CO₂e (kg)', value: 8, color: '#6b7280' },
+            { name: 'Total Lifecycle Carbon Avoided (kg CO₂e)', value: 8, color: '#6b7280' },
         ],
         recyclingBreakdown: [
             { name: 'Paper', value: 25, color: '#60a5fa' },
@@ -191,7 +189,7 @@ export default function WasteManagementReport() {
                             <div className="w-20 h-20 rounded-full bg-[#3b82f6] flex items-center justify-center mx-auto">
                                 <Droplets className="w-10 h-10 text-white" />
                             </div>
-                            <p className="text-xs text-white mt-2 uppercase tracking-wider">Litres of Water Saved</p>
+                            <p className="text-xs text-white mt-2 uppercase tracking-wider">Water Saved (kL)</p>
                             <p className="text-2xl font-bold text-white">{reportData.environmentalImpact.waterSaved.toLocaleString()}</p>
                         </div>
                     </div>
@@ -291,7 +289,7 @@ export default function WasteManagementReport() {
                                         <td className="px-3 py-1 text-right font-bold border-b border-[#1e3a5f]">{reportData.summary.landfillSpaceSaved}</td>
                                     </tr>
                                     <tr className="bg-[#c9dde8]">
-                                        <td className="px-3 py-1 font-semibold">Lifecycle Saving (kg CO<sub>2</sub>e)</td>
+                                        <td className="px-3 py-1 font-semibold">Total Lifecycle Carbon Avoided (kg CO<sub>2</sub>e)</td>
                                         <td className="px-3 py-1 text-right font-bold">{reportData.summary.lifecycleSaving}</td>
                                     </tr>
                                 </tbody>
@@ -369,11 +367,10 @@ export default function WasteManagementReport() {
                         <thead>
                             <tr className="bg-gray-800 text-white">
                                 <th className="px-3 py-2 text-left border border-gray-600 font-semibold">Material</th>
-                                <th className="px-3 py-2 text-right border border-gray-600 font-semibold">Weight</th>
-                                <th className="px-3 py-2 text-right border border-gray-600 font-semibold">Scope 3 EF (kg CO₂e/kg)²</th>
-                                <th className="px-3 py-2 text-right border border-gray-600 font-semibold">Landfill Avoidance EF (kg CO₂e/kg)³</th>
-                                <th className="px-3 py-2 text-right border border-gray-600 font-semibold">Other Offsets (kg CO₂e)</th>
-                                <th className="px-3 py-2 text-right border border-gray-600 font-semibold">Lifecycle Saving (kg CO₂e)</th>
+                                <th className="px-3 py-2 text-right border border-gray-600 font-semibold">Weight (kg)</th>
+                                <th className="px-3 py-2 text-right border border-gray-600 font-semibold">Upstream (Scope 3) Emissions Avoided (kg CO₂e)</th>
+                                <th className="px-3 py-2 text-right border border-gray-600 font-semibold">Landfill Emissions Avoided (kg CO₂e)</th>
+                                <th className="px-3 py-2 text-right border border-gray-600 font-semibold">Total Lifecycle Carbon Avoided (kg CO₂e)</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -381,25 +378,21 @@ export default function WasteManagementReport() {
                                 <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
                                     <td className="px-3 py-2 border border-gray-300">{material.material}</td>
                                     <td className="px-3 py-2 border border-gray-300 text-right">{material.weight.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 3 })}</td>
-                                    <td className="px-3 py-2 border border-gray-300 text-right">{(material.weight * material.scope3EF).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                                    <td className="px-3 py-2 border border-gray-300 text-right">{(material.weight * material.landfillAvoidanceEF).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                                    <td className="px-3 py-2 border border-gray-300 text-right">{(material.weight * material.otherOffsets).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                                    <td className="px-3 py-2 border border-gray-300 text-right font-semibold">{(material.weight * material.lifecycleSaving).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                    <td className="px-3 py-2 border border-gray-300 text-right">{material.scope3EF.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                    <td className="px-3 py-2 border border-gray-300 text-right">{material.landfillAvoidanceEF.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                    <td className="px-3 py-2 border border-gray-300 text-right font-semibold">{material.lifecycleSaving.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                 </tr>
                             ))}
                             <tr className="bg-gray-200 font-bold">
                                 <td colSpan="2" className="px-3 py-2 border border-gray-300">TOTALS</td>
                                 <td className="px-3 py-2 border border-gray-300 text-right">
-                                    {reportData.materialsCO2e.reduce((sum, m) => sum + (m.weight * m.scope3EF), 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    {reportData.materialsCO2e.reduce((sum, m) => sum + m.scope3EF, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </td>
                                 <td className="px-3 py-2 border border-gray-300 text-right">
-                                    {reportData.materialsCO2e.reduce((sum, m) => sum + (m.weight * m.landfillAvoidanceEF), 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    {reportData.materialsCO2e.reduce((sum, m) => sum + m.landfillAvoidanceEF, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </td>
                                 <td className="px-3 py-2 border border-gray-300 text-right">
-                                    {reportData.materialsCO2e.reduce((sum, m) => sum + (m.weight * m.otherOffsets), 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                </td>
-                                <td className="px-3 py-2 border border-gray-300 text-right">
-                                    {reportData.materialsCO2e.reduce((sum, m) => sum + (m.weight * m.lifecycleSaving), 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    {reportData.materialsCO2e.reduce((sum, m) => sum + m.lifecycleSaving, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </td>
                             </tr>
                         </tbody>
@@ -410,32 +403,25 @@ export default function WasteManagementReport() {
                         <h3 className="text-center font-bold text-lg mb-3">Summary</h3>
                         <div className="space-y-2 text-sm">
                             <p>
-                                <span className="font-semibold">Scope 3 CO₂e (kg)</span>{' '}
+                                <span className="font-semibold">Total Upstream (Scope 3) Avoided (kg CO₂e)</span>{' '}
                                 <span className="font-bold text-red-600">
-                                    {reportData.materialsCO2e.reduce((sum, m) => sum + (m.weight * m.scope3EF), 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    {reportData.materialsCO2e.reduce((sum, m) => sum + m.scope3EF, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </span>{' '}
-                                Indirect Carbon Emissions from Sending Waste Generated for Recyclable
+                                Indirect carbon emissions avoided from sending waste for recycling.
                             </p>
                             <p>
-                                <span className="font-semibold">Landfill Avoidance CO₂e (kg)</span>{' '}
+                                <span className="font-semibold">Total Landfill Emissions Avoided (kg CO₂e)</span>{' '}
                                 <span className="font-bold text-red-600">
-                                    {reportData.materialsCO2e.reduce((sum, m) => sum + (m.weight * m.landfillAvoidanceEF), 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    {reportData.materialsCO2e.reduce((sum, m) => sum + m.landfillAvoidanceEF, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </span>{' '}
-                                Carbon Emission Savings Due to Landfill Avoidance
+                                Carbon emission savings due to landfill avoidance.
                             </p>
                             <p>
-                                <span className="font-semibold">Other Offsets CO₂e (kg)</span>{' '}
+                                <span className="font-semibold">Total Lifecycle Carbon Avoided (kg CO₂e)</span>{' '}
                                 <span className="font-bold text-red-600">
-                                    {reportData.materialsCO2e.reduce((sum, m) => sum + (m.weight * m.otherOffsets), 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    {reportData.materialsCO2e.reduce((sum, m) => sum + m.lifecycleSaving, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </span>{' '}
-                                Additional CO2 savings from recycling, energy recovery, and avoiding virgin material production.
-                            </p>
-                            <p>
-                                <span className="font-semibold">Lifecycle Saving CO₂e (kg)</span>{' '}
-                                <span className="font-bold text-red-600">
-                                    {reportData.materialsCO2e.reduce((sum, m) => sum + (m.weight * m.lifecycleSaving), 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                </span>{' '}
-                                Overall carbon benefit from managing all materials sustainably.
+                                Sum of upstream and landfill avoided (spreadsheet column H).
                             </p>
                         </div>
                     </div>
@@ -464,10 +450,8 @@ export default function WasteManagementReport() {
                                 <YAxis dataKey="name" type="category" width={80} />
                                 <Tooltip />
                                 <Legend />
-                                <Bar dataKey="scope3EF" stackId="a" fill="#60a5fa" name="Scope 3 EF (kg CO₂e/kg)²" />
-                                <Bar dataKey="landfillAvoidanceEF" stackId="a" fill="#9ca3af" name="Landfill Avoidance EF (kg CO₂e/kg)³" />
-                                <Bar dataKey="otherOffsets" stackId="a" fill="#3b82f6" name="Other Offsets (kg CO₂e)" />
-                                <Bar dataKey="lifecycleSaving" stackId="a" fill="#3b82f6" name="Lifecycle Saving (kg CO₂e)" />
+                                <Bar dataKey="scope3EF" stackId="a" fill="#60a5fa" name="Upstream (Scope 3) Emissions Avoided (kg CO₂e)" />
+                                <Bar dataKey="landfillAvoidanceEF" stackId="a" fill="#9ca3af" name="Landfill Emissions Avoided (kg CO₂e)" />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>

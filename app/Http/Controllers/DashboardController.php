@@ -2,17 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Company;
 use App\Models\Branch;
-use App\Models\Site;
+use App\Models\Classification;
+use App\Models\ClientMonthlyMaterialSummary;
+use App\Models\Company;
+use App\Models\Material;
 use App\Models\Order;
 use App\Models\OrderWasteStream;
-use App\Models\Material;
+use App\Models\Site;
 use App\Models\WasteStream;
-use App\Traits\ScopeByClientTrait;
-use App\Models\ClientMonthlyMaterialSummary;
-use App\Models\Classification;
 use App\Services\WasteImpactCalculator;
+use App\Traits\ScopeByClientTrait;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -184,7 +184,7 @@ class DashboardController extends Controller
             if (! isset($byMaterialDay[$mid])) {
                 $byMaterialDay[$mid] = ['name' => $ows->material && $ows->material->grade
                     ? trim($ows->material->grade->name)
-                    : ($ows->material ? 'Material #' . $ows->material_id : 'Unknown'),
+                    : ($ows->material ? 'Material #'.$ows->material_id : 'Unknown'),
                     'days' => array_fill(1, 31, 0),
                 ];
             }
@@ -196,7 +196,7 @@ class DashboardController extends Controller
             $row = ['name' => $data['name'], 'total' => 0];
             for ($d = 1; $d <= $lastDay; $d++) {
                 $w = round((float) ($data['days'][$d] ?? 0), 2);
-                $row['day' . $d] = $w;
+                $row['day'.$d] = $w;
                 $row['total'] += $w;
             }
             $row['total'] = round($row['total'], 2);
@@ -289,7 +289,7 @@ class DashboardController extends Controller
      * Get dashboard data based on filters
      * If no company/branch/site is selected, aggregates all companies
      */
-    private function getDashboardData(?Company $company = null, ?Branch $branch = null, ?Site $site = null, string $fromDate, string $toDate): array
+    private function getDashboardData(?Company $company, ?Branch $branch, ?Site $site, string $fromDate, string $toDate): array
     {
         $startDate = Carbon::parse($fromDate);
         $endDate = Carbon::parse($toDate);
@@ -322,15 +322,15 @@ class DashboardController extends Controller
         foreach ($grouped as $materialId => $group) {
             $first = $group->first();
             // Ensure material relationship is loaded with classification
-            if (!$first->relationLoaded('material')) {
+            if (! $first->relationLoaded('material')) {
                 $first->load('material.wasteStream', 'material.grade', 'material.classification');
             }
-            
+
             // Reload material if classification is missing
-            if ($first->material && !$first->material->relationLoaded('classification') && $first->material->classification_id) {
+            if ($first->material && ! $first->material->relationLoaded('classification') && $first->material->classification_id) {
                 $first->material->load('classification');
             }
-            
+
             $materialSummaries->push((object) [
                 'material_id' => $materialId,
                 'total_weight' => $group->sum('total_weight'),
@@ -359,7 +359,7 @@ class DashboardController extends Controller
      * Get summaries for a specific month
      * If no company/branch/site is provided, returns all summaries
      */
-    private function getSummariesForMonth(?Company $company = null, ?Branch $branch = null, ?Site $site = null, int $month, int $year)
+    private function getSummariesForMonth(?Company $company, ?Branch $branch, ?Site $site, int $month, int $year)
     {
         $query = ClientMonthlyMaterialSummary::query()
             ->where('year', $year)
@@ -487,14 +487,14 @@ class DashboardController extends Controller
         $totals = [];
 
         foreach ($materialSummaries as $summary) {
-            if (!$summary->material || !$summary->material->wasteStream) {
+            if (! $summary->material || ! $summary->material->wasteStream) {
                 continue;
             }
 
             $wasteStreamName = trim($summary->material->wasteStream->name);
             $weight = (float) $summary->total_weight;
 
-            if (!isset($totals[$wasteStreamName])) {
+            if (! isset($totals[$wasteStreamName])) {
                 $totals[$wasteStreamName] = 0;
             }
             $totals[$wasteStreamName] += $weight;
@@ -539,7 +539,7 @@ class DashboardController extends Controller
         ];
 
         foreach ($materialSummaries as $summary) {
-            if (!$summary->material || !$summary->material->classification_id || !$summary->material->classification) {
+            if (! $summary->material || ! $summary->material->classification_id || ! $summary->material->classification) {
                 continue;
             }
 
@@ -549,7 +549,7 @@ class DashboardController extends Controller
             // Map classification names from database to our display categories
             // Handle case-insensitive matching and variations
             $classificationNameLower = strtolower($classificationName);
-            
+
             if (in_array($classificationNameLower, ['disposed', 'disposal'])) {
                 $totals['Disposal'] += $weight;
             } elseif (in_array($classificationNameLower, ['recycling', 'recycle'])) {
@@ -601,6 +601,10 @@ class DashboardController extends Controller
                 'energySaved' => 0,
                 'waterSaved' => 0,
                 'co2Saved' => 0,
+                'electricityEquivalentKwhSaGrid' => 0,
+                'transportEquivalentKm' => 0,
+                'fuelEquivalentLitresPetrol' => 0,
+                'carsOffRoadAnnualEquivalent' => 0,
             ],
         ];
     }

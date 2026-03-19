@@ -260,6 +260,10 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
         energySaved: 0,
         waterSaved: 0,
         co2Saved: 0,
+        electricityEquivalentKwhSaGrid: 0,
+        transportEquivalentKm: 0,
+        fuelEquivalentLitresPetrol: 0,
+        carsOffRoadAnnualEquivalent: 0,
     };
 
     // Format number with commas
@@ -738,13 +742,17 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
                 </div>
             </div>
 
-            {/* Environmental Achievements */}
+            {/* Environmental impact & resource savings (metrics aligned with client spec) */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 border border-gray-200 dark:border-gray-700">
-                <h2 className="text-sm font-semibold mb-2 text-gray-900 dark:text-gray-100">Environmental achievements through implementation of waste hierarchy options</h2>
+                <h2 className="text-sm font-semibold mb-2 text-gray-900 dark:text-gray-100">
+                    Environmental Impact &amp; Resource Savings
+                </h2>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                     <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-100 dark:border-blue-800/50">
                         <Cloud className="w-8 h-8 mx-auto mb-1 text-blue-600 dark:text-blue-400" />
-                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Lifecycle Carbon Avoidance</p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">
+                            Total Lifecycle Carbon Avoided (kg CO₂e)
+                        </p>
                         <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
                             {formatNumber(environmentalImpact.co2Saved)} kg CO₂e
                         </p>
@@ -765,9 +773,47 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
                     </div>
                     <div className="text-center p-3 bg-yellow-50 dark:bg-amber-900/30 rounded-lg border border-yellow-100 dark:border-amber-800/50">
                         <Zap className="w-8 h-8 mx-auto mb-1 text-yellow-600 dark:text-amber-400" />
-                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Energy Saved</p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Energy Saved (recycling)</p>
                         <p className="text-lg font-bold text-yellow-600 dark:text-amber-400">
                             {formatNumber(environmentalImpact.energySaved)} kWh
+                        </p>
+                    </div>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-3 mb-2">
+                    Carbon equivalency indicators (from lifecycle saving, SA factors — see docs/Dashboard &amp; Reports -
+                    Metrics)
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    <div className="text-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-600">
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight mb-0.5">
+                            Electricity Equivalent (kWh – SA Grid)
+                        </p>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                            {formatNumber(environmentalImpact.electricityEquivalentKwhSaGrid)}
+                        </p>
+                    </div>
+                    <div className="text-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-600">
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight mb-0.5">
+                            Transport Equivalent (km Avoided)
+                        </p>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                            {formatNumber(environmentalImpact.transportEquivalentKm)}
+                        </p>
+                    </div>
+                    <div className="text-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-600">
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight mb-0.5">
+                            Fuel Equivalent (L Petrol Avoided)
+                        </p>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                            {formatNumber(environmentalImpact.fuelEquivalentLitresPetrol)}
+                        </p>
+                    </div>
+                    <div className="text-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-600">
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight mb-0.5">
+                            Cars Off the Road (Annual Equiv.)
+                        </p>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                            {formatNumber(environmentalImpact.carsOffRoadAnnualEquivalent)}
                         </p>
                     </div>
                 </div>

@@ -329,7 +329,7 @@
                     </svg>
                 </div>
             </div>
-            <div class="metric-label">LITRES OF WATER SAVED</div>
+            <div class="metric-label">WATER SAVED (kL)</div>
             <div class="metric-value">{{ number_format($impact['water_saved'], 2) }}</div>
         </div>
     </div>
@@ -529,7 +529,7 @@
                             <div class="summary-value">{{ number_format($impact['landfill_space_saved'], 2) }}</div>
                         </div>
                         <div class="summary-row">
-                            <div class="summary-label">Lifecycle Saving (kg CO₂e)</div>
+                            <div class="summary-label">Total Lifecycle Carbon Avoided (kg CO₂e)</div>
                             <div class="summary-value">{{ number_format($impact['total_lifecycle_saving'], 2) }}</div>
                         </div>
                     </div>
@@ -558,11 +558,11 @@
         <thead>
             <tr>
                 <th style="background: #2563eb; background-color: #2563eb; color: #ffffff; font-weight: bold; padding: 10px; font-size: 12px; border-top: 1px solid #2563eb; border-bottom: 1px solid #2563eb; border-left: 1px solid #2563eb; border-right: 1px solid #ffffff; text-align: center; mso-pattern: #2563eb solid;">Material</th>
-                <th style="background: #2563eb; background-color: #2563eb; color: #ffffff; font-weight: bold; padding: 10px; font-size: 12px; border-top: 1px solid #2563eb; border-bottom: 1px solid #2563eb; border-left: 1px solid #ffffff; border-right: 1px solid #ffffff; text-align: center; mso-pattern: #2563eb solid;">Weight</th>
-                <th style="background: #2563eb; background-color: #2563eb; color: #ffffff; font-weight: bold; padding: 10px; font-size: 12px; border-top: 1px solid #2563eb; border-bottom: 1px solid #2563eb; border-left: 1px solid #ffffff; border-right: 1px solid #ffffff; text-align: center; mso-pattern: #2563eb solid;">Scope 3 EF (kg CO₂e/kg)</th>
-                <th style="background: #2563eb; background-color: #2563eb; color: #ffffff; font-weight: bold; padding: 10px; font-size: 12px; border-top: 1px solid #2563eb; border-bottom: 1px solid #2563eb; border-left: 1px solid #ffffff; border-right: 1px solid #ffffff; text-align: center; mso-pattern: #2563eb solid;">Landfill Avoidance EF (kg CO₂e/kg)</th>
-                <th style="background: #2563eb; background-color: #2563eb; color: #ffffff; font-weight: bold; padding: 10px; font-size: 12px; border-top: 1px solid #2563eb; border-bottom: 1px solid #2563eb; border-left: 1px solid #ffffff; border-right: 1px solid #ffffff; text-align: center; mso-pattern: #2563eb solid;">Other Offsets (kg CO₂e)</th>
-                <th style="background: #2563eb; background-color: #2563eb; color: #ffffff; font-weight: bold; padding: 10px; font-size: 12px; border-top: 1px solid #2563eb; border-bottom: 1px solid #2563eb; border-left: 1px solid #ffffff; border-right: 1px solid #2563eb; text-align: center; mso-pattern: #2563eb solid;">Lifecycle Saving (kg CO₂e)</th>
+                <th style="background: #2563eb; background-color: #2563eb; color: #ffffff; font-weight: bold; padding: 10px; font-size: 12px; border-top: 1px solid #2563eb; border-bottom: 1px solid #2563eb; border-left: 1px solid #ffffff; border-right: 1px solid #ffffff; text-align: center; mso-pattern: #2563eb solid;">Weight (kg)</th>
+                <th style="background: #2563eb; background-color: #2563eb; color: #ffffff; font-weight: bold; padding: 10px; font-size: 11px; border-top: 1px solid #2563eb; border-bottom: 1px solid #2563eb; border-left: 1px solid #ffffff; border-right: 1px solid #ffffff; text-align: center; mso-pattern: #2563eb solid;">Upstream (Scope 3) Emissions Avoided (kg CO₂e)</th>
+                <th style="background: #2563eb; background-color: #2563eb; color: #ffffff; font-weight: bold; padding: 10px; font-size: 11px; border-top: 1px solid #2563eb; border-bottom: 1px solid #2563eb; border-left: 1px solid #ffffff; border-right: 1px solid #ffffff; text-align: center; mso-pattern: #2563eb solid;">Landfill Emissions Avoided (kg CO₂e)</th>
+                <th style="background: #2563eb; background-color: #2563eb; color: #ffffff; font-weight: bold; padding: 10px; font-size: 10px; border-top: 1px solid #2563eb; border-bottom: 1px solid #2563eb; border-left: 1px solid #ffffff; border-right: 1px solid #ffffff; text-align: center; mso-pattern: #2563eb solid;">Recycling Substitution Factor (Reference Only &ndash; Not Included in Total)</th>
+                <th style="background: #2563eb; background-color: #2563eb; color: #ffffff; font-weight: bold; padding: 10px; font-size: 11px; border-top: 1px solid #2563eb; border-bottom: 1px solid #2563eb; border-left: 1px solid #ffffff; border-right: 1px solid #2563eb; text-align: center; mso-pattern: #2563eb solid;">Total Lifecycle Carbon Avoided (kg CO₂e)</th>
             </tr>
         </thead>
         <tbody>
@@ -570,15 +570,16 @@
                 @php
                     $service = app(\App\Services\EnvironmentalImpactService::class);
                     $materialName = $service->getMaterialDisplayName($materialType);
-                    $scope3Factor = isset($data['weight']) && $data['weight'] > 0 ? $data['scope3'] / $data['weight'] : 0;
-                    $landfillFactor = isset($data['weight']) && $data['weight'] > 0 ? $data['landfill_avoidance'] / $data['weight'] : 0;
+                    $substitutionFactor = isset($data['weight']) && (float) $data['weight'] > 0
+                        ? $data['other_offsets'] / $data['weight']
+                        : 0;
                 @endphp
                 <tr>
                     <td style="padding: 8px; font-size: 11px; border: 1px solid #ddd; text-align: center;">{{ $materialName }}</td>
                     <td style="padding: 8px; font-size: 11px; border: 1px solid #ddd; text-align: center;">{{ number_format($data['weight'], 2) }}</td>
-                    <td style="padding: 8px; font-size: 11px; border: 1px solid #ddd; text-align: center;">{{ number_format($scope3Factor, 2) }}</td>
-                    <td style="padding: 8px; font-size: 11px; border: 1px solid #ddd; text-align: center;">{{ number_format($landfillFactor, 2) }}</td>
-                    <td style="padding: 8px; font-size: 11px; border: 1px solid #ddd; text-align: center;">{{ number_format($data['other_offsets'], 2) }}</td>
+                    <td style="padding: 8px; font-size: 11px; border: 1px solid #ddd; text-align: center;">{{ number_format($data['scope3'], 2) }}</td>
+                    <td style="padding: 8px; font-size: 11px; border: 1px solid #ddd; text-align: center;">{{ number_format($data['landfill_avoidance'], 2) }}</td>
+                    <td style="padding: 8px; font-size: 11px; border: 1px solid #ddd; text-align: center; color: #dc2626; font-weight: 600;">{{ number_format($substitutionFactor, 2) }}</td>
                     <td style="padding: 8px; font-size: 11px; border: 1px solid #ddd; text-align: center;">{{ number_format($data['lifecycle_saving'], 2) }}</td>
                 </tr>
             @endforeach
@@ -587,7 +588,7 @@
                 <td style="padding: 8px; font-size: 11px; border: 1px solid #ddd; text-align: center;"></td>
                 <td style="padding: 8px; font-size: 11px; border: 1px solid #ddd; text-align: center;">{{ number_format($impact['total_scope3'], 2) }}</td>
                 <td style="padding: 8px; font-size: 11px; border: 1px solid #ddd; text-align: center;">{{ number_format($impact['total_landfill_avoidance'], 2) }}</td>
-                <td style="padding: 8px; font-size: 11px; border: 1px solid #ddd; text-align: center;">{{ number_format($impact['total_other_offsets'], 2) }}</td>
+                <td style="padding: 8px; font-size: 11px; border: 1px solid #ddd; text-align: center; color: #666;">&mdash;</td>
                 <td style="padding: 8px; font-size: 11px; border: 1px solid #ddd; text-align: center;">{{ number_format($impact['total_lifecycle_saving'], 2) }}</td>
             </tr>
         </tbody>
@@ -596,28 +597,26 @@
     <div class="summary-box" style="margin-top: 20px;">
         <h3>Summary</h3>
         <div class="summary-row">
-            <div class="summary-label">Scope 3 CO₂e (kg)</div>
+            <div class="summary-label">Total Upstream (Scope 3) Avoided (kg CO₂e)</div>
             <div class="summary-value">{{ number_format($impact['total_scope3'], 2) }}</div>
         </div>
-        <div style="font-size: 8px; color: #666; margin-top: 5px;">Indirect Carbon Emissions from Sending Waste Generated for Recyclable</div>
-        
+        <div style="font-size: 8px; color: #666; margin-top: 5px;">Indirect carbon emissions avoided from sending waste for recycling.</div>
+
         <div class="summary-row" style="margin-top: 15px;">
-            <div class="summary-label">Landfill Avoidance CO₂e (kg)</div>
+            <div class="summary-label">Total Landfill Emissions Avoided (kg CO₂e)</div>
             <div class="summary-value">{{ number_format($impact['total_landfill_avoidance'], 2) }}</div>
         </div>
-        <div style="font-size: 8px; color: #666; margin-top: 5px;">Carbon Emission Savings Due to Landfill Avoidance</div>
-        
-        <div class="summary-row" style="margin-top: 15px;">
-            <div class="summary-label">Other Offsets CO₂e (kg)</div>
-            <div class="summary-value">{{ number_format($impact['total_other_offsets'], 2) }}</div>
-        </div>
-        <div style="font-size: 8px; color: #666; margin-top: 5px;">Reference only (not included in Lifecycle Saving).</div>
-        
-        <div class="summary-row" style="margin-top: 15px;">
-            <div class="summary-label">Lifecycle Saving CO₂e (kg)</div>
+        <div style="font-size: 8px; color: #666; margin-top: 5px;">Carbon emission savings due to landfill avoidance.</div>
+
+        <div class="summary-row" style="margin-top: 15px; font-weight: bold;">
+            <div class="summary-label">Total Lifecycle Carbon Avoided (kg CO₂e)</div>
             <div class="summary-value">{{ number_format($impact['total_lifecycle_saving'], 2) }}</div>
         </div>
-        <div style="font-size: 8px; color: #666; margin-top: 5px;">Overall carbon benefit from managing all materials sustainably.</div>
+        <div style="font-size: 8px; color: #666; margin-top: 5px;">Sum of upstream and landfill avoided (same basis as Carbon Calculator workbook).</div>
+
+        <p style="margin-top: 24px; text-align: center; font-weight: bold; font-size: 10px; line-height: 1.45; color: #111827; padding: 0 8px;">
+            Carbon emission factors and avoided emission assumptions are based on internationally recognised standards, including DEFRA (UK Government), the EPA WARM model, and peer-reviewed global life cycle assessment (LCA) datasets (e.g. Ecoinvent). Calculations are aligned with best practice under the GHG Protocol, ensuring consistency, transparency, and the avoidance of double counting.
+        </p>
     </div>
     @else
     <div style="text-align: center; margin-top: 100px; color: #999;">
@@ -639,24 +638,33 @@
     </div>
 
     <div style="text-align: center; margin-top: 40px;">
-        <div style="font-size: 14px; color: #666; margin-bottom: 20px;">(kg CO₂e)</div>
+        <div style="font-size: 14px; color: #666; margin-bottom: 12px;">Total Lifecycle Carbon Avoided</div>
         <div class="large-number">{{ number_format($impact['total_lifecycle_saving'], 2) }}</div>
-        <div style="font-size: 16px; color: #333; margin-top: 30px; margin-bottom: 30px; font-weight: bold;">
-            Total Carbon Emissions Avoided in KM
+        <div style="font-size: 11px; color: #666; margin-bottom: 28px;">kg CO₂e</div>
+
+        <div style="font-size: 14px; color: #333; margin: 24px 0 12px; font-weight: bold;">
+            Carbon equivalency indicators (from lifecycle saving)
         </div>
-        
-        @php
-            $kmValue = $impact['km_equivalent'] ?? 0;
-        @endphp
-        
-        <div style="font-size: 48px; color: #2563eb; font-weight: bold; margin: 30px 0;">
-            {{ number_format($kmValue) }} km
-        </div>
-        
-        <div style="font-size: 12px; color: #666; margin-top: 20px; line-height: 1.6;">
-            The CO₂e saved by your recycling and organics recovery is equivalent to a car driving roughly <strong>{{ number_format($kmValue) }} km</strong>.
-        </div>
-        <div style="font-size: 11px; color: #666; margin-top: 30px; line-height: 1.6;">
+        <table style="width: 100%; max-width: 520px; margin: 0 auto 24px; border-collapse: collapse; font-size: 11px;">
+            <tr style="background: #eff6ff;">
+                <td style="padding: 10px; border: 1px solid #bfdbfe; text-align: left; font-weight: bold;">Electricity Equivalent (kWh – SA Grid)</td>
+                <td style="padding: 10px; border: 1px solid #bfdbfe; text-align: right;">{{ number_format($impact['electricity_equivalent_kwh_sa_grid'] ?? 0, 2) }}</td>
+            </tr>
+            <tr>
+                <td style="padding: 10px; border: 1px solid #bfdbfe; text-align: left; font-weight: bold;">Transport Equivalent (km Avoided)</td>
+                <td style="padding: 10px; border: 1px solid #bfdbfe; text-align: right;">{{ number_format($impact['transport_equivalent_km'] ?? 0, 2) }}</td>
+            </tr>
+            <tr style="background: #eff6ff;">
+                <td style="padding: 10px; border: 1px solid #bfdbfe; text-align: left; font-weight: bold;">Fuel Equivalent (Litres of Petrol Avoided)</td>
+                <td style="padding: 10px; border: 1px solid #bfdbfe; text-align: right;">{{ number_format($impact['fuel_equivalent_litres_petrol'] ?? 0, 2) }}</td>
+            </tr>
+            <tr>
+                <td style="padding: 10px; border: 1px solid #bfdbfe; text-align: left; font-weight: bold;">Cars Off the Road (Annual Equivalent)</td>
+                <td style="padding: 10px; border: 1px solid #bfdbfe; text-align: right;">{{ number_format($impact['cars_off_road_annual_equivalent'] ?? 0, 4) }}</td>
+            </tr>
+        </table>
+
+        <div style="font-size: 11px; color: #666; margin-top: 12px; line-height: 1.6;">
             By diverting waste from landfill and recycling efficiently, your operations are actively preventing CO₂e from entering the atmosphere.
         </div>
     </div>
@@ -675,7 +683,7 @@
     </div>
 
     <div style="text-align: center; margin-top: 40px;">
-        <h2 style="font-size: 18px; color: #2563eb; margin-bottom: 30px;">CUMULATIVE IMPACT DASHBOARD</h2>
+        <h2 style="font-size: 18px; color: #2563eb; margin-bottom: 30px;">Environmental Impact &amp; Resource Savings</h2>
         
         @php
             $waterSaved = $impact['water_saved'] ?? 0;
@@ -755,7 +763,7 @@
                     <div style="margin-top: 15px;">
                         <div style="font-size: 9px; margin: 4px 0; color: #06b6d4; font-weight: 600;">
                             <span style="display: inline-block; width: 12px; height: 12px; background: #06b6d4; margin-right: 6px; vertical-align: middle; border-radius: 2px;"></span>
-                            Water Saved ({{ number_format($waterImpactPercent, 1) }}%)
+                            Water Saved kL ({{ number_format($waterImpactPercent, 1) }}%)
                         </div>
                         <div style="font-size: 9px; margin: 4px 0; color: #f59e0b; font-weight: 600;">
                             <span style="display: inline-block; width: 12px; height: 12px; background: #f59e0b; margin-right: 6px; vertical-align: middle; border-radius: 2px;"></span>
@@ -763,7 +771,7 @@
                         </div>
                         <div style="font-size: 9px; margin: 4px 0; color: #2563eb; font-weight: 600;">
                             <span style="display: inline-block; width: 12px; height: 12px; background: #2563eb; margin-right: 6px; vertical-align: middle; border-radius: 2px;"></span>
-                            Lifecycle Saving ({{ number_format($lifecycleImpactPercent, 1) }}%)
+                            Total Lifecycle CO₂e ({{ number_format($lifecycleImpactPercent, 1) }}%)
                         </div>
                     </div>
                 </td>
@@ -771,7 +779,7 @@
                     <div class="metric-box" style="margin-bottom: 20px; width: 100%;">
                         <div class="metric-label">Water Saved</div>
                         <div class="metric-value" style="font-size: 24px;">{{ number_format($waterSaved, 2) }}</div>
-                        <div style="font-size: 10px; color: #ffffff; margin-top: 5px;">Litres</div>
+                        <div style="font-size: 10px; color: #ffffff; margin-top: 5px;">kL</div>
                     </div>
                     <div class="metric-box" style="margin-bottom: 20px; width: 100%;">
                         <div class="metric-label">Energy Saved</div>
@@ -779,7 +787,7 @@
                         <div style="font-size: 10px; color: #ffffff; margin-top: 5px;">kWh</div>
                     </div>
                     <div class="metric-box" style="width: 100%;">
-                        <div class="metric-label">Lifecycle Saving CO₂e (kg)</div>
+                        <div class="metric-label">Total Lifecycle Carbon Avoided (kg CO₂e)</div>
                         <div class="metric-value" style="font-size: 24px;">{{ number_format($lifecycleSaving, 2) }}</div>
                     </div>
                 </td>
@@ -802,7 +810,7 @@
     </div>
 
     <div style="text-align: center; margin-top: 40px;">
-        <h2 style="font-size: 18px; color: #2563eb; margin-bottom: 30px;">RECYCLING BREAKDOWN</h2>
+        <h2 style="font-size: 18px; color: #2563eb; margin-bottom: 30px;">Waste Treatment Summary (kg by Category)</h2>
         
         @php
             $totalRecycling = array_sum($impact['material_breakdown'] ?? []);

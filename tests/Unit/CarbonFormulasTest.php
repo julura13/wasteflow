@@ -27,6 +27,10 @@ test('CarbonCalculator matches spreadsheet lifecycle formula', function () {
     expect($result['totals']['scope3EF'])->toBe(423.2);
     expect($result['totals']['landfillAvoidanceEF'])->toBe(254.16);
     expect($result['totals']['lifecycleSaving'])->toBe(677.36);
+    expect($result['materials'][0]['material'])->toBe('Paper');
+    expect($result['materials'][0]['recyclingSubstitutionFactor'])->toBe(1.3);
+    expect($result['materials'][11]['material'])->toBe('Tetrapak variants');
+    expect($result['materials'][11]['recyclingSubstitutionFactor'])->toBe(1.0);
 });
 
 test('WasteImpactCalculator lifecycle excludes other offsets', function () {

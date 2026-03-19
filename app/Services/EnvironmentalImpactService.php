@@ -6,12 +6,6 @@ use Illuminate\Support\Collection;
 
 class EnvironmentalImpactService
 {
-    private const TREES_PER_TONNE_PAPER = 17;
-
-    private const ENERGY_PER_KG_PAPER = 4.4;
-
-    private const WATER_PER_KG_PAPER = 10;
-
     private const CO2E_FACTORS = [
         'paper' => [
             'scope3' => 0.5,
@@ -55,9 +49,14 @@ class EnvironmentalImpactService
         ],
     ];
 
+    public function __construct(
+        private readonly WasteImpactCalculator $wasteImpactCalculator = new WasteImpactCalculator,
+        private readonly LandfillSpaceCalculator $landfillSpaceCalculator = new LandfillSpaceCalculator,
+        private readonly LifecycleCarbonEquivalency $lifecycleCarbonEquivalency = new LifecycleCarbonEquivalency,
+    ) {}
+
     public function calculateImpact(Collection $wasteStreams): array
     {
-        $paperWeight = 0;
         $totalRecyclingWeight = 0;
         $totalWasteWeight = 0;
         $materialBreakdown = [];
@@ -85,10 +84,6 @@ class EnvironmentalImpactService
             }
             $materialBreakdown[$materialType] += $weight;
 
-            if (str_contains($gradeName, 'paper') || str_contains($wasteStreamName, 'paper')) {
-                $paperWeight += $weight;
-            }
-
             $carbonData = $this->calculateCarbonForMaterial($materialType, $weight);
             if ($carbonData) {
                 if (! isset($carbonBreakdown[$materialType])) {
@@ -108,40 +103,41 @@ class EnvironmentalImpactService
             }
         }
 
-        $treesSaved = ($paperWeight / 1000) * self::TREES_PER_TONNE_PAPER;
-        $energySaved = $paperWeight * self::ENERGY_PER_KG_PAPER;
-        $waterSaved = $paperWeight * self::WATER_PER_KG_PAPER;
-
         $totalIncomingWaste = $totalWasteWeight + $totalRecyclingWeight;
         $divertedFromLandfill = $totalIncomingWaste > 0
             ? ($totalRecyclingWeight / $totalIncomingWaste) * 100
             : 0;
-
-        $landfillSpaceSaved = $totalRecyclingWeight * 0.003;
 
         $totalScope3 = array_sum(array_column($carbonBreakdown, 'scope3'));
         $totalLandfillAvoidance = array_sum(array_column($carbonBreakdown, 'landfill_avoidance'));
         $totalOtherOffsets = array_sum(array_column($carbonBreakdown, 'other_offsets'));
         $totalLifecycleSaving = array_sum(array_column($carbonBreakdown, 'lifecycle_saving'));
 
-        $kmEquivalent = $totalLifecycleSaving * 0.4;
+        $categoryWeights = $this->wasteImpactCalculator->buildCategoryWeightsFromWasteStreams($wasteStreams);
+        $resourceImpact = $this->wasteImpactCalculator->calculateImpactFromCategoryWeights($categoryWeights);
+        $landfillBreakdown = $this->landfillSpaceCalculator->calculate($categoryWeights);
+        $equivalency = $this->lifecycleCarbonEquivalency->fromLifecycleSavingKgCo2e($totalLifecycleSaving);
 
         return [
-            'trees_saved' => round($treesSaved, 0),
-            'energy_saved' => round($energySaved, 0),
-            'water_saved' => round($waterSaved, 2),
+            'trees_saved' => $resourceImpact['treesSaved'],
+            'energy_saved' => $resourceImpact['energySaved'],
+            'water_saved' => $resourceImpact['waterSaved'],
             'total_waste_weight' => round($totalWasteWeight, 2),
             'total_recycling_weight' => round($totalRecyclingWeight, 2),
             'total_incoming_waste' => round($totalIncomingWaste, 2),
             'diverted_from_landfill_percent' => round($divertedFromLandfill, 2),
-            'landfill_space_saved' => round($landfillSpaceSaved, 2),
+            'landfill_space_saved' => $landfillBreakdown['total'],
             'material_breakdown' => $materialBreakdown,
             'carbon_breakdown' => $carbonBreakdown,
             'total_scope3' => round($totalScope3, 2),
             'total_landfill_avoidance' => round($totalLandfillAvoidance, 2),
             'total_other_offsets' => round($totalOtherOffsets, 2),
             'total_lifecycle_saving' => round($totalLifecycleSaving, 2),
-            'km_equivalent' => round($kmEquivalent, 0),
+            'km_equivalent' => round($equivalency['transportEquivalentKm'], 0),
+            'electricity_equivalent_kwh_sa_grid' => $equivalency['electricityEquivalentKwhSaGrid'],
+            'transport_equivalent_km' => $equivalency['transportEquivalentKm'],
+            'fuel_equivalent_litres_petrol' => $equivalency['fuelEquivalentLitresPetrol'],
+            'cars_off_road_annual_equivalent' => $equivalency['carsOffRoadAnnualEquivalent'],
         ];
     }
 

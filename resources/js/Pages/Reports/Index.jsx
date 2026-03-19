@@ -1,6 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
-import { FileText, TrendingUp, BarChart3, Leaf, Calculator } from 'lucide-react';
+import { FileText, TrendingUp, BarChart3, Leaf, Calculator, Box, Droplets } from 'lucide-react';
 
 export default function Index() {
     const reports = [
@@ -19,6 +19,24 @@ export default function Index() {
             icon: Calculator,
             color: 'bg-teal-600',
             details: 'Manual weight inputs; uses report formulas for Scope 3, landfill avoidance, and lifecycle saving',
+        },
+        {
+            title: 'Landfill space calculator',
+            description:
+                'Enter weights (kg) per category to see landfill airspace avoided (m³)—same formula as the Waste Management Report. Matches docs/Landfill space saved m3.xlsx.',
+            href: '/reports/landfill-space-calculator',
+            icon: Box,
+            color: 'bg-slate-600',
+            details: 'Weight ÷ density (kg/m³) per row, then sum — no orders required',
+        },
+        {
+            title: 'Water calculator',
+            description:
+                'Enter weights (kg) per category to see water saved (L and kL)—same factors as the Waste Management Report. Matches docs/Water Calculator.xlsx.',
+            href: '/reports/water-calculator',
+            icon: Droplets,
+            color: 'bg-sky-600',
+            details: 'Weight × factor (L/kg) per row; total kL = sum of litres ÷ 1000',
         },
         {
             title: 'Monthly Rebate Tracker',

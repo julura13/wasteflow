@@ -8,10 +8,16 @@ namespace App\Services;
  * - Waste management summary page (reference)
  * - Waste management report (HTML and PDF)
  *
- * All formulas and factors are defined here so they can be changed in one place.
+ * Water saved (L, then kL) is delegated to {@see WaterCalculator} (docs/Water Calculator.xlsx).
+ * Carbon equivalency metrics from lifecycle CO₂e: {@see LifecycleCarbonEquivalency} (docs/Dashboard & Reports - Metrics).
  */
 class WasteImpactCalculator
 {
+    public function __construct(
+        private readonly WaterCalculator $waterCalculator = new WaterCalculator,
+        private readonly LifecycleCarbonEquivalency $lifecycleCarbonEquivalency = new LifecycleCarbonEquivalency,
+    ) {}
+
     /** Trees saved per kg of paper recycled (20 trees per tonne = 20/1000 per kg) */
     private const TREES_PER_KG_PAPER = 20 / 1000;
 
@@ -24,17 +30,6 @@ class WasteImpactCalculator
         'tetrapak' => 2,
         'steel' => 15,
         'glass' => 7,
-    ];
-
-    /** Water saved factors (L per kg) by category - result is converted to kL by dividing by 1000 */
-    private const WATER_FACTORS = [
-        'paper' => 7000,
-        'plastics' => 50,
-        'aluminium' => 0,
-        'organics' => 0,
-        'tetrapak' => 0,
-        'steel' => 0,
-        'glass' => 0,
     ];
 
     /** Scope 3 emission factors (kg CO₂e per kg) for lifecycle carbon calculation */
@@ -130,7 +125,46 @@ class WasteImpactCalculator
 
             if ($wasteStreamName === 'Organic Waste' && $gradeName === 'Organics Recovered') {
                 $categoryWeights['organics'] += $weight;
-            } elseif ($gradeName === 'Tetrapak') {
+            } elseif ($gradeName === 'Tetrapak' || $wasteStreamName === 'Tetrapak') {
+                $categoryWeights['tetrapak'] += $weight;
+            } elseif ($wasteStreamName === 'Paper' && $gradeName !== 'Tetrapak') {
+                $categoryWeights['paper'] += $weight;
+            } elseif ($wasteStreamName === 'Plastic') {
+                $categoryWeights['plastics'] += $weight;
+            } elseif ($wasteStreamName === 'Aluminium') {
+                $categoryWeights['aluminium'] += $weight;
+            } elseif ($wasteStreamName === 'Metal' && in_array($gradeName, ['Heavy Steel', 'Light Steel', 'Light Steel Cans', 'Light Steel Drums'], true)) {
+                $categoryWeights['steel'] += $weight;
+            } elseif ($wasteStreamName === 'Glass') {
+                $categoryWeights['glass'] += $weight;
+            }
+        }
+
+        return $categoryWeights;
+    }
+
+    /**
+     * Same category mapping as {@see buildCategoryWeightsFromSummaries()} for order waste stream lines.
+     *
+     * @param  iterable<object>  $streams  Each: nett_weight, material.wasteStream.name, material.grade.name
+     * @return array<string, float>
+     */
+    public function buildCategoryWeightsFromWasteStreams(iterable $streams): array
+    {
+        $categoryWeights = self::defaultCategoryWeights();
+
+        foreach ($streams as $stream) {
+            if (! $stream->material || ! $stream->material->grade || ! $stream->material->wasteStream) {
+                continue;
+            }
+
+            $weight = (float) $stream->nett_weight;
+            $wasteStreamName = trim($stream->material->wasteStream->name);
+            $gradeName = trim($stream->material->grade->name);
+
+            if ($wasteStreamName === 'Organic Waste' && $gradeName === 'Organics Recovered') {
+                $categoryWeights['organics'] += $weight;
+            } elseif ($gradeName === 'Tetrapak' || $wasteStreamName === 'Tetrapak') {
                 $categoryWeights['tetrapak'] += $weight;
             } elseif ($wasteStreamName === 'Paper' && $gradeName !== 'Tetrapak') {
                 $categoryWeights['paper'] += $weight;
@@ -150,10 +184,20 @@ class WasteImpactCalculator
 
     /**
      * Calculate environmental impact from category weights.
-     * Returns trees saved, energy saved (same unit as factors), water saved (kL), and lifecycle carbon saved (kg CO₂e).
+     * Returns trees saved, energy saved (same unit as factors), water saved (kL), lifecycle carbon saved (kg CO₂e),
+     * and SA carbon equivalency metrics from that lifecycle total.
      *
      * @param  array<string, float>  $categoryWeights  Keys: paper, plastics, aluminium, organics, tetrapak, steel, glass
-     * @return array{treesSaved: float, energySaved: float, waterSaved: float, co2Saved: float}
+     * @return array{
+     *     treesSaved: float,
+     *     energySaved: float,
+     *     waterSaved: float,
+     *     co2Saved: float,
+     *     electricityEquivalentKwhSaGrid: float,
+     *     transportEquivalentKm: float,
+     *     fuelEquivalentLitresPetrol: float,
+     *     carsOffRoadAnnualEquivalent: float
+     * }
      */
     public function calculateImpactFromCategoryWeights(array $categoryWeights): array
     {
@@ -168,19 +212,21 @@ class WasteImpactCalculator
         }
         $energySaved = round($energySaved, 2);
 
-        $waterSaved = 0;
-        foreach ($categoryWeights as $category => $weight) {
-            $waterSaved += $weight * (self::WATER_FACTORS[$category] ?? 0);
-        }
-        $waterSaved = round($waterSaved / 1000, 2); // Convert to kL
+        $waterBreakdown = $this->waterCalculator->calculate($categoryWeights);
+        $waterSaved = $waterBreakdown['totalKilolitres'];
 
         $co2Saved = $this->calculateLifecycleCarbonSaved($categoryWeights);
+        $equivalency = $this->lifecycleCarbonEquivalency->fromLifecycleSavingKgCo2e($co2Saved);
 
         return [
             'treesSaved' => $treesSaved,
             'energySaved' => $energySaved,
             'waterSaved' => $waterSaved,
             'co2Saved' => $co2Saved,
+            'electricityEquivalentKwhSaGrid' => $equivalency['electricityEquivalentKwhSaGrid'],
+            'transportEquivalentKm' => $equivalency['transportEquivalentKm'],
+            'fuelEquivalentLitresPetrol' => $equivalency['fuelEquivalentLitresPetrol'],
+            'carsOffRoadAnnualEquivalent' => $equivalency['carsOffRoadAnnualEquivalent'],
         ];
     }
 

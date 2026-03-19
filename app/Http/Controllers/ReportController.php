@@ -8,7 +8,10 @@ use App\Models\Company;
 use App\Models\Site;
 use App\Services\CarbonCalculator;
 use App\Services\ChartImageService;
+use App\Services\LandfillSpaceCalculator;
+use App\Services\LifecycleCarbonEquivalency;
 use App\Services\WasteImpactCalculator;
+use App\Services\WaterCalculator;
 use App\Traits\ScopeByClientTrait;
 use Carbon\Carbon;
 use Dompdf\Dompdf;
@@ -27,14 +30,26 @@ class ReportController extends Controller
 
     protected CarbonCalculator $carbonCalculator;
 
+    protected LandfillSpaceCalculator $landfillSpaceCalculator;
+
+    protected WaterCalculator $waterCalculator;
+
+    protected LifecycleCarbonEquivalency $lifecycleCarbonEquivalency;
+
     public function __construct(
         ChartImageService $chartService,
         WasteImpactCalculator $wasteImpactCalculator,
-        CarbonCalculator $carbonCalculator
+        CarbonCalculator $carbonCalculator,
+        LandfillSpaceCalculator $landfillSpaceCalculator,
+        WaterCalculator $waterCalculator,
+        LifecycleCarbonEquivalency $lifecycleCarbonEquivalency
     ) {
         $this->chartService = $chartService;
         $this->wasteImpactCalculator = $wasteImpactCalculator;
         $this->carbonCalculator = $carbonCalculator;
+        $this->landfillSpaceCalculator = $landfillSpaceCalculator;
+        $this->waterCalculator = $waterCalculator;
+        $this->lifecycleCarbonEquivalency = $lifecycleCarbonEquivalency;
     }
 
     /**
@@ -199,6 +214,72 @@ class ReportController extends Controller
     }
 
     /**
+     * Display landfill space saved calculator (manual weights, same formulas as reports).
+     */
+    public function landfillSpaceCalculator()
+    {
+        return Inertia::render('Reports/LandfillSpaceCalculator');
+    }
+
+    /**
+     * Run landfill space calculation from manually entered weights (same logic as reports).
+     */
+    public function landfillSpaceCalculatorCalculate(Request $request)
+    {
+        $validated = $request->validate([
+            'weights' => ['required', 'array'],
+            'weights.paper' => ['nullable', 'numeric', 'min:0'],
+            'weights.plastics' => ['nullable', 'numeric', 'min:0'],
+            'weights.aluminium' => ['nullable', 'numeric', 'min:0'],
+            'weights.steel' => ['nullable', 'numeric', 'min:0'],
+            'weights.glass' => ['nullable', 'numeric', 'min:0'],
+            'weights.tetrapak' => ['nullable', 'numeric', 'min:0'],
+            'weights.organics' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $weights = array_map(fn ($v) => (float) ($v ?? 0), $validated['weights'] ?? []);
+
+        $breakdown = $this->landfillSpaceCalculator->calculate($weights);
+
+        return response()->json([
+            'breakdown' => $breakdown,
+        ]);
+    }
+
+    /**
+     * Display water saved calculator (manual weights, same formulas as reports).
+     */
+    public function waterCalculator()
+    {
+        return Inertia::render('Reports/WaterCalculator');
+    }
+
+    /**
+     * Run water calculation from manually entered weights (same logic as reports).
+     */
+    public function waterCalculatorCalculate(Request $request)
+    {
+        $validated = $request->validate([
+            'weights' => ['required', 'array'],
+            'weights.paper' => ['nullable', 'numeric', 'min:0'],
+            'weights.plastics' => ['nullable', 'numeric', 'min:0'],
+            'weights.aluminium' => ['nullable', 'numeric', 'min:0'],
+            'weights.steel' => ['nullable', 'numeric', 'min:0'],
+            'weights.glass' => ['nullable', 'numeric', 'min:0'],
+            'weights.tetrapak' => ['nullable', 'numeric', 'min:0'],
+            'weights.organics' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $weights = array_map(fn ($v) => (float) ($v ?? 0), $validated['weights'] ?? []);
+
+        $breakdown = $this->waterCalculator->calculate($weights);
+
+        return response()->json([
+            'breakdown' => $breakdown,
+        ]);
+    }
+
+    /**
      * Get branches for a company (API endpoint)
      */
     public function getBranches(Request $request)
@@ -308,8 +389,16 @@ class ReportController extends Controller
         $materialsCO2e = $materialsCO2eData['materials'];
         $materialsCO2eTotals = $materialsCO2eData['totals'];
 
-        // Calculate environmental impact
+        // Calculate environmental impact (trees, energy, water, dashboard-style CO₂e + equivalencies)
         $environmentalImpact = $this->getEnvironmentalImpact($company, $branch, $site, $month, $year, $organicsRecovered);
+
+        // Align carbon equivalency metrics with materials table lifecycle total (split plastics)
+        $lifecycleKg = (float) ($materialsCO2eTotals['lifecycleSaving'] ?? 0);
+        $reportEquivalency = $this->lifecycleCarbonEquivalency->fromLifecycleSavingKgCo2e($lifecycleKg);
+        $environmentalImpact['electricityEquivalentKwhSaGrid'] = $reportEquivalency['electricityEquivalentKwhSaGrid'];
+        $environmentalImpact['transportEquivalentKm'] = $reportEquivalency['transportEquivalentKm'];
+        $environmentalImpact['fuelEquivalentLitresPetrol'] = $reportEquivalency['fuelEquivalentLitresPetrol'];
+        $environmentalImpact['carsOffRoadAnnualEquivalent'] = $reportEquivalency['carsOffRoadAnnualEquivalent'];
 
         return [
             'companyName' => $companyName,
@@ -544,27 +633,30 @@ class ReportController extends Controller
      */
     private function getLandfillSpaceSaved(?Company $company = null, ?Branch $branch = null, ?Site $site = null, ?int $month = null, ?int $year = null, float $organicsRecovered = 0): array
     {
+        $zeroWeights = [
+            'paper' => 0.0,
+            'plastics' => 0.0,
+            'aluminium' => 0.0,
+            'steel' => 0.0,
+            'glass' => 0.0,
+            'tetrapak' => 0.0,
+            'organics' => 0.0,
+        ];
+
         if ((! $company && ! $branch && ! $site) || ! $month || ! $year) {
-            return [
-                'tetrapak' => ['total' => 0, 'spaceSaved' => 0],
-                'plastics' => ['total' => 0, 'spaceSaved' => 0],
-                'paper' => ['total' => 0, 'spaceSaved' => 0],
-                'glass' => ['total' => 0, 'spaceSaved' => 0],
-                'metal' => ['total' => 0, 'spaceSaved' => 0],
-                'foodWaste' => ['total' => 0, 'spaceSaved' => 0],
-                'total' => 0,
-            ];
+            return $this->landfillSpaceCalculator->calculate($zeroWeights);
         }
 
-        // Get material-level summaries
         $summaries = $this->getMaterialSummaries($company, $branch, $site, $month, $year);
 
-        $totals = [
-            'tetrapak' => 0,
-            'plastics' => 0,
-            'paper' => 0,
-            'glass' => 0,
-            'metal' => 0,
+        $weightsKg = [
+            'paper' => 0.0,
+            'plastics' => 0.0,
+            'aluminium' => 0.0,
+            'steel' => 0.0,
+            'glass' => 0.0,
+            'tetrapak' => 0.0,
+            'organics' => $organicsRecovered,
         ];
 
         foreach ($summaries as $summary) {
@@ -576,65 +668,22 @@ class ReportController extends Controller
             $wasteStreamName = trim($summary->material->wasteStream->name);
             $gradeName = trim($summary->material->grade->name);
 
-            // Tetrapak: grade name = "Tetrapak"
             if ($gradeName === 'Tetrapak') {
-                $totals['tetrapak'] += $weight;
-            }
-            // Plastics: waste stream = "Plastic"
-            elseif ($wasteStreamName === 'Plastic') {
-                $totals['plastics'] += $weight;
-            }
-            // Paper: waste stream = "Paper"
-            elseif ($wasteStreamName === 'Paper') {
-                $totals['paper'] += $weight;
-            }
-            // Glass: grade name = "Glass"
-            elseif ($gradeName === 'Glass') {
-                $totals['glass'] += $weight;
-            }
-            // Metal: Heavy Steel, Light Steel, Light Steel Cans, Light Steel Drums
-            elseif (in_array($gradeName, ['Heavy Steel', 'Light Steel', 'Light Steel Cans', 'Light Steel Drums'])) {
-                $totals['metal'] += $weight;
+                $weightsKg['tetrapak'] += $weight;
+            } elseif ($wasteStreamName === 'Plastic') {
+                $weightsKg['plastics'] += $weight;
+            } elseif ($wasteStreamName === 'Paper') {
+                $weightsKg['paper'] += $weight;
+            } elseif ($wasteStreamName === 'Aluminium') {
+                $weightsKg['aluminium'] += $weight;
+            } elseif ($wasteStreamName === 'Metal' && in_array($gradeName, ['Heavy Steel', 'Light Steel', 'Light Steel Cans', 'Light Steel Drums'], true)) {
+                $weightsKg['steel'] += $weight;
+            } elseif ($wasteStreamName === 'Glass') {
+                $weightsKg['glass'] += $weight;
             }
         }
 
-        // Calculate landfill space saved for each category
-        $breakdown = [
-            'tetrapak' => [
-                'total' => round($totals['tetrapak'], 2),
-                'spaceSaved' => round($totals['tetrapak'] / 200, 2),
-            ],
-            'plastics' => [
-                'total' => round($totals['plastics'], 2),
-                'spaceSaved' => round($totals['plastics'] / 150, 2),
-            ],
-            'paper' => [
-                'total' => round($totals['paper'], 2),
-                'spaceSaved' => round($totals['paper'] / 300, 2),
-            ],
-            'glass' => [
-                'total' => round($totals['glass'], 2),
-                'spaceSaved' => round($totals['glass'] / 450, 2),
-            ],
-            'metal' => [
-                'total' => round($totals['metal'], 2),
-                'spaceSaved' => round($totals['metal'] / 500, 2),
-            ],
-            'foodWaste' => [
-                'total' => round($organicsRecovered, 2),
-                'spaceSaved' => round($organicsRecovered / 350, 2),
-            ],
-        ];
-
-        // Calculate total landfill space saved
-        $totalSpaceSaved = 0;
-        foreach ($breakdown as $category) {
-            $totalSpaceSaved += $category['spaceSaved'];
-        }
-
-        $breakdown['total'] = round($totalSpaceSaved, 2);
-
-        return $breakdown;
+        return $this->landfillSpaceCalculator->calculate($weightsKg);
     }
 
     /**
@@ -743,18 +792,18 @@ class ReportController extends Controller
     private function getEmptyMaterialsCO2e(): array
     {
         $materials = [
-            ['material' => 'Paper', 'weight' => 0, 'scope3EF' => 0, 'landfillAvoidanceEF' => 0, 'otherOffsets' => 0, 'lifecycleSaving' => 0],
-            ['material' => 'Plastic PP / HD', 'weight' => 0, 'scope3EF' => 0, 'landfillAvoidanceEF' => 0, 'otherOffsets' => 0, 'lifecycleSaving' => 0],
-            ['material' => 'Plastic PS (Polystyrene)', 'weight' => 0, 'scope3EF' => 0, 'landfillAvoidanceEF' => 0, 'otherOffsets' => 0, 'lifecycleSaving' => 0],
-            ['material' => 'Plastic LDPE Film', 'weight' => 0, 'scope3EF' => 0, 'landfillAvoidanceEF' => 0, 'otherOffsets' => 0, 'lifecycleSaving' => 0],
-            ['material' => 'Aluminium', 'weight' => 0, 'scope3EF' => 0, 'landfillAvoidanceEF' => 0, 'otherOffsets' => 0, 'lifecycleSaving' => 0],
-            ['material' => 'Steel', 'weight' => 0, 'scope3EF' => 0, 'landfillAvoidanceEF' => 0, 'otherOffsets' => 0, 'lifecycleSaving' => 0],
-            ['material' => 'Glass', 'weight' => 0, 'scope3EF' => 0, 'landfillAvoidanceEF' => 0, 'otherOffsets' => 0, 'lifecycleSaving' => 0],
-            ['material' => 'Food Waste', 'weight' => 0, 'scope3EF' => 0, 'landfillAvoidanceEF' => 0, 'otherOffsets' => 0, 'lifecycleSaving' => 0],
-            ['material' => 'Garden Waste', 'weight' => 0, 'scope3EF' => 0, 'landfillAvoidanceEF' => 0, 'otherOffsets' => 0, 'lifecycleSaving' => 0],
-            ['material' => 'Batteries', 'weight' => 0, 'scope3EF' => 0, 'landfillAvoidanceEF' => 0, 'otherOffsets' => 0, 'lifecycleSaving' => 0],
-            ['material' => 'Electronics (E-waste)', 'weight' => 0, 'scope3EF' => 0, 'landfillAvoidanceEF' => 0, 'otherOffsets' => 0, 'lifecycleSaving' => 0],
-            ['material' => 'Tetrapak', 'weight' => 0, 'scope3EF' => 0, 'landfillAvoidanceEF' => 0, 'otherOffsets' => 0, 'lifecycleSaving' => 0],
+            ['material' => 'Paper', 'weight' => 0, 'scope3EF' => 0, 'landfillAvoidanceEF' => 0, 'lifecycleSaving' => 0],
+            ['material' => 'Plastic PP / HD', 'weight' => 0, 'scope3EF' => 0, 'landfillAvoidanceEF' => 0, 'lifecycleSaving' => 0],
+            ['material' => 'Plastic PS (Polystyrene)', 'weight' => 0, 'scope3EF' => 0, 'landfillAvoidanceEF' => 0, 'lifecycleSaving' => 0],
+            ['material' => 'Plastic LDPE Film', 'weight' => 0, 'scope3EF' => 0, 'landfillAvoidanceEF' => 0, 'lifecycleSaving' => 0],
+            ['material' => 'Aluminium', 'weight' => 0, 'scope3EF' => 0, 'landfillAvoidanceEF' => 0, 'lifecycleSaving' => 0],
+            ['material' => 'Steel', 'weight' => 0, 'scope3EF' => 0, 'landfillAvoidanceEF' => 0, 'lifecycleSaving' => 0],
+            ['material' => 'Glass', 'weight' => 0, 'scope3EF' => 0, 'landfillAvoidanceEF' => 0, 'lifecycleSaving' => 0],
+            ['material' => 'Food Waste', 'weight' => 0, 'scope3EF' => 0, 'landfillAvoidanceEF' => 0, 'lifecycleSaving' => 0],
+            ['material' => 'Garden Waste', 'weight' => 0, 'scope3EF' => 0, 'landfillAvoidanceEF' => 0, 'lifecycleSaving' => 0],
+            ['material' => 'Batteries', 'weight' => 0, 'scope3EF' => 0, 'landfillAvoidanceEF' => 0, 'lifecycleSaving' => 0],
+            ['material' => 'Electronics (E-waste)', 'weight' => 0, 'scope3EF' => 0, 'landfillAvoidanceEF' => 0, 'lifecycleSaving' => 0],
+            ['material' => 'Tetrapak', 'weight' => 0, 'scope3EF' => 0, 'landfillAvoidanceEF' => 0, 'lifecycleSaving' => 0],
         ];
 
         return [
@@ -762,7 +811,6 @@ class ReportController extends Controller
             'totals' => [
                 'scope3EF' => 0,
                 'landfillAvoidanceEF' => 0,
-                'otherOffsets' => 0,
                 'lifecycleSaving' => 0,
             ],
         ];
@@ -778,6 +826,11 @@ class ReportController extends Controller
                 'treesSaved' => 0,
                 'energySaved' => 0,
                 'waterSaved' => 0,
+                'co2Saved' => 0,
+                'electricityEquivalentKwhSaGrid' => 0,
+                'transportEquivalentKm' => 0,
+                'fuelEquivalentLitresPetrol' => 0,
+                'carsOffRoadAnnualEquivalent' => 0,
             ];
         }
 
@@ -789,20 +842,25 @@ class ReportController extends Controller
             'treesSaved' => $impact['treesSaved'],
             'energySaved' => $impact['energySaved'],
             'waterSaved' => $impact['waterSaved'],
+            'co2Saved' => $impact['co2Saved'],
+            'electricityEquivalentKwhSaGrid' => $impact['electricityEquivalentKwhSaGrid'],
+            'transportEquivalentKm' => $impact['transportEquivalentKm'],
+            'fuelEquivalentLitresPetrol' => $impact['fuelEquivalentLitresPetrol'],
+            'carsOffRoadAnnualEquivalent' => $impact['carsOffRoadAnnualEquivalent'],
         ];
     }
 
     /**
-     * Calculate carbon emissions avoided
-     * TODO: Confirm calculation formula - currently using lifecycleSaving converted to km
+     * Transport equivalent (km avoided) from lifecycle saving — docs/Dashboard & Reports - Metrics (1).docx
      */
     private function calculateCarbonEmissionsAvoided(array $materialsCO2eTotals): float
     {
-        // Convert lifecycleSaving (kg CO₂e) to km
-        // Assuming 1 kg CO₂e = ~0.17 km (this may need adjustment based on requirements)
-        $lifecycleSaving = $materialsCO2eTotals['lifecycleSaving'] ?? 0;
+        $lifecycleSaving = (float) ($materialsCO2eTotals['lifecycleSaving'] ?? 0);
+        if ($lifecycleSaving <= 0) {
+            return 0.0;
+        }
 
-        return round($lifecycleSaving * 0.17, 2);
+        return round($lifecycleSaving / 0.192, 2);
     }
 
     /**
@@ -819,7 +877,7 @@ class ReportController extends Controller
         return [
             ['name' => 'Water Saved', 'value' => round($waterSaved, 2), 'color' => '#3b82f6'],
             ['name' => 'Energy Saved', 'value' => round($energySaved, 2), 'color' => '#a3e635'],
-            ['name' => 'Lifecycle Saving CO₂e (kg)', 'value' => round($lifecycleSaving, 2), 'color' => '#6b7280'],
+            ['name' => 'Total Lifecycle Carbon Avoided (kg CO₂e)', 'value' => round($lifecycleSaving, 2), 'color' => '#6b7280'],
         ];
     }
 
@@ -986,12 +1044,12 @@ class ReportController extends Controller
             'horizontal' => true, // Horizontal bar chart
             'datasets' => [
                 [
-                    'label' => 'Scope 3 EF (kg CO₂e/kg)²',
+                    'label' => 'Upstream (Scope 3) Emissions Avoided (kg CO₂e)',
                     'data' => [$stackedBarData['scope3EF']],
                     'backgroundColor' => '#60a5fa',
                 ],
                 [
-                    'label' => 'Landfill Avoidance EF (kg CO₂e/kg)³',
+                    'label' => 'Landfill Emissions Avoided (kg CO₂e)',
                     'data' => [$stackedBarData['landfillAvoidanceEF']],
                     'backgroundColor' => '#9ca3af',
                 ],
