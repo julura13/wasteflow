@@ -611,7 +611,7 @@
             <div class="summary-label">Other Offsets CO₂e (kg)</div>
             <div class="summary-value">{{ number_format($impact['total_other_offsets'], 2) }}</div>
         </div>
-        <div style="font-size: 8px; color: #666; margin-top: 5px;">Additional CO₂ savings from recycling, energy recovery, and avoiding virgin material production.</div>
+        <div style="font-size: 8px; color: #666; margin-top: 5px;">Reference only (not included in Lifecycle Saving).</div>
         
         <div class="summary-row" style="margin-top: 15px;">
             <div class="summary-label">Lifecycle Saving CO₂e (kg)</div>

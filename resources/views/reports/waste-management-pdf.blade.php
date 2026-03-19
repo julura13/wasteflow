@@ -414,7 +414,7 @@
                     <p style="margin-bottom: 8px;">
                         <strong>Other Offsets CO₂e (kg)</strong>
                         <strong style="color: #dc2626;">{{ number_format($reportData['materialsCO2eTotals']['otherOffsets'], 2) }}</strong>
-                        Additional CO2 savings from recycling, energy recovery, and avoiding virgin material production.
+                        Reference only (not included in Lifecycle Saving).
                     </p>
                     <p style="margin-bottom: 8px;">
                         <strong>Lifecycle Saving CO₂e (kg)</strong>
