@@ -11,6 +11,7 @@ import {
 } from 'recharts';
 import { Cloud, Droplet, TreePine, Zap, LayoutDashboard, Table2, X } from 'lucide-react';
 import axios from 'axios';
+import SearchableDropdown from '@/Components/SearchableDropdown';
 
 const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
 const MONTH_LABELS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
@@ -181,6 +182,15 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
 
     const yearForGradeSummary = filters.from_date ? new Date(filters.from_date).getFullYear() : new Date().getFullYear();
 
+    const isGradeMonthCellSelected = (wasteStreamName, monthIndex) =>
+        detailPanel.open &&
+        detailPanel.wasteStream === wasteStreamName &&
+        detailPanel.month === monthIndex + 1 &&
+        detailPanel.year === yearForGradeSummary;
+
+    const isGradeRowHeaderActive = (wasteStreamName) =>
+        detailPanel.open && detailPanel.wasteStream === wasteStreamName;
+
     const handleGradeMonthClick = (wasteStreamName, monthIndex) => {
         const month = monthIndex + 1;
         setDetailPanel({
@@ -304,59 +314,68 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 mb-3 border border-gray-200 dark:border-gray-700">
                 <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-6 gap-2 items-end">
                     <div>
-                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        <label htmlFor="dashboard_company_id" className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Company
                         </label>
-                        <select
+                        <SearchableDropdown
+                            id="dashboard_company_id"
+                            name="company_id"
                             value={data.company_id}
-                            onChange={(e) => handleFilterChange('company_id', e.target.value)}
-                            className="w-full text-sm rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-1.5"
-                        >
-                            <option value="">Select Company</option>
-                            {companies.map((company) => (
-                                <option key={company.id} value={company.id}>
-                                    {company.name}
-                                </option>
-                            ))}
-                        </select>
+                            onChange={(v) => handleFilterChange('company_id', v)}
+                            options={companies}
+                            placeholder="Select Company"
+                            size="sm"
+                            menuMatchTriggerWidth
+                            focusWithinClassName="focus-within:border-indigo-500 focus-within:ring-indigo-500"
+                        />
                     </div>
 
                     <div>
-                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        <label htmlFor="dashboard_branch_id" className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Branch <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span>
                         </label>
-                        <select
+                        <SearchableDropdown
+                            id="dashboard_branch_id"
+                            name="branch_id"
                             value={data.branch_id}
-                            onChange={(e) => handleFilterChange('branch_id', e.target.value)}
+                            onChange={(v) => handleFilterChange('branch_id', v)}
+                            options={branches}
+                            placeholder={
+                                !data.company_id
+                                    ? 'Select company first'
+                                    : loadingBranches
+                                        ? 'Loading…'
+                                        : 'All branches'
+                            }
                             disabled={!data.company_id || loadingBranches}
-                            className="w-full text-sm rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100 dark:disabled:bg-gray-600 py-1.5"
-                        >
-                            <option value="">All branches</option>
-                            {branches.map((branch) => (
-                                <option key={branch.id} value={branch.id}>
-                                    {branch.name}
-                                </option>
-                            ))}
-                        </select>
+                            size="sm"
+                            menuMatchTriggerWidth
+                            focusWithinClassName="focus-within:border-indigo-500 focus-within:ring-indigo-500"
+                        />
                     </div>
 
                     <div>
-                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        <label htmlFor="dashboard_site_id" className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Site <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span>
                         </label>
-                        <select
+                        <SearchableDropdown
+                            id="dashboard_site_id"
+                            name="site_id"
                             value={data.site_id}
-                            onChange={(e) => handleFilterChange('site_id', e.target.value)}
+                            onChange={(v) => handleFilterChange('site_id', v)}
+                            options={sites}
+                            placeholder={
+                                !data.branch_id
+                                    ? 'Select branch first'
+                                    : loadingSites
+                                        ? 'Loading…'
+                                        : 'All sites'
+                            }
                             disabled={!data.branch_id || loadingSites}
-                            className="w-full text-sm rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100 dark:disabled:bg-gray-600 py-1.5"
-                        >
-                            <option value="">All sites</option>
-                            {sites.map((site) => (
-                                <option key={site.id} value={site.id}>
-                                    {site.name}
-                                </option>
-                            ))}
-                        </select>
+                            size="sm"
+                            menuMatchTriggerWidth
+                            focusWithinClassName="focus-within:border-indigo-500 focus-within:ring-indigo-500"
+                        />
                     </div>
 
                     <div>
@@ -450,20 +469,56 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
                                 </tr>
                             ) : (
                                 gradeSummaryByYear.map((row) => (
-                                    <tr key={row.name} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                        <td className="py-2 px-2 font-medium text-gray-900 dark:text-gray-100">{row.name}</td>
-                                        {MONTHS.map((m, idx) => (
-                                            <td key={m} className="text-right py-2 px-2 text-gray-600 dark:text-gray-300 tabular-nums">
+                                    <tr
+                                        key={row.name}
+                                        className={[
+                                            'border-b border-gray-100 dark:border-gray-700',
+                                            isGradeRowHeaderActive(row.name)
+                                                ? 'bg-indigo-50/40 dark:bg-indigo-950/30'
+                                                : 'hover:bg-gray-50 dark:hover:bg-gray-700/50',
+                                        ].join(' ')}
+                                    >
+                                        <td
+                                            className={[
+                                                'py-2 px-2 font-medium border-l-[3px] border-transparent',
+                                                isGradeRowHeaderActive(row.name)
+                                                    ? 'border-l-indigo-500 text-indigo-900 dark:text-indigo-100'
+                                                    : 'text-gray-900 dark:text-gray-100',
+                                            ].join(' ')}
+                                        >
+                                            {row.name}
+                                        </td>
+                                        {MONTHS.map((m, idx) => {
+                                            const selected = isGradeMonthCellSelected(row.name, idx);
+                                            return (
+                                            <td
+                                                key={m}
+                                                className={[
+                                                    'text-right py-2 px-1 tabular-nums transition-colors',
+                                                    selected
+                                                        ? 'bg-indigo-100 dark:bg-indigo-900/50 ring-2 ring-inset ring-indigo-500 dark:ring-indigo-400'
+                                                        : 'text-gray-600 dark:text-gray-300',
+                                                ].join(' ')}
+                                            >
                                                 <button
                                                     type="button"
                                                     onClick={() => handleGradeMonthClick(row.name, idx)}
-                                                    className={row[m] ? 'cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-700 dark:hover:text-indigo-300 rounded px-1 -mx-1' : 'cursor-default'}
+                                                    className={[
+                                                        'min-w-[2.25rem] inline-block rounded px-1 py-0.5 -mx-0.5',
+                                                        row[m]
+                                                            ? selected
+                                                                ? 'cursor-pointer font-semibold text-indigo-900 dark:text-indigo-100'
+                                                                : 'cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-700 dark:hover:text-indigo-300'
+                                                            : 'cursor-default',
+                                                    ].join(' ')}
                                                     title={row[m] ? `View daily breakdown for ${row.name} in ${MONTH_LABELS[idx]}` : undefined}
+                                                    aria-pressed={selected}
                                                 >
                                                     {row[m] ? formatWeight(row[m]) : '–'}
                                                 </button>
                                             </td>
-                                        ))}
+                                            );
+                                        })}
                                         <td className="text-right py-2 px-2 font-semibold text-gray-900 dark:text-gray-100 tabular-nums">{formatWeight(row.total)}</td>
                                     </tr>
                                 ))

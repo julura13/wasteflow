@@ -17,6 +17,9 @@ import { ChevronDown, X, Search } from 'lucide-react';
  * @param {string} props.displayKey - Key to display from option object (default: 'name')
  * @param {Function} props.getOptionLabel - Custom function to get display label (optional)
  * @param {boolean} props.disabled - Whether dropdown is disabled
+ * @param {'default'|'sm'} props.size - Control padding / text size (sm matches compact dashboard filters)
+ * @param {boolean} props.menuMatchTriggerWidth - When true, dropdown list width matches the trigger (narrow layouts)
+ * @param {string} props.focusWithinClassName - Classes for focus ring on trigger (e.g. indigo on dashboard)
  */
 export default function SearchableDropdown({
     options = [],
@@ -32,6 +35,9 @@ export default function SearchableDropdown({
     getOptionLabel,
     disabled = false,
     error,
+    size = 'default',
+    menuMatchTriggerWidth = false,
+    focusWithinClassName = 'focus-within:border-primary-500 focus-within:ring-primary-500',
 }) {
     const [isOpen, setIsOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -127,8 +133,8 @@ export default function SearchableDropdown({
     };
 
     const handleSelect = (option) => {
-        const optionValue = option.id || option;
-        onChange(optionValue);
+        const raw = option.id !== undefined && option.id !== null ? option.id : option;
+        onChange(raw === '' || raw === undefined ? '' : String(raw));
         setIsOpen(false);
         setSearchQuery('');
     };
@@ -138,6 +144,22 @@ export default function SearchableDropdown({
         onChange('');
         setSearchQuery('');
     };
+
+    const isSm = size === 'sm';
+    const closedRowClass = isSm
+        ? 'flex items-center justify-between px-2 py-1.5 text-sm'
+        : 'flex items-center justify-between px-3 py-2';
+    const searchWrapClass = isSm ? 'p-1.5' : 'p-2';
+    const searchInputClass = isSm
+        ? 'block w-full pl-8 pr-3 py-1 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100'
+        : 'block w-full pl-8 pr-3 py-1 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100';
+
+    const menuWidthStyle = menuMatchTriggerWidth
+        ? { width: `${position.width}px`, maxWidth: '90vw' }
+        : {
+            width: `${Math.max(position.width * 1.5, 400)}px`,
+            maxWidth: '90vw',
+        };
 
     return (
         <div className={`${className} relative`}>
@@ -151,14 +173,14 @@ export default function SearchableDropdown({
                     className={`relative w-full cursor-pointer rounded-md border ${
                         error 
                             ? 'border-red-300 focus-within:border-red-500 focus-within:ring-red-500' 
-                            : 'border-gray-300 focus-within:border-primary-500 focus-within:ring-primary-500'
+                            : `border-gray-300 ${focusWithinClassName}`
                     } bg-white dark:bg-gray-700 dark:border-gray-600 shadow-sm focus-within:ring-1 focus-within:ring-inset sm:text-sm ${
                         disabled ? 'opacity-50 cursor-not-allowed' : ''
                     }`}
                     onClick={() => !disabled && setIsOpen(!isOpen)}
                 >
                     {!isOpen && (
-                        <div className="flex items-center justify-between px-3 py-2">
+                        <div className={closedRowClass}>
                             <span className={`block truncate ${selectedOption ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'}`}>
                                 {getDisplayValue() || placeholder}
                             </span>
@@ -174,7 +196,7 @@ export default function SearchableDropdown({
                         </div>
                     )}
                     {isOpen && (
-                        <div className="p-2">
+                        <div className={searchWrapClass}>
                             <div className="relative">
                                 <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                                 <input
@@ -182,7 +204,7 @@ export default function SearchableDropdown({
                                     type="text"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="block w-full pl-8 pr-3 py-1 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
+                                    className={searchInputClass}
                                     placeholder="Search..."
                                     onClick={(e) => e.stopPropagation()}
                                 />
@@ -208,8 +230,7 @@ export default function SearchableDropdown({
                     style={{
                         top: `${position.top}px`,
                         left: `${position.left}px`,
-                        width: `${Math.max(position.width * 1.5, 400)}px`,
-                        maxWidth: '90vw',
+                        ...menuWidthStyle,
                     }}
                 >
                     {filteredOptions.length > 0 ? (

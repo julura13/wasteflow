@@ -1,6 +1,10 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { ArrowLeft, Calendar, Filter, BarChart3 } from 'lucide-react';
+import SearchableDropdown from '@/Components/SearchableDropdown';
+
+const siteOptionLabel = (site) =>
+    `${site.name}${site.branch?.company ? ` (${site.branch.company.name})` : ''}`;
 
 export default function AverageWeight({ averageWeightData, sites, filters, containerTypes = {} }) {
     const { data, setData, get } = useForm({
@@ -80,22 +84,16 @@ export default function AverageWeight({ averageWeightData, sites, filters, conta
                             </div>
 
                             <div>
-                                <label htmlFor="site_id" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                                    Site (Optional)
-                                </label>
-                                <select
+                                <SearchableDropdown
                                     id="site_id"
+                                    name="site_id"
+                                    label="Site (Optional)"
                                     value={data.site_id}
-                                    onChange={(e) => setData('site_id', e.target.value)}
-                                    className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-                                >
-                                    <option value="">All Sites</option>
-                                    {sites.map((site) => (
-                                        <option key={site.id} value={site.id}>
-                                            {site.name} {site.branch?.company ? `(${site.branch.company.name})` : ''}
-                                        </option>
-                                    ))}
-                                </select>
+                                    onChange={(v) => setData('site_id', v)}
+                                    options={sites}
+                                    getOptionLabel={siteOptionLabel}
+                                    placeholder="All Sites"
+                                />
                             </div>
 
                             <div className="flex items-end">

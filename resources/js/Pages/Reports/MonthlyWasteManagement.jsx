@@ -1,9 +1,10 @@
-import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
-import { ArrowLeft, FileText, Download } from 'lucide-react';
+import { ArrowLeft, Download } from 'lucide-react';
+import SearchableDropdown from '@/Components/SearchableDropdown';
 
 export default function MonthlyWasteManagement({ companies = [] }) {
-    const { data, setData, get } = useForm({
+    const { data, setData } = useForm({
         company_id: '',
         month: new Date().toISOString().slice(0, 7),
     });
@@ -54,23 +55,20 @@ export default function MonthlyWasteManagement({ companies = [] }) {
                     <form onSubmit={handleGenerate} className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label htmlFor="company_id" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                                    Company <span className="text-red-600">*</span>
-                                </label>
-                                <select
+                                <SearchableDropdown
                                     id="company_id"
+                                    name="company_id"
+                                    label={(
+                                        <>
+                                            Company <span className="text-red-600">*</span>
+                                        </>
+                                    )}
                                     value={data.company_id}
-                                    onChange={(e) => setData('company_id', e.target.value)}
-                                    className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                    onChange={(v) => setData('company_id', v)}
+                                    options={userCompanies}
+                                    placeholder="Select Company"
                                     required
-                                >
-                                    <option value="">Select Company</option>
-                                    {userCompanies.map((company) => (
-                                        <option key={company.id} value={company.id}>
-                                            {company.name}
-                                        </option>
-                                    ))}
-                                </select>
+                                />
                             </div>
 
                             <div>

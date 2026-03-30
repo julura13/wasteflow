@@ -3,13 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Branch;
-use App\Models\ClientMonthlyMaterialSummary;
 use App\Models\Company;
 use App\Models\Site;
 use App\Services\CarbonCalculator;
 use App\Services\ChartImageService;
 use App\Services\LandfillSpaceCalculator;
 use App\Services\LifecycleCarbonEquivalency;
+use App\Services\OrderWasteStreamReportingService;
 use App\Services\WasteImpactCalculator;
 use App\Services\WaterCalculator;
 use App\Traits\ScopeByClientTrait;
@@ -36,13 +36,16 @@ class ReportController extends Controller
 
     protected LifecycleCarbonEquivalency $lifecycleCarbonEquivalency;
 
+    protected OrderWasteStreamReportingService $orderWasteStreamReporting;
+
     public function __construct(
         ChartImageService $chartService,
         WasteImpactCalculator $wasteImpactCalculator,
         CarbonCalculator $carbonCalculator,
         LandfillSpaceCalculator $landfillSpaceCalculator,
         WaterCalculator $waterCalculator,
-        LifecycleCarbonEquivalency $lifecycleCarbonEquivalency
+        LifecycleCarbonEquivalency $lifecycleCarbonEquivalency,
+        OrderWasteStreamReportingService $orderWasteStreamReporting,
     ) {
         $this->chartService = $chartService;
         $this->wasteImpactCalculator = $wasteImpactCalculator;
@@ -50,6 +53,7 @@ class ReportController extends Controller
         $this->landfillSpaceCalculator = $landfillSpaceCalculator;
         $this->waterCalculator = $waterCalculator;
         $this->lifecycleCarbonEquivalency = $lifecycleCarbonEquivalency;
+        $this->orderWasteStreamReporting = $orderWasteStreamReporting;
     }
 
     /**
@@ -425,36 +429,9 @@ class ReportController extends Controller
     }
 
     /**
-     * Get summaries query builder for the given filters
-     */
-    private function getSummariesQuery(?Company $company = null, ?Branch $branch = null, ?Site $site = null, ?int $month = null, ?int $year = null)
-    {
-        $query = ClientMonthlyMaterialSummary::query()
-            ->where('year', $year)
-            ->where('month', $month);
-
-        // Filter by site (most specific) - only this site
-        if ($site) {
-            $query->where('site_id', $site->id);
-        }
-        // Filter by branch - all sites under this branch (both branch-level and site-level summaries)
-        elseif ($branch) {
-            $query->where('branch_id', $branch->id);
-            // Include both site-level (site_id not null) and branch-level (site_id null) summaries
-        }
-        // Filter by company - all branches and sites under this company
-        elseif ($company) {
-            $query->where('company_id', $company->id);
-            // Include company-level, branch-level, and site-level summaries
-        }
-        // No filters - get all companies (aggregate all summaries)
-        // No additional where clause needed
-
-        return $query;
-    }
-
-    /**
-     * Get material-level summaries with material relationships loaded
+     * Material-level weights for the calendar month from finalized order waste streams (single source of truth with dashboard).
+     *
+     * @return \Illuminate\Support\Collection<int, object{material_id: int, total_weight: float, material: \App\Models\Material}>
      */
     private function getMaterialSummaries(?Company $company = null, ?Branch $branch = null, ?Site $site = null, ?int $month = null, ?int $year = null)
     {
@@ -462,25 +439,17 @@ class ReportController extends Controller
             return collect([]);
         }
 
-        return $this->getSummariesQuery($company, $branch, $site, $month, $year)
-            ->whereNotNull('material_id')
-            ->with(['material.grade', 'material.wasteStream'])
-            ->get();
-    }
+        $start = Carbon::createFromDate($year, $month, 1)->format('Y-m-d');
+        $lastDay = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+        $end = Carbon::createFromDate($year, $month, $lastDay)->format('Y-m-d');
 
-    /**
-     * Get category-level (waste stream) summaries
-     */
-    private function getCategorySummaries(?Company $company = null, ?Branch $branch = null, ?Site $site = null, ?int $month = null, ?int $year = null)
-    {
-        if ((! $company && ! $branch && ! $site) || ! $month || ! $year) {
-            return collect([]);
-        }
-
-        return $this->getSummariesQuery($company, $branch, $site, $month, $year)
-            ->whereNotNull('waste_stream_id')
-            ->with('wasteStream')
-            ->get();
+        return $this->orderWasteStreamReporting->materialWeightAggregatesForDateRange(
+            $company,
+            $branch,
+            $site,
+            $start,
+            $end
+        );
     }
 
     /**

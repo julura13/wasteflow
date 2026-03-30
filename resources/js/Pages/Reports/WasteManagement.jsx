@@ -2,6 +2,7 @@ import { Head, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import SearchableDropdown from '@/Components/SearchableDropdown';
 
 export default function WasteManagement({ companies, filters }) {
     const [selectedCompany, setSelectedCompany] = useState(filters?.company_id || '');
@@ -9,7 +10,7 @@ export default function WasteManagement({ companies, filters }) {
     const [selectedSite, setSelectedSite] = useState(filters?.site_id || '');
     const [month, setMonth] = useState(filters?.month || new Date().getMonth() + 1);
     const [year, setYear] = useState(filters?.year || new Date().getFullYear());
-    
+
     const [branches, setBranches] = useState([]);
     const [sites, setSites] = useState([]);
     const [loadingBranches, setLoadingBranches] = useState(false);
@@ -30,7 +31,7 @@ export default function WasteManagement({ companies, filters }) {
                     setBranches([]);
                     setLoadingBranches(false);
                 });
-            
+
             // Reset branch and site when company changes
             setSelectedBranch('');
             setSelectedSite('');
@@ -58,7 +59,7 @@ export default function WasteManagement({ companies, filters }) {
                     setSites([]);
                     setLoadingSites(false);
                 });
-            
+
             // Reset site when branch changes
             setSelectedSite('');
         } else {
@@ -69,7 +70,7 @@ export default function WasteManagement({ companies, filters }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        
+
         // At least company must be selected
         if (!selectedCompany) {
             alert('Please select at least a company');
@@ -130,50 +131,44 @@ export default function WasteManagement({ companies, filters }) {
                     <div className="space-y-6">
                         {/* Company Selection */}
                         <div>
-                            <label htmlFor="company_id" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Company <span className="text-red-500">*</span>
-                            </label>
-                            <select
+                            <SearchableDropdown
                                 id="company_id"
+                                name="company_id"
+                                label={(
+                                    <>
+                                        Company
+                                    </>
+                                )}
                                 value={selectedCompany}
-                                onChange={(e) => setSelectedCompany(e.target.value)}
-                                className="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-gray-100 sm:text-sm"
+                                onChange={(v) => setSelectedCompany(v)}
+                                options={companies}
+                                placeholder="Select a company"
                                 required
-                            >
-                                <option value="">Select a company</option>
-                                {companies.map((company) => (
-                                    <option key={company.id} value={company.id}>
-                                        {company.name}
-                                    </option>
-                                ))}
-                            </select>
+                            />
                         </div>
 
                         {/* Branch Selection */}
                         <div>
-                            <label htmlFor="branch_id" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Branch <span className="text-gray-500 text-xs">(Optional)</span>
-                            </label>
-                            <select
+                            <SearchableDropdown
                                 id="branch_id"
+                                name="branch_id"
+                                label={(
+                                    <>
+                                        Branch <span className="text-gray-500 text-xs font-normal">(Optional)</span>
+                                    </>
+                                )}
                                 value={selectedBranch}
-                                onChange={(e) => setSelectedBranch(e.target.value)}
+                                onChange={(v) => setSelectedBranch(v)}
+                                options={branches}
+                                placeholder={
+                                    !selectedCompany
+                                        ? 'Select a company first'
+                                        : loadingBranches
+                                            ? 'Loading branches…'
+                                            : 'All branches'
+                                }
                                 disabled={!selectedCompany || loadingBranches}
-                                className="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-gray-100 sm:text-sm disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed"
-                            >
-                                <option value="">
-                                    {!selectedCompany 
-                                        ? 'Select a company first' 
-                                        : loadingBranches 
-                                        ? 'Loading branches...' 
-                                        : 'All branches'}
-                                </option>
-                                {branches.map((branch) => (
-                                    <option key={branch.id} value={branch.id}>
-                                        {branch.name}
-                                    </option>
-                                ))}
-                            </select>
+                            />
                             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                 Leave empty to include all branches of the selected company
                             </p>
@@ -181,29 +176,26 @@ export default function WasteManagement({ companies, filters }) {
 
                         {/* Site Selection */}
                         <div>
-                            <label htmlFor="site_id" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Site <span className="text-gray-500 text-xs">(Optional)</span>
-                            </label>
-                            <select
+                            <SearchableDropdown
                                 id="site_id"
+                                name="site_id"
+                                label={(
+                                    <>
+                                        Site <span className="text-gray-500 text-xs font-normal">(Optional)</span>
+                                    </>
+                                )}
                                 value={selectedSite}
-                                onChange={(e) => setSelectedSite(e.target.value)}
+                                onChange={(v) => setSelectedSite(v)}
+                                options={sites}
+                                placeholder={
+                                    !selectedBranch
+                                        ? 'Select a branch first'
+                                        : loadingSites
+                                            ? 'Loading sites…'
+                                            : 'All sites'
+                                }
                                 disabled={!selectedBranch || loadingSites}
-                                className="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-gray-100 sm:text-sm disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed"
-                            >
-                                <option value="">
-                                    {!selectedBranch 
-                                        ? 'Select a branch first' 
-                                        : loadingSites 
-                                        ? 'Loading sites...' 
-                                        : 'All sites'}
-                                </option>
-                                {sites.map((site) => (
-                                    <option key={site.id} value={site.id}>
-                                        {site.name}
-                                    </option>
-                                ))}
-                            </select>
+                            />
                             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                 Leave empty to include all sites of the selected branch
                             </p>

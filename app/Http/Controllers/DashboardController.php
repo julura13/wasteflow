@@ -3,14 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Branch;
-use App\Models\Classification;
-use App\Models\ClientMonthlyMaterialSummary;
 use App\Models\Company;
-use App\Models\Material;
 use App\Models\Order;
-use App\Models\OrderWasteStream;
 use App\Models\Site;
 use App\Models\WasteStream;
+use App\Services\OrderWasteStreamReportingService;
 use App\Services\WasteImpactCalculator;
 use App\Traits\ScopeByClientTrait;
 use Carbon\Carbon;
@@ -22,7 +19,8 @@ class DashboardController extends Controller
     use ScopeByClientTrait;
 
     public function __construct(
-        private WasteImpactCalculator $wasteImpactCalculator
+        private WasteImpactCalculator $wasteImpactCalculator,
+        private OrderWasteStreamReportingService $orderWasteStreamReporting,
     ) {}
 
     /**
@@ -48,7 +46,7 @@ class DashboardController extends Controller
         $dashboardData = $this->getDashboardData($company, $branch, $site, $fromDate, $toDate);
 
         $year = Carbon::parse($fromDate)->year;
-        $gradeSummaryByYear = $this->getGradeSummaryForYear($company, $branch, $site, $year);
+        $gradeSummaryByYear = $this->orderWasteStreamReporting->gradeSummaryForYear($company, $branch, $site, $year);
 
         $ordersNearDates = $this->getOrdersForNearDates($companyId, $branchId, $siteId);
 
@@ -135,82 +133,20 @@ class DashboardController extends Controller
 
         [$companyId, $branchId, $siteId] = $this->enforceCompanyScope($companyId, $branchId, $siteId);
 
-        $stream = WasteStream::where('name', $wasteStreamName)->first();
-        if (! $stream) {
-            return response()->json(['rows' => [], 'waste_stream' => $wasteStreamName, 'month' => $month, 'year' => $year, 'days_in_month' => cal_days_in_month(CAL_GREGORIAN, $month, $year)]);
-        }
+        $company = $companyId ? Company::find($companyId) : null;
+        $branch = $branchId ? Branch::find($branchId) : null;
+        $site = $siteId ? Site::find($siteId) : null;
 
-        $start = Carbon::createFromDate($year, $month, 1)->startOfDay()->format('Y-m-d');
-        $lastDay = cal_days_in_month(CAL_GREGORIAN, $month, $year);
-        $end = Carbon::createFromDate($year, $month, $lastDay)->format('Y-m-d');
+        $payload = $this->orderWasteStreamReporting->gradeMonthDailyDetail(
+            $company,
+            $branch,
+            $site,
+            (string) $wasteStreamName,
+            $month,
+            $year
+        );
 
-        $streams = OrderWasteStream::query()
-            ->with(['order', 'material.grade', 'material.wasteStream'])
-            ->whereHas('order', function ($q) use ($start, $end, $companyId, $branchId, $siteId) {
-                $q->where('status', 'finalized')
-                    ->where(function ($q2) use ($start, $end) {
-                        $q2->whereBetween('actual_collection_date', [$start, $end])
-                            ->orWhere(function ($q3) use ($start, $end) {
-                                $q3->whereNull('actual_collection_date')
-                                    ->whereBetween('requested_collection_date', [$start, $end]);
-                            });
-                    });
-                if ($siteId) {
-                    $q->where('site_id', $siteId);
-                } elseif ($branchId) {
-                    $q->where('branch_id', $branchId);
-                } elseif ($companyId) {
-                    $q->where('company_id', $companyId);
-                }
-                if ($this->isClientScoped() && auth()->user()->company_id) {
-                    $q->where('company_id', auth()->user()->company_id);
-                }
-            })
-            ->whereHas('material', fn ($q) => $q->where('waste_stream_id', $stream->id))
-            ->get();
-
-        $byMaterialDay = [];
-        foreach ($streams as $ows) {
-            $date = $ows->order->actual_collection_date ?? $ows->order->requested_collection_date;
-            if (! $date) {
-                continue;
-            }
-            $date = Carbon::parse($date);
-            if ($date->month !== $month || $date->year !== $year) {
-                continue;
-            }
-            $day = $date->day;
-            $mid = $ows->material_id;
-            if (! isset($byMaterialDay[$mid])) {
-                $byMaterialDay[$mid] = ['name' => $ows->material && $ows->material->grade
-                    ? trim($ows->material->grade->name)
-                    : ($ows->material ? 'Material #'.$ows->material_id : 'Unknown'),
-                    'days' => array_fill(1, 31, 0),
-                ];
-            }
-            $byMaterialDay[$mid]['days'][$day] = ($byMaterialDay[$mid]['days'][$day] ?? 0) + (float) $ows->nett_weight;
-        }
-
-        $rows = [];
-        foreach ($byMaterialDay as $materialId => $data) {
-            $row = ['name' => $data['name'], 'total' => 0];
-            for ($d = 1; $d <= $lastDay; $d++) {
-                $w = round((float) ($data['days'][$d] ?? 0), 2);
-                $row['day'.$d] = $w;
-                $row['total'] += $w;
-            }
-            $row['total'] = round($row['total'], 2);
-            $rows[] = $row;
-        }
-        usort($rows, fn ($a, $b) => strcasecmp($a['name'], $b['name']));
-
-        return response()->json([
-            'rows' => $rows,
-            'waste_stream' => $wasteStreamName,
-            'month' => $month,
-            'year' => $year,
-            'days_in_month' => $lastDay,
-        ]);
+        return response()->json($payload);
     }
 
     /**
@@ -294,49 +230,13 @@ class DashboardController extends Controller
         $startDate = Carbon::parse($fromDate);
         $endDate = Carbon::parse($toDate);
 
-        // Get all months in the date range
-        $months = [];
-        $current = $startDate->copy()->startOfMonth();
-        while ($current->lte($endDate)) {
-            $months[] = [
-                'year' => $current->year,
-                'month' => $current->month,
-            ];
-            $current->addMonth();
-        }
-
-        // Aggregate summaries across all months in the date range
-        $summaries = collect();
-        foreach ($months as $monthData) {
-            $monthSummaries = $this->getSummariesForMonth($company, $branch, $site, $monthData['month'], $monthData['year']);
-            $summaries = $summaries->merge($monthSummaries);
-        }
-
-        // Group by material_id and sum weights (for material-level data)
-        // Aggregate across all company/branch/site combinations for the same material
-        $grouped = $summaries
-            ->whereNotNull('material_id')
-            ->groupBy('material_id');
-
-        $materialSummaries = collect();
-        foreach ($grouped as $materialId => $group) {
-            $first = $group->first();
-            // Ensure material relationship is loaded with classification
-            if (! $first->relationLoaded('material')) {
-                $first->load('material.wasteStream', 'material.grade', 'material.classification');
-            }
-
-            // Reload material if classification is missing
-            if ($first->material && ! $first->material->relationLoaded('classification') && $first->material->classification_id) {
-                $first->material->load('classification');
-            }
-
-            $materialSummaries->push((object) [
-                'material_id' => $materialId,
-                'total_weight' => $group->sum('total_weight'),
-                'material' => $first->material,
-            ]);
-        }
+        $materialSummaries = $this->orderWasteStreamReporting->materialWeightAggregatesForDateRange(
+            $company,
+            $branch,
+            $site,
+            $startDate->format('Y-m-d'),
+            $endDate->format('Y-m-d')
+        );
 
         // Get waste stream totals (main pie chart)
         $wasteStreamTotals = $this->getWasteStreamTotals($materialSummaries);
@@ -353,79 +253,6 @@ class DashboardController extends Controller
             'classificationTotals' => $classificationTotals,
             'environmentalImpact' => $environmentalImpact,
         ];
-    }
-
-    /**
-     * Get summaries for a specific month
-     * If no company/branch/site is provided, returns all summaries
-     */
-    private function getSummariesForMonth(?Company $company, ?Branch $branch, ?Site $site, int $month, int $year)
-    {
-        $query = ClientMonthlyMaterialSummary::query()
-            ->where('year', $year)
-            ->where('month', $month)
-            ->with(['material.wasteStream', 'material.grade', 'material.classification']);
-
-        // Filter by site (most specific) - only this site
-        if ($site) {
-            $query->where('site_id', $site->id);
-        }
-        // Filter by branch - all sites under this branch
-        elseif ($branch) {
-            $query->where('branch_id', $branch->id);
-            // Include both site-level and branch-level summaries
-        }
-        // Filter by company - all branches and sites under this company
-        elseif ($company) {
-            $query->where('company_id', $company->id);
-            // Include company-level, branch-level, and site-level summaries
-        }
-        // No filters - get all companies (aggregate all summaries)
-        // No additional where clause needed - query will return all
-
-        return $query->get();
-    }
-
-    /**
-     * Get grade (waste stream) summary by month for a full year.
-     * Returns array of rows: [ 'name' => 'Paper', 'jan' => 100, 'feb' => 200, ..., 'total' => 1500 ]
-     */
-    private function getGradeSummaryForYear(?Company $company, ?Branch $branch, ?Site $site, int $year): array
-    {
-        $monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-        $byStream = [];
-
-        for ($month = 1; $month <= 12; $month++) {
-            $summaries = $this->getSummariesForMonth($company, $branch, $site, $month, $year);
-            foreach ($summaries as $summary) {
-                if (! $summary->material || ! $summary->material->wasteStream) {
-                    continue;
-                }
-                $name = trim($summary->material->wasteStream->name);
-                if (! isset($byStream[$name])) {
-                    $byStream[$name] = array_combine($monthNames, array_fill(0, 12, 0));
-                    $byStream[$name]['name'] = $name;
-                    $byStream[$name]['total'] = 0;
-                }
-                $weight = (float) $summary->total_weight;
-                // Accumulate: multiple materials can share the same waste stream in a month
-                $byStream[$name][$monthNames[$month - 1]] += $weight;
-                $byStream[$name]['total'] += $weight;
-            }
-        }
-
-        $rows = [];
-        foreach ($byStream as $row) {
-            // Round each month and total for display
-            foreach ($monthNames as $m) {
-                $row[$m] = round($row[$m], 2);
-            }
-            $row['total'] = round($row['total'], 2);
-            $rows[] = $row;
-        }
-        usort($rows, fn ($a, $b) => strcasecmp($a['name'], $b['name']));
-
-        return $rows;
     }
 
     /**
@@ -579,32 +406,6 @@ class DashboardController extends Controller
             'disposal' => [
                 'total' => round($totals['Disposal'], 2),
                 'percentage' => $totalWeight > 0 ? round(($totals['Disposal'] / $totalWeight) * 100, 1) : 0,
-            ],
-        ];
-    }
-
-    /**
-     * Get empty dashboard data structure
-     */
-    private function getEmptyDashboardData(): array
-    {
-        return [
-            'wasteStreamTotals' => [],
-            'classificationTotals' => [
-                'avoidance' => ['total' => 0, 'percentage' => 0],
-                'recycling' => ['total' => 0, 'percentage' => 0],
-                'recovery' => ['total' => 0, 'percentage' => 0],
-                'disposal' => ['total' => 0, 'percentage' => 0],
-            ],
-            'environmentalImpact' => [
-                'treesSaved' => 0,
-                'energySaved' => 0,
-                'waterSaved' => 0,
-                'co2Saved' => 0,
-                'electricityEquivalentKwhSaGrid' => 0,
-                'transportEquivalentKm' => 0,
-                'fuelEquivalentLitresPetrol' => 0,
-                'carsOffRoadAnnualEquivalent' => 0,
             ],
         ];
     }

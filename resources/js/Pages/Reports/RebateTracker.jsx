@@ -3,6 +3,10 @@ import DashboardLayout from '@/Layouts/DashboardLayout';
 import { ArrowLeft, Calendar, Filter, Download } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import SearchableDropdown from '@/Components/SearchableDropdown';
+
+const siteOptionLabel = (site) =>
+    `${site.name}${site.branch?.company ? ` (${site.branch.company.name})` : ''}`;
 
 export default function RebateTracker({ rebateData, companies, filters, totalRebate, totalWeight }) {
     const { data, setData, get } = useForm({
@@ -138,66 +142,54 @@ export default function RebateTracker({ rebateData, companies, filters, totalReb
                             </div>
 
                             <div>
-                                <label htmlFor="company_id" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                                    Company (Optional)
-                                </label>
-                                <select
+                                <SearchableDropdown
                                     id="company_id"
+                                    name="company_id"
+                                    label="Company (Optional)"
                                     value={data.company_id}
-                                    onChange={(e) => handleCompanyChange(e.target.value)}
-                                    className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-                                >
-                                    <option value="">All Companies</option>
-                                    {companies.map((company) => (
-                                        <option key={company.id} value={company.id}>
-                                            {company.name}
-                                        </option>
-                                    ))}
-                                </select>
+                                    onChange={handleCompanyChange}
+                                    options={companies}
+                                    placeholder="All Companies"
+                                />
                             </div>
 
                             <div>
-                                <label htmlFor="branch_id" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                                    Branch (Optional)
-                                </label>
-                                <select
+                                <SearchableDropdown
                                     id="branch_id"
+                                    name="branch_id"
+                                    label="Branch (Optional)"
                                     value={data.branch_id}
-                                    onChange={(e) => handleBranchChange(e.target.value)}
+                                    onChange={handleBranchChange}
+                                    options={branches}
+                                    placeholder={
+                                        !data.company_id
+                                            ? 'Select company first'
+                                            : loadingBranches
+                                                ? 'Loading…'
+                                                : 'All Branches'
+                                    }
                                     disabled={!data.company_id || loadingBranches}
-                                    className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 disabled:opacity-50"
-                                >
-                                    <option value="">
-                                        {!data.company_id ? 'Select company first' : loadingBranches ? 'Loading...' : 'All Branches'}
-                                    </option>
-                                    {branches.map((branch) => (
-                                        <option key={branch.id} value={branch.id}>
-                                            {branch.name}
-                                        </option>
-                                    ))}
-                                </select>
+                                />
                             </div>
 
                             <div>
-                                <label htmlFor="site_id" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                                    Site (Optional)
-                                </label>
-                                <select
+                                <SearchableDropdown
                                     id="site_id"
+                                    name="site_id"
+                                    label="Site (Optional)"
                                     value={data.site_id}
-                                    onChange={(e) => setData('site_id', e.target.value)}
+                                    onChange={(v) => setData('site_id', v)}
+                                    options={sites}
+                                    getOptionLabel={siteOptionLabel}
+                                    placeholder={
+                                        !data.branch_id
+                                            ? 'Select branch first'
+                                            : loadingSites
+                                                ? 'Loading…'
+                                                : 'All Sites'
+                                    }
                                     disabled={!data.branch_id || loadingSites}
-                                    className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 disabled:opacity-50"
-                                >
-                                    <option value="">
-                                        {!data.branch_id ? 'Select branch first' : loadingSites ? 'Loading...' : 'All Sites'}
-                                    </option>
-                                    {sites.map((site) => (
-                                        <option key={site.id} value={site.id}>
-                                            {site.name} {site.branch?.company ? `(${site.branch.company.name})` : ''}
-                                        </option>
-                                    ))}
-                                </select>
+                                />
                             </div>
 
                             <div className="flex items-end gap-2">
