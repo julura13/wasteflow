@@ -174,7 +174,17 @@ class OrderController extends Controller
             ])
             ->get();
         $serviceProviders = ServiceProvider::active()->get();
-        $containerOptions = ContainerOption::where('is_active', true)->orderBy('name')->get(['id', 'name', 'slug']);
+        $containerOptionsWaste = ContainerOption::query()
+            ->where('is_active', true)
+            ->where('order_type', 'waste')
+            ->orderBy('name')
+            ->get(['id', 'name', 'slug']);
+
+        $containerOptionsRecycling = ContainerOption::query()
+            ->where('is_active', true)
+            ->where('order_type', 'recycling')
+            ->orderBy('name')
+            ->get(['id', 'name', 'slug']);
 
         return Inertia::render('Orders/Create', [
             'companies' => $companies,
@@ -182,7 +192,8 @@ class OrderController extends Controller
             'sites' => $sites,
             'materials' => $materials,
             'serviceProviders' => $serviceProviders,
-            'containerOptions' => $containerOptions,
+            'containerOptionsWaste' => $containerOptionsWaste,
+            'containerOptionsRecycling' => $containerOptionsRecycling,
         ]);
     }
 
@@ -192,7 +203,6 @@ class OrderController extends Controller
 
         $orderType = $request->input('order_type');
 
-        $recyclingQuantityTypes = 'scrap_load,loose_bags,cage_8m3,cage_20m3,other';
         $rules = [
             'company_id' => 'required|exists:companies,id',
             'branch_id' => 'required|exists:branches,id',
@@ -200,17 +210,18 @@ class OrderController extends Controller
             'service_provider_id' => 'required|exists:service_providers,id',
             'order_type' => 'required|in:waste,recycling',
             'quantity_lines' => 'required|array|min:1',
+            'quantity_lines.*.container_option_id' => [
+                'required',
+                'integer',
+                Rule::exists('container_options', 'id')->where(function ($query) use ($orderType) {
+                    $query->where('order_type', $orderType)->where('is_active', true);
+                }),
+            ],
             'quantity_lines.*.quantity' => 'required|integer|min:1',
+            'quantity_lines.*.description' => 'nullable|string|max:255',
             'requested_collection_date' => 'required|date',
             'notes' => 'nullable|string|max:1000',
         ];
-
-        if ($orderType === 'waste') {
-            $rules['quantity_lines.*.container_option_id'] = 'required|exists:container_options,id';
-        } else {
-            $rules['quantity_lines.*.quantity_type'] = "required|in:{$recyclingQuantityTypes}";
-            $rules['quantity_lines.*.description'] = 'nullable|string|max:255';
-        }
 
         $validated = $request->validate($rules);
 
@@ -228,32 +239,10 @@ class OrderController extends Controller
             abort(403, 'Only managers can create orders for this company. Viewers can only view orders.');
         }
 
-        if ($orderType === 'recycling') {
-            foreach ($validated['quantity_lines'] as $index => $line) {
-                if (($line['quantity_type'] ?? '') === 'other' && empty($line['description'] ?? '')) {
-                    return back()->withErrors([
-                        "quantity_lines.{$index}.description" => 'Description is required when selecting "Other" container type.',
-                    ]);
-                }
-            }
-        }
-
         $validated['created_by'] = auth()->id();
         $validated['status'] = 'pending';
 
-        if ($orderType === 'waste') {
-            $containerOptionIds = collect($validated['quantity_lines'])->pluck('container_option_id')->unique()->filter()->all();
-            $containerOptions = ContainerOption::whereIn('id', $containerOptionIds)->get()->keyBy('id');
-            $validated['quantity_lines'] = collect($validated['quantity_lines'])->map(function ($line) use ($containerOptions) {
-                $option = $containerOptions->get($line['container_option_id']);
-
-                return [
-                    'container_option_id' => (int) $line['container_option_id'],
-                    'container_option_name' => $option ? $option->name : '',
-                    'quantity' => (int) $line['quantity'],
-                ];
-            })->all();
-        }
+        $validated['quantity_lines'] = $this->mapQuantityLinesWithContainerNames($validated['quantity_lines']);
 
         $totalQuantity = collect($validated['quantity_lines'])->sum('quantity');
         $validated['estimated_quantity'] = $totalQuantity;
@@ -318,7 +307,24 @@ class OrderController extends Controller
             abort(403, 'Only managers can edit orders for this company. Viewers can only view orders.');
         }
 
-        $containerOptions = ContainerOption::where('is_active', true)->orderBy('name')->get(['id', 'name', 'slug']);
+        $lineContainerIds = collect($order->quantity_lines ?? [])
+            ->pluck('container_option_id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        $containerOptions = ContainerOption::query()
+            ->where('order_type', $order->order_type)
+            ->where(function ($query) use ($lineContainerIds) {
+                $query->where('is_active', true);
+                if ($lineContainerIds !== []) {
+                    $query->orWhereIn('id', $lineContainerIds);
+                }
+            })
+            ->orderBy('name')
+            ->get(['id', 'name', 'slug', 'is_active']);
 
         return Inertia::render('Orders/Edit', [
             'order' => $order,
@@ -336,48 +342,26 @@ class OrderController extends Controller
         }
 
         $orderType = $order->order_type;
-        $recyclingQuantityTypes = 'scrap_load,loose_bags,cage_8m3,cage_20m3,other';
         $editReasonRules = $this->getEditReasonValidationRules();
 
         $rules = [
             'quantity_lines' => 'required|array|min:1',
+            'quantity_lines.*.container_option_id' => [
+                'required',
+                'integer',
+                Rule::exists('container_options', 'id')->where(function ($query) use ($orderType) {
+                    $query->where('order_type', $orderType);
+                }),
+            ],
             'quantity_lines.*.quantity' => 'required|integer|min:1',
+            'quantity_lines.*.description' => 'nullable|string|max:255',
             'notes' => 'nullable|string|max:1000',
             ...$editReasonRules,
         ];
 
-        if ($orderType === 'waste') {
-            $rules['quantity_lines.*.container_option_id'] = 'required|exists:container_options,id';
-        } else {
-            $rules['quantity_lines.*.quantity_type'] = "required|in:{$recyclingQuantityTypes}";
-            $rules['quantity_lines.*.description'] = 'nullable|string|max:255';
-        }
-
         $validated = $request->validate($rules);
 
-        if ($orderType === 'recycling') {
-            foreach ($validated['quantity_lines'] as $index => $line) {
-                if (($line['quantity_type'] ?? '') === 'other' && empty($line['description'] ?? '')) {
-                    return back()->withErrors([
-                        "quantity_lines.{$index}.description" => 'Description is required when selecting "Other" container type.',
-                    ]);
-                }
-            }
-        }
-
-        if ($orderType === 'waste') {
-            $containerOptionIds = collect($validated['quantity_lines'])->pluck('container_option_id')->unique()->filter()->all();
-            $containerOptions = ContainerOption::whereIn('id', $containerOptionIds)->get()->keyBy('id');
-            $validated['quantity_lines'] = collect($validated['quantity_lines'])->map(function ($line) use ($containerOptions) {
-                $option = $containerOptions->get($line['container_option_id']);
-
-                return [
-                    'container_option_id' => (int) $line['container_option_id'],
-                    'container_option_name' => $option ? $option->name : '',
-                    'quantity' => (int) $line['quantity'],
-                ];
-            })->all();
-        }
+        $validated['quantity_lines'] = $this->mapQuantityLinesWithContainerNames($validated['quantity_lines']);
 
         $validated['estimated_quantity'] = collect($validated['quantity_lines'])->sum('quantity');
 
@@ -580,9 +564,12 @@ class OrderController extends Controller
         $companyId = $order->site?->branch?->company?->id ?? $order->company_id;
         $canManageOrder = $user->isAdmin() || $user->canManageOrdersForCompany($companyId);
 
-        $containerOptionsWithWeight = $order->order_type === 'waste'
-            ? ContainerOption::whereNotNull('default_weight')->where('is_active', true)->orderBy('name')->get(['id', 'name', 'default_weight'])
-            : [];
+        $containerOptionsWithWeight = ContainerOption::query()
+            ->where('order_type', $order->order_type)
+            ->whereNotNull('default_weight')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'default_weight']);
 
         return Inertia::render('Orders/Finalize', [
             'order' => $order,
@@ -1340,6 +1327,26 @@ class OrderController extends Controller
      *
      * @return array<string, mixed>
      */
+    private function mapQuantityLinesWithContainerNames(array $lines): array
+    {
+        $containerOptionIds = collect($lines)->pluck('container_option_id')->unique()->filter()->all();
+        $containerOptions = ContainerOption::whereIn('id', $containerOptionIds)->get()->keyBy('id');
+
+        return collect($lines)->map(function ($line) use ($containerOptions) {
+            $option = $containerOptions->get((int) $line['container_option_id']);
+            $row = [
+                'container_option_id' => (int) $line['container_option_id'],
+                'container_option_name' => $option ? $option->name : '',
+                'quantity' => (int) $line['quantity'],
+            ];
+            if (! empty($line['description'])) {
+                $row['description'] = $line['description'];
+            }
+
+            return $row;
+        })->all();
+    }
+
     private function getEditReasonValidationRules(): array
     {
         return [

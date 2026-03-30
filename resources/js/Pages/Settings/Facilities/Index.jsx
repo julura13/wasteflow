@@ -179,7 +179,36 @@ export default function FacilitiesIndex({ facilities, filters }) {
                 </div>
             </div>
 
-            <DataTable data={facilities.data} columns={columns} title="All Facilities" />
+            <DataTable
+                data={facilities.data || []}
+                columns={columns}
+                title="All Facilities"
+                pagination={false}
+            />
+
+            {facilities.links && (
+                <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="text-sm text-gray-700 dark:text-gray-300">
+                        Showing {facilities.from ?? 0} to {facilities.to ?? 0} of {facilities.total ?? 0} results
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                        {facilities.links.map((link, index) => (
+                            <Link
+                                key={index}
+                                href={link.url || '#'}
+                                className={`px-3 py-2 text-sm font-medium rounded-md ${
+                                    link.active
+                                        ? 'bg-primary-600 text-white'
+                                        : link.url
+                                          ? 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600 dark:hover:bg-gray-600'
+                                          : 'bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-800 dark:text-gray-500'
+                                }`}
+                                dangerouslySetInnerHTML={{ __html: link.label }}
+                            />
+                        ))}
+                    </div>
+                </div>
+            )}
 
             <Modal show={modalOpen} onClose={closeModal} maxWidth="lg">
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">

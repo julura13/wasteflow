@@ -26,7 +26,7 @@ class ContainerOptionSeeder extends Seeder
 
         foreach ($options as $name) {
             ContainerOption::firstOrCreate(
-                ['name' => $name],
+                ['name' => $name, 'order_type' => 'waste'],
                 ['is_active' => true]
             );
         }

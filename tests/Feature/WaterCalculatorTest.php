@@ -11,9 +11,10 @@ beforeEach(function () {
     $this->seed(RolePermissionSeeder::class);
 });
 
-it('displays water calculator for user with view-reports', function () {
+it('displays water calculator when calculator permission is granted', function () {
     $user = User::factory()->create();
     $user->assignRole('admin');
+    $user->givePermissionTo('view-water-calculator');
 
     $response = $this->actingAs($user)->get(route('reports.water-calculator'));
 
@@ -24,6 +25,7 @@ it('displays water calculator for user with view-reports', function () {
 it('returns water breakdown from posted weights', function () {
     $user = User::factory()->create();
     $user->assignRole('admin');
+    $user->givePermissionTo('view-water-calculator');
 
     $response = $this->actingAs($user)->postJson(route('reports.water-calculator.calculate'), [
         'weights' => [
@@ -49,9 +51,23 @@ it('returns water breakdown from posted weights', function () {
     expect($response->json('breakdown.totalKilolitres'))->toBe(180.0);
 });
 
+it('forbids water calculator GET/POST without calculator permission', function () {
+    $user = User::factory()->create();
+    $user->assignRole('admin');
+
+    $getResponse = $this->actingAs($user)->get(route('reports.water-calculator'));
+    $getResponse->assertForbidden();
+
+    $postResponse = $this->actingAs($user)->postJson(route('reports.water-calculator.calculate'), [
+        'weights' => ['paper' => 100],
+    ]);
+    $postResponse->assertForbidden();
+});
+
 it('rejects calculation when weights are missing', function () {
     $user = User::factory()->create();
     $user->assignRole('admin');
+    $user->givePermissionTo('view-water-calculator');
 
     $response = $this->actingAs($user)->postJson(route('reports.water-calculator.calculate'), []);
 

@@ -17,6 +17,7 @@ export default function ContainerOptionsIndex({ containerOptions, filters }) {
     const [editingId, setEditingId] = useState(null);
 
     const form = useForm({
+        order_type: 'waste',
         name: '',
         is_active: true,
         default_weight: '',
@@ -24,9 +25,16 @@ export default function ContainerOptionsIndex({ containerOptions, filters }) {
 
     const columns = [
         {
+            id: 'order_type',
+            header: 'Order type',
+            cell: ({ row }) => (
+                <span className="capitalize text-gray-600 dark:text-gray-300">{row.original.order_type ?? '—'}</span>
+            ),
+        },
+        {
             accessorKey: 'name',
             header: 'Container Option',
-            cell: ({ getValue }) => <span className="font-medium text-gray-900">{getValue()}</span>,
+            cell: ({ getValue }) => <span className="font-medium text-gray-900 dark:text-gray-100">{getValue()}</span>,
         },
         {
             id: 'default_weight',
@@ -66,6 +74,7 @@ export default function ContainerOptionsIndex({ containerOptions, filters }) {
         form.reset();
         form.clearErrors();
         form.setData({
+            order_type: 'waste',
             name: '',
             is_active: true,
             default_weight: '',
@@ -82,6 +91,7 @@ export default function ContainerOptionsIndex({ containerOptions, filters }) {
     const openEditModal = (option) => {
         form.clearErrors();
         form.setData({
+            order_type: option.order_type ?? 'waste',
             name: option.name ?? '',
             is_active: Boolean(option.is_active),
             default_weight: option.default_weight != null ? String(option.default_weight) : '',
@@ -168,7 +178,37 @@ export default function ContainerOptionsIndex({ containerOptions, filters }) {
                 </div>
             </div>
 
-            <DataTable data={containerOptions.data} columns={columns} title="All Container Options" />
+            <DataTable
+                data={containerOptions.data || []}
+                columns={columns}
+                title="All Container Options"
+                pagination={false}
+            />
+
+            {containerOptions.links && (
+                <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="text-sm text-gray-700 dark:text-gray-300">
+                        Showing {containerOptions.from ?? 0} to {containerOptions.to ?? 0} of {containerOptions.total ?? 0}{' '}
+                        results
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                        {containerOptions.links.map((link, index) => (
+                            <Link
+                                key={index}
+                                href={link.url || '#'}
+                                className={`px-3 py-2 text-sm font-medium rounded-md ${
+                                    link.active
+                                        ? 'bg-primary-600 text-white'
+                                        : link.url
+                                          ? 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600 dark:hover:bg-gray-600'
+                                          : 'bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-800 dark:text-gray-500'
+                                }`}
+                                dangerouslySetInnerHTML={{ __html: link.label }}
+                            />
+                        ))}
+                    </div>
+                </div>
+            )}
 
             <Modal show={modalOpen} onClose={closeModal} maxWidth="lg">
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
@@ -182,6 +222,19 @@ export default function ContainerOptionsIndex({ containerOptions, filters }) {
                     </div>
 
                     <div className="space-y-4">
+                        <div>
+                            <InputLabel htmlFor="container-order-type" value="Order type" />
+                            <select
+                                id="container-order-type"
+                                value={form.data.order_type}
+                                onChange={(event) => form.setData('order_type', event.target.value)}
+                                className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                            >
+                                <option value="waste">Waste</option>
+                                <option value="recycling">Recycling</option>
+                            </select>
+                            <InputError message={form.errors.order_type} className="mt-2" />
+                        </div>
                         <div>
                             <InputLabel htmlFor="container-name" value="Name" />
                             <TextInput

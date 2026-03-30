@@ -105,12 +105,24 @@ Route::middleware(['auth', 'verified', 'permission:view-reports'])->prefix('repo
     Route::get('/waste-management', [App\Http\Controllers\ReportController::class, 'wasteManagement'])->name('waste-management');
     Route::get('/waste-management/pdf', [App\Http\Controllers\ReportController::class, 'wasteManagementPdf'])->name('waste-management-pdf');
     Route::get('/waste-management/summary', [App\Http\Controllers\ReportController::class, 'wasteManagementSummary'])->name('waste-management-summary');
-    Route::get('/carbon-calculator', [App\Http\Controllers\ReportController::class, 'carbonCalculator'])->name('carbon-calculator');
-    Route::post('/carbon-calculator/calculate', [App\Http\Controllers\ReportController::class, 'carbonCalculatorCalculate'])->name('carbon-calculator.calculate');
-    Route::get('/landfill-space-calculator', [App\Http\Controllers\ReportController::class, 'landfillSpaceCalculator'])->name('landfill-space-calculator');
-    Route::post('/landfill-space-calculator/calculate', [App\Http\Controllers\ReportController::class, 'landfillSpaceCalculatorCalculate'])->name('landfill-space-calculator.calculate');
-    Route::get('/water-calculator', [App\Http\Controllers\ReportController::class, 'waterCalculator'])->name('water-calculator');
-    Route::post('/water-calculator/calculate', [App\Http\Controllers\ReportController::class, 'waterCalculatorCalculate'])->name('water-calculator.calculate');
+    Route::get('/carbon-calculator', [App\Http\Controllers\ReportController::class, 'carbonCalculator'])
+        ->middleware(['permission:view-carbon-calculator'])
+        ->name('carbon-calculator');
+    Route::post('/carbon-calculator/calculate', [App\Http\Controllers\ReportController::class, 'carbonCalculatorCalculate'])
+        ->middleware(['permission:view-carbon-calculator'])
+        ->name('carbon-calculator.calculate');
+    Route::get('/landfill-space-calculator', [App\Http\Controllers\ReportController::class, 'landfillSpaceCalculator'])
+        ->middleware(['permission:view-landfill-space-calculator'])
+        ->name('landfill-space-calculator');
+    Route::post('/landfill-space-calculator/calculate', [App\Http\Controllers\ReportController::class, 'landfillSpaceCalculatorCalculate'])
+        ->middleware(['permission:view-landfill-space-calculator'])
+        ->name('landfill-space-calculator.calculate');
+    Route::get('/water-calculator', [App\Http\Controllers\ReportController::class, 'waterCalculator'])
+        ->middleware(['permission:view-water-calculator'])
+        ->name('water-calculator');
+    Route::post('/water-calculator/calculate', [App\Http\Controllers\ReportController::class, 'waterCalculatorCalculate'])
+        ->middleware(['permission:view-water-calculator'])
+        ->name('water-calculator.calculate');
 
     // API endpoints for cascading dropdowns
     Route::get('/waste-management/branches', [App\Http\Controllers\ReportController::class, 'getBranches'])->name('waste-management-branches');

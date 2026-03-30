@@ -11,9 +11,10 @@ beforeEach(function () {
     $this->seed(RolePermissionSeeder::class);
 });
 
-it('displays carbon calculator page for user with view-reports', function () {
+it('displays carbon calculator page when calculator permission is granted', function () {
     $user = User::factory()->create();
     $user->assignRole('admin');
+    $user->givePermissionTo('view-carbon-calculator');
 
     $response = $this->actingAs($user)->get(route('reports.carbon-calculator'));
 
@@ -24,6 +25,7 @@ it('displays carbon calculator page for user with view-reports', function () {
 it('returns carbon calculation from posted weights', function () {
     $user = User::factory()->create();
     $user->assignRole('admin');
+    $user->givePermissionTo('view-carbon-calculator');
 
     $weights = [
         'paper' => 85,
@@ -59,9 +61,23 @@ it('returns carbon calculation from posted weights', function () {
     expect($response->json('materials.0.recyclingSubstitutionFactor'))->toBe(1.3);
 });
 
+it('forbids carbon calculator GET/POST without calculator permission', function () {
+    $user = User::factory()->create();
+    $user->assignRole('admin');
+
+    $getResponse = $this->actingAs($user)->get(route('reports.carbon-calculator'));
+    $getResponse->assertForbidden();
+
+    $postResponse = $this->actingAs($user)->postJson(route('reports.carbon-calculator.calculate'), [
+        'weights' => ['paper' => 85],
+    ]);
+    $postResponse->assertForbidden();
+});
+
 it('rejects carbon calculation when weights are missing', function () {
     $user = User::factory()->create();
     $user->assignRole('admin');
+    $user->givePermissionTo('view-carbon-calculator');
 
     $response = $this->actingAs($user)->postJson(route('reports.carbon-calculator.calculate'), []);
 

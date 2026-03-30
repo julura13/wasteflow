@@ -8,15 +8,12 @@ const PERMISSION_SECTIONS = [
         permissionNames: ['view-dashboard'],
     },
     {
-        id: 'reports',
-        title: 'Reports',
-        permissionNames: ['view-reports', 'view-reports-all'],
-    },
-    {
         id: 'orders',
         title: 'Orders',
         permissionNames: [
             'manage-waste-collections',
+            'view-orders',
+            'create-orders',
             'orders-view',
             'orders-create',
             'orders-schedule',
@@ -29,18 +26,44 @@ const PERMISSION_SECTIONS = [
         ],
     },
     {
+        id: 'reports',
+        title: 'Reports',
+        permissionNames: [
+            'view-reports',
+            'view-reports-all',
+            'view-carbon-calculator',
+            'view-water-calculator',
+            'view-landfill-space-calculator',
+        ],
+    },
+    {
+        id: 'activity-log',
+        title: 'Activity Log',
+        permissionNames: ['view-activity-log'],
+    },
+    {
         id: 'companies',
         title: 'Companies',
         permissionNames: ['manage-clients'],
     },
     {
-        id: 'users-roles',
-        title: 'Users & Roles',
-        permissionNames: ['manage-users', 'manage-roles', 'manage-permissions'],
+        id: 'users',
+        title: 'Users',
+        permissionNames: ['manage-users'],
     },
     {
-        id: 'service-providers-materials',
-        title: 'Service Providers & Materials',
+        id: 'roles',
+        title: 'Roles',
+        permissionNames: ['manage-roles', 'manage-permissions'],
+    },
+    {
+        id: 'service-providers',
+        title: 'Service Providers',
+        permissionNames: ['manage-services'],
+    },
+    {
+        id: 'materials',
+        title: 'Materials',
         permissionNames: ['manage-services'],
     },
     {

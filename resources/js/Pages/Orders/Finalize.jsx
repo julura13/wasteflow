@@ -6,6 +6,7 @@ import { ArrowLeft, CheckCircle, Upload, Trash2, Download, File, AlertCircle, Pl
 import { useState, useMemo, useEffect, useRef } from 'react';
 
 export default function Finalize({ order, materials = [], canManageOrder = true, containerOptionsWithWeight = [] }) {
+    const hasContainerWeightOptions = containerOptionsWithWeight.length > 0;
     const { flash, errors } = usePage().props;
     const [uploading, setUploading] = useState(false);
     const [finalizing, setFinalizing] = useState(false);
@@ -239,7 +240,7 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
 
     // Effective weight for a line: from containers (qty * default_weight) or direct weight. Waste orders only use containers when use_containers is true.
     const getLineWeight = (line) => {
-        if (order.order_type === 'waste' && line.use_containers && line.container_option_id && line.container_quantity) {
+        if (hasContainerWeightOptions && line.use_containers && line.container_option_id && line.container_quantity) {
             const opt = containerOptionsWithWeight.find(o => o.id == line.container_option_id);
             if (opt && opt.default_weight != null) {
                 const qty = parseInt(line.container_quantity, 10) || 0;
@@ -253,7 +254,7 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
     // Total weight from current form lines
     const totalWeightFromLines = useMemo(() => {
         return weightLines.reduce((sum, line) => sum + getLineWeight(line), 0);
-    }, [weightLines, order.order_type, containerOptionsWithWeight]);
+    }, [weightLines, hasContainerWeightOptions, containerOptionsWithWeight]);
 
     // Total rebate from current form lines (for summary below table)
     const totalRebateFromLines = useMemo(() => {
@@ -266,7 +267,7 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
             const clientShare = companyRebatePercentage != null ? companyRebatePercentage : (material.client_rebate_share ?? 100);
             return total + (weight * material.rebate_rate * clientShare) / 100;
         }, 0);
-    }, [weightLines, availableMaterials, order.site?.branch?.company?.rebate_percentage, order.order_type, containerOptionsWithWeight]);
+    }, [weightLines, availableMaterials, order.site?.branch?.company?.rebate_percentage, hasContainerWeightOptions, containerOptionsWithWeight]);
 
     const addWeightLine = () => {
         const newId = Math.max(...weightLines.map(line => line.id || 0), 0) + 1;
@@ -669,7 +670,9 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
                         <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
                             {order.order_type === 'waste'
                                 ? 'Add, edit or remove weight lines. Use materials that have "Waste" in the name. Save to update.'
-                                : 'Add, edit or remove weight lines. Most recycling materials have rebate prices. Save to update.'}
+                                : hasContainerWeightOptions
+                                    ? 'Add, edit or remove weight lines. When container types have a default weight in settings, you can derive weight from container counts. Save to update.'
+                                    : 'Add, edit or remove weight lines. Most recycling materials have rebate prices. Save to update.'}
                         </p>
 
                         {canManageOrder && (
@@ -682,7 +685,7 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
                                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                                     Material
                                                 </th>
-                                                {order.order_type === 'waste' && containerOptionsWithWeight.length > 0 && (
+                                                {hasContainerWeightOptions && (
                                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                                         By containers
                                                     </th>
@@ -701,14 +704,14 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
                                         <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                             {weightLines.length === 0 ? (
                                                 <tr>
-                                                    <td colSpan={order.order_type === 'waste' && containerOptionsWithWeight.length > 0 ? 5 : 4} className="px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                                                    <td colSpan={hasContainerWeightOptions ? 5 : 4} className="px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
                                                         No weight lines. Click Add Line to add one, or Save Weights to clear all.
                                                     </td>
                                                 </tr>
                                             ) : (
                                             weightLines.map((line) => {
                                                 const selectedMaterial = availableMaterials.find(m => m.id == line.material_id);
-                                                const isWasteWithContainers = order.order_type === 'waste' && containerOptionsWithWeight.length > 0;
+                                                const showContainerColumns = hasContainerWeightOptions;
                                                 const useContainers = Boolean(line.use_containers);
                                                 const lineWeight = getLineWeight(line);
                                                 return (
@@ -724,7 +727,7 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
                                                                 className="w-full"
                                                             />
                                                         </td>
-                                                        {isWasteWithContainers && (
+                                                        {showContainerColumns && (
                                                             <td className="px-6 py-4 whitespace-nowrap">
                                                                 <label className="inline-flex items-center gap-2">
                                                                     <input
@@ -737,7 +740,7 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
                                                             </td>
                                                         )}
                                                         <td className="px-6 py-4 whitespace-nowrap">
-                                                            {isWasteWithContainers && useContainers ? (
+                                                            {showContainerColumns && useContainers ? (
                                                                 <div className="flex flex-wrap items-center gap-2">
                                                                     <SearchableDropdown
                                                                         options={containerOptionsWithWeight}

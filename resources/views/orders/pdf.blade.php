@@ -379,7 +379,7 @@
                     @foreach($quantityLines as $line)
                         @php
                             $totalContainers += $line['quantity'] ?? 0;
-                            // Waste orders may use container_option_name; recycling uses quantity_type
+                            // quantity_lines use container_option_name; legacy recycling may still have quantity_type
                             $typeLabel = $line['container_option_name'] ?? ($quantityTypes[$line['quantity_type'] ?? ''] ?? ucfirst(str_replace('_', ' ', $line['quantity_type'] ?? '')));
                             if (($line['quantity_type'] ?? '') === 'other' && !empty($line['description'] ?? '')) {
                                 $typeLabel .= ' (' . $line['description'] . ')';

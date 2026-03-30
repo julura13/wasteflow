@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 class ContainerOption extends Model
@@ -12,6 +11,7 @@ class ContainerOption extends Model
     use HasFactory;
 
     protected $fillable = [
+        'order_type',
         'name',
         'slug',
         'is_active',
@@ -29,15 +29,14 @@ class ContainerOption extends Model
     protected static function booted(): void
     {
         static::saving(function (self $containerOption) {
-            if (empty($containerOption->slug) && !empty($containerOption->name)) {
-                $containerOption->slug = Str::slug($containerOption->name);
+            if (empty($containerOption->slug) && ! empty($containerOption->name) && ! empty($containerOption->order_type)) {
+                $containerOption->slug = Str::slug($containerOption->order_type.'-'.$containerOption->name);
             }
         });
     }
 
-    public function materials(): HasMany
+    public function scopeForOrderType($query, string $orderType)
     {
-        return $this->hasMany(Material::class);
+        return $query->where('order_type', $orderType);
     }
 }
-

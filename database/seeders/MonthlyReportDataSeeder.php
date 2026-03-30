@@ -2,19 +2,17 @@
 
 namespace Database\Seeders;
 
+use App\Models\Classification;
 use App\Models\Company;
-use App\Models\Branch;
-use App\Models\Site;
+use App\Models\ContainerOption;
+use App\Models\Facility;
+use App\Models\Grade;
+use App\Models\Material;
 use App\Models\Order;
 use App\Models\OrderWasteStream;
-use App\Models\Material;
-use App\Models\WasteStream;
-use App\Models\Grade;
-use App\Models\ContainerOption;
-use App\Models\Classification;
-use App\Models\Facility;
 use App\Models\ServiceProvider;
 use App\Models\User;
+use App\Models\WasteStream;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 
@@ -23,32 +21,36 @@ class MonthlyReportDataSeeder extends Seeder
     public function run(): void
     {
         $company = Company::where('name', 'ABC Company')->first();
-        
-        if (!$company) {
+
+        if (! $company) {
             $this->command->error('ABC Company not found. Please run CompanySeeder first.');
+
             return;
         }
 
         $branch = $company->branches()->first();
-        if (!$branch) {
+        if (! $branch) {
             $this->command->error('ABC Company branch not found.');
+
             return;
         }
 
         $site = $branch->sites()->first();
-        if (!$site) {
+        if (! $site) {
             $this->command->error('ABC Company site not found.');
+
             return;
         }
 
         $serviceProvider = ServiceProvider::first();
-        if (!$serviceProvider) {
+        if (! $serviceProvider) {
             $this->command->error('No service provider found. Please run ServiceProviderSeeder first.');
+
             return;
         }
 
         $adminUser = User::where('email', 'admin@wasteflow.example.com')->first();
-        if (!$adminUser) {
+        if (! $adminUser) {
             $adminUser = User::first();
         }
 
@@ -57,11 +59,6 @@ class MonthlyReportDataSeeder extends Seeder
             'Recycling' => WasteStream::firstOrCreate(['name' => 'Recycling'], ['is_active' => true]),
             'Organics Recovered' => WasteStream::firstOrCreate(['name' => 'Organic Waste'], ['is_active' => true]),
         ];
-
-        $containerOption = ContainerOption::firstOrCreate(
-            ['name' => 'Loose'],
-            ['is_active' => true]
-        );
 
         $classification = Classification::firstOrCreate(
             ['name' => 'Recycling'],
@@ -105,7 +102,7 @@ class MonthlyReportDataSeeder extends Seeder
             }
 
             $wasteStream = $wasteStreams[$wasteStreamName] ?? $wasteStreams['Recycling'];
-            
+
             $classificationName = 'Disposed';
             if ($wasteStreamName === 'Recycling') {
                 $classificationName = 'Recycling';
@@ -122,11 +119,11 @@ class MonthlyReportDataSeeder extends Seeder
                 [
                     'waste_stream_id' => $wasteStream->id,
                     'grade_id' => $grade->id,
-                    'container_option_id' => $containerOption->id,
-                ],
-                [
                     'classification_id' => $materialClassification->id,
                     'facility_id' => $facility->id,
+                    'service_provider_id' => null,
+                ],
+                [
                     'rebate_offered' => $wasteStreamName === 'Recycling',
                     'rebate_rate' => $wasteStreamName === 'Recycling' ? rand(1, 20) / 10 : null,
                     'client_rebate_share' => 100,
@@ -181,9 +178,21 @@ class MonthlyReportDataSeeder extends Seeder
             ],
         ];
 
+        $wasteContainer = ContainerOption::query()->where('order_type', 'waste')->where('is_active', true)->first();
+        $recyclingContainer = ContainerOption::query()->where('order_type', 'recycling')->where('is_active', true)->first();
+
         foreach ($orders as $orderData) {
             $wasteStreamsData = $orderData['waste_streams'];
             unset($orderData['waste_streams']);
+
+            $container = $orderData['order_type'] === 'recycling' ? $recyclingContainer : $wasteContainer;
+            $quantityLines = $container
+                ? [[
+                    'container_option_id' => $container->id,
+                    'container_option_name' => $container->name,
+                    'quantity' => 1,
+                ]]
+                : [];
 
             $order = Order::create([
                 'site_id' => $site->id,
@@ -193,15 +202,14 @@ class MonthlyReportDataSeeder extends Seeder
                 'status' => $orderData['status'],
                 'requested_collection_date' => $orderData['requested_collection_date'],
                 'actual_collection_date' => $orderData['actual_collection_date'],
-                'quantity_lines' => [
-                    ['quantity_type' => 'wheelie_bins', 'quantity' => 1, 'description' => ''],
-                ],
+                'quantity_lines' => $quantityLines,
+                'estimated_quantity' => $quantityLines !== [] ? 1 : 0,
             ]);
 
             foreach ($wasteStreamsData as $streamData) {
                 $gradeName = $streamData['grade'];
                 $material = $materials[$gradeName] ?? null;
-                
+
                 if ($material) {
                     OrderWasteStream::create([
                         'order_id' => $order->id,
@@ -215,9 +223,8 @@ class MonthlyReportDataSeeder extends Seeder
         }
 
         if ($this->command) {
-            $this->command->info('Sample monthly report data created for ABC Company for ' . $month->format('M-Y'));
-            $this->command->info('Created ' . count($orders) . ' finalized orders with waste streams.');
+            $this->command->info('Sample monthly report data created for ABC Company for '.$month->format('M-Y'));
+            $this->command->info('Created '.count($orders).' finalized orders with waste streams.');
         }
     }
 }
-

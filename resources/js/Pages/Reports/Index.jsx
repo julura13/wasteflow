@@ -1,8 +1,12 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { FileText, TrendingUp, BarChart3, Leaf, Calculator, Box, Droplets } from 'lucide-react';
 
 export default function Index() {
+    const { auth } = usePage().props;
+    const permissions = auth?.user?.permissions ?? [];
+    const hasPermission = (permissionName) => permissions.includes(permissionName);
+
     const reports = [
         {
             title: 'Waste Management Report',
@@ -19,6 +23,7 @@ export default function Index() {
             icon: Calculator,
             color: 'bg-teal-600',
             details: 'Manual weight inputs; uses report formulas for Scope 3, landfill avoidance, and lifecycle saving',
+            requiredPermission: 'view-carbon-calculator',
         },
         {
             title: 'Landfill space calculator',
@@ -28,6 +33,7 @@ export default function Index() {
             icon: Box,
             color: 'bg-slate-600',
             details: 'Weight ÷ density (kg/m³) per row, then sum — no orders required',
+            requiredPermission: 'view-landfill-space-calculator',
         },
         {
             title: 'Water calculator',
@@ -37,6 +43,7 @@ export default function Index() {
             icon: Droplets,
             color: 'bg-sky-600',
             details: 'Weight × factor (L/kg) per row; total kL = sum of litres ÷ 1000',
+            requiredPermission: 'view-water-calculator',
         },
         {
             title: 'Monthly Rebate Tracker',
@@ -56,6 +63,10 @@ export default function Index() {
         },
     ];
 
+    const visibleReports = reports.filter(
+        (report) => !report.requiredPermission || hasPermission(report.requiredPermission)
+    );
+
     return (
         <DashboardLayout title="Reports">
             <Head title="Reports" />
@@ -69,7 +80,7 @@ export default function Index() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {reports.map((report) => {
+                    {visibleReports.map((report) => {
                         const Icon = report.icon;
                         return (
                             <div

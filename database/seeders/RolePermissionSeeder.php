@@ -23,6 +23,10 @@ class RolePermissionSeeder extends Seeder
             'create-orders',
             'view-reports',
             'view-reports-all', // see reports for any company (staff); without it, reports scoped to user's company
+            // Reports calculators (kept behind permissions for now)
+            'view-carbon-calculator',
+            'view-water-calculator',
+            'view-landfill-space-calculator',
             'manage-waste-collections',
             'manage-clients',
             'manage-services',
@@ -60,7 +64,13 @@ class RolePermissionSeeder extends Seeder
         $orderFinalizerRole = Role::firstOrCreate(['name' => 'order_finalizer']);
 
         // Assign permissions to roles
-        $adminRole->syncPermissions(Permission::all());
+        // No roles need the calculators yet, but we still register the permissions so they can be granted later.
+        $reportCalculatorPermissions = [
+            'view-carbon-calculator',
+            'view-water-calculator',
+            'view-landfill-space-calculator',
+        ];
+        $adminRole->syncPermissions(Permission::whereNotIn('name', $reportCalculatorPermissions)->get());
 
         $managerRole->syncPermissions([
             'view-dashboard',

@@ -4,26 +4,38 @@ import EditReasonModal from '@/Components/EditReasonModal';
 import { ArrowLeft, Save, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
-const recyclingQuantityTypes = [
-    { value: 'scrap_load', label: 'Scrap Load' },
-    { value: 'loose_bags', label: 'Loose Bags' },
-    { value: 'cage_8m3', label: '8m³ Cage' },
-    { value: 'cage_20m3', label: '20m³ Cage' },
-    { value: 'other', label: 'Other' },
-];
+const LEGACY_RECYCLING_TYPE_LABELS = {
+    scrap_load: 'Scrap Load',
+    loose_bags: 'Loose Bags',
+    cage_8m3: '8m³ Cage',
+    cage_20m3: '20m³ Cage',
+    other: 'Other',
+};
 
 function buildInitialQuantityLines(order, containerOptions) {
     const lines = order.quantity_lines || [];
     if (lines.length === 0) {
         return [{ id: 1, quantity_type: '', quantity: '', description: '' }];
     }
-    const isWaste = order.order_type === 'waste';
-    return lines.map((line, index) => ({
-        id: index + 1,
-        quantity_type: isWaste ? String(line.container_option_id ?? '') : (line.quantity_type ?? ''),
-        quantity: line.quantity ?? '',
-        description: line.description ?? '',
-    }));
+    const opts = containerOptions || [];
+    return lines.map((line, index) => {
+        let qtyType = '';
+        if (line.container_option_id != null && line.container_option_id !== '') {
+            qtyType = String(line.container_option_id);
+        } else if (order.order_type === 'recycling' && line.quantity_type) {
+            const name = LEGACY_RECYCLING_TYPE_LABELS[line.quantity_type];
+            const match = name ? opts.find((o) => o.name === name) : null;
+            if (match) {
+                qtyType = String(match.id);
+            }
+        }
+        return {
+            id: index + 1,
+            quantity_type: qtyType,
+            quantity: line.quantity ?? '',
+            description: line.description ?? '',
+        };
+    });
 }
 
 export default function Edit({ order, containerOptions = [] }) {
@@ -32,9 +44,7 @@ export default function Edit({ order, containerOptions = [] }) {
     );
 
     const isWaste = order.order_type === 'waste';
-    const quantityTypes = isWaste
-        ? (containerOptions || []).map((opt) => ({ value: String(opt.id), label: opt.name }))
-        : recyclingQuantityTypes;
+    const quantityTypes = (containerOptions || []).map((opt) => ({ value: String(opt.id), label: opt.name }));
 
     const [submitting, setSubmitting] = useState(false);
     const [showReasonModal, setShowReasonModal] = useState(false);
@@ -67,24 +77,18 @@ export default function Edit({ order, containerOptions = [] }) {
         const validLines = quantityLines.filter((line) => {
             const hasType = line.quantity_type && String(line.quantity_type).trim() !== '';
             const hasQty = line.quantity != null && parseInt(line.quantity, 10) > 0;
-            const descOk = line.quantity_type !== 'other' || (line.description && String(line.description).trim() !== '');
-            return hasType && hasQty && descOk;
+            return hasType && hasQty;
         });
         if (validLines.length === 0) return null;
         return {
             notes: data.notes || null,
-            quantity_lines: isWaste
-                ? validLines.map((line) => ({
-                      container_option_id: parseInt(line.quantity_type, 10),
-                      quantity: parseInt(line.quantity, 10),
-                  }))
-                : validLines.map((line) => ({
-                      quantity_type: line.quantity_type,
-                      quantity: parseInt(line.quantity, 10),
-                      ...(line.quantity_type === 'other' && line.description
-                          ? { description: String(line.description).trim() }
-                          : {}),
-                  })),
+            quantity_lines: validLines.map((line) => ({
+                container_option_id: parseInt(line.quantity_type, 10),
+                quantity: parseInt(line.quantity, 10),
+                ...(!isWaste && line.description?.trim()
+                    ? { description: String(line.description).trim() }
+                    : {}),
+            })),
         };
     };
 
@@ -187,9 +191,9 @@ export default function Edit({ order, containerOptions = [] }) {
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                                 Quantity
                                             </th>
-                                            {!isWaste && quantityLines.some((l) => l.quantity_type === 'other') && (
+                                            {!isWaste && (
                                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                                    Description
+                                                    Notes (optional)
                                                 </th>
                                             )}
                                             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-12">
@@ -225,20 +229,15 @@ export default function Edit({ order, containerOptions = [] }) {
                                                         required
                                                     />
                                                 </td>
-                                                {!isWaste && quantityLines.some((l) => l.quantity_type === 'other') && (
+                                                {!isWaste && (
                                                     <td className="px-6 py-4 whitespace-nowrap">
-                                                        {line.quantity_type === 'other' ? (
-                                                            <input
-                                                                type="text"
-                                                                value={line.description || ''}
-                                                                onChange={(e) => updateQuantityLine(line.id, 'description', e.target.value)}
-                                                                className="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm dark:bg-gray-700 dark:text-gray-100"
-                                                                placeholder="Describe..."
-                                                                required={line.quantity_type === 'other'}
-                                                            />
-                                                        ) : (
-                                                            <span className="text-gray-400">—</span>
-                                                        )}
+                                                        <input
+                                                            type="text"
+                                                            value={line.description || ''}
+                                                            onChange={(e) => updateQuantityLine(line.id, 'description', e.target.value)}
+                                                            className="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm dark:bg-gray-700 dark:text-gray-100"
+                                                            placeholder="Optional notes"
+                                                        />
                                                     </td>
                                                 )}
                                                 <td className="px-6 py-4 whitespace-nowrap text-right">

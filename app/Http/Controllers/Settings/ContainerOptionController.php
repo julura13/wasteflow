@@ -7,6 +7,7 @@ use App\Models\ActivityLog;
 use App\Models\ContainerOption;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -15,6 +16,7 @@ class ContainerOptionController extends Controller
     public function index(Request $request): Response
     {
         $containerOptions = ContainerOption::query()
+            ->orderBy('order_type')
             ->orderBy('name')
             ->when($request->search, fn ($query, $search) => $query->where('name', 'like', "%{$search}%"))
             ->paginate(15)
@@ -29,7 +31,13 @@ class ContainerOptionController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'name' => 'required|string|max:255|unique:container_options,name',
+            'order_type' => 'required|string|in:waste,recycling',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('container_options', 'name')->where(fn ($query) => $query->where('order_type', $request->input('order_type'))),
+            ],
             'is_active' => 'sometimes|boolean',
             'default_weight' => 'nullable|numeric|min:0',
         ]);
@@ -38,7 +46,10 @@ class ContainerOptionController extends Controller
         $data['default_weight'] = $request->filled('default_weight') ? (float) $request->input('default_weight') : null;
 
         $containerOption = ContainerOption::create($data);
-        ActivityLog::log('container_option_created', "Container option {$containerOption->name} created", $containerOption, ['name' => $containerOption->name]);
+        ActivityLog::log('container_option_created', "Container option {$containerOption->name} created", $containerOption, [
+            'name' => $containerOption->name,
+            'order_type' => $containerOption->order_type,
+        ]);
 
         return back()->with('success', 'Container option created successfully.');
     }
@@ -46,7 +57,15 @@ class ContainerOptionController extends Controller
     public function update(Request $request, ContainerOption $containerOption): RedirectResponse
     {
         $data = $request->validate([
-            'name' => 'required|string|max:255|unique:container_options,name,'.$containerOption->id,
+            'order_type' => 'required|string|in:waste,recycling',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('container_options', 'name')
+                    ->where(fn ($query) => $query->where('order_type', $request->input('order_type')))
+                    ->ignore($containerOption->id),
+            ],
             'is_active' => 'sometimes|boolean',
             'default_weight' => 'nullable|numeric|min:0',
         ]);
@@ -55,7 +74,10 @@ class ContainerOptionController extends Controller
         $data['default_weight'] = $request->filled('default_weight') ? (float) $request->input('default_weight') : null;
 
         $containerOption->update($data);
-        ActivityLog::log('container_option_updated', "Container option {$containerOption->name} updated", $containerOption, ['name' => $containerOption->name]);
+        ActivityLog::log('container_option_updated', "Container option {$containerOption->name} updated", $containerOption, [
+            'name' => $containerOption->name,
+            'order_type' => $containerOption->order_type,
+        ]);
 
         return back()->with('success', 'Container option updated successfully.');
     }

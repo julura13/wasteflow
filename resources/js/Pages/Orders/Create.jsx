@@ -1,11 +1,19 @@
 import { Head, useForm, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
-import { ArrowLeft, Save, Trash2, Recycle, Truck, Package, AlertTriangle, Plus } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, Recycle, Package, Plus } from 'lucide-react';
 import { Link } from '@inertiajs/react';
 import { useState, useEffect, useMemo } from 'react';
 import SearchableDropdown from '@/Components/SearchableDropdown';
 
-export default function Create({ companies = [], branches = [], sites = [], materials, serviceProviders, containerOptions = [] }) {
+export default function Create({
+    companies = [],
+    branches = [],
+    sites = [],
+    materials,
+    serviceProviders,
+    containerOptionsWaste = [],
+    containerOptionsRecycling = [],
+}) {
     const [quantityLines, setQuantityLines] = useState([
         { id: 1, quantity_type: '', quantity: '', description: '' }
     ]);
@@ -45,26 +53,19 @@ export default function Create({ companies = [], branches = [], sites = [], mate
     const handleSubmit = (e) => {
         e.preventDefault();
 
-        const isWaste = data.order_type === 'waste';
         const validQuantityLines = quantityLines
             .filter(line => {
-                const hasType = isWaste
-                    ? (line.quantity_type && line.quantity_type !== '')
-                    : (line.quantity_type && line.quantity_type !== '');
+                const hasType = line.quantity_type && line.quantity_type !== '';
                 const hasQuantity = line.quantity && parseInt(line.quantity) > 0;
-                const hasDescriptionIfOther = isWaste || line.quantity_type !== 'other' || (line.description && line.description.trim() !== '');
-                return hasType && hasQuantity && hasDescriptionIfOther;
+                return hasType && hasQuantity;
             })
-            .map(line => {
-                if (isWaste) {
-                    return { container_option_id: parseInt(line.quantity_type, 10), quantity: parseInt(line.quantity, 10) };
-                }
-                return {
-                    quantity_type: line.quantity_type,
-                    quantity: parseInt(line.quantity, 10),
-                    ...(line.quantity_type === 'other' && line.description ? { description: line.description.trim() } : {})
-                };
-            });
+            .map(line => ({
+                container_option_id: parseInt(line.quantity_type, 10),
+                quantity: parseInt(line.quantity, 10),
+                ...(data.order_type === 'recycling' && line.description?.trim()
+                    ? { description: line.description.trim() }
+                    : {}),
+            }));
 
         if (validQuantityLines.length === 0) {
             alert('Please add at least one quantity line');
@@ -102,55 +103,21 @@ export default function Create({ companies = [], branches = [], sites = [], mate
         router.post('/orders', submitData);
     };
 
-    // Waste order container types from settings (container options)
-    const wasteQuantityTypes = (containerOptions || []).map(opt => ({
-        value: String(opt.id),
-        label: opt.name,
-        icon: Package,
-        color: 'blue',
-    }));
+    const activeContainerOptions = useMemo(
+        () => (data.order_type === 'recycling' ? containerOptionsRecycling : containerOptionsWaste),
+        [data.order_type, containerOptionsRecycling, containerOptionsWaste]
+    );
 
-    // Recycling order container types
-    const recyclingQuantityTypes = [
-        { 
-            value: 'scrap_load', 
-            label: 'Scrap Load', 
-            icon: Truck, 
-            color: 'orange',
-            description: 'Scrap load container'
-        },
-        { 
-            value: 'loose_bags', 
-            label: 'Loose Bags', 
-            icon: Package, 
-            color: 'blue',
-            description: 'Loose bags'
-        },
-        { 
-            value: 'cage_8m3', 
-            label: '8m³ Cage', 
-            icon: Truck, 
-            color: 'green',
-            description: '8 cubic meter cage'
-        },
-        { 
-            value: 'cage_20m3', 
-            label: '20m³ Cage', 
-            icon: Truck, 
-            color: 'purple',
-            description: '20 cubic meter cage'
-        },
-        { 
-            value: 'other', 
-            label: 'Other', 
-            icon: Package, 
-            color: 'gray',
-            description: 'Other container type (please specify)'
-        },
-    ];
-
-    // Get quantity types based on order type
-    const quantityTypes = data.order_type === 'recycling' ? recyclingQuantityTypes : wasteQuantityTypes;
+    const quantityTypes = useMemo(
+        () =>
+            activeContainerOptions.map((opt) => ({
+                value: String(opt.id),
+                label: opt.name,
+                icon: Package,
+                color: 'blue',
+            })),
+        [activeContainerOptions]
+    );
 
     // Filter branches based on selected company
     const availableBranches = useMemo(() => {
@@ -199,9 +166,6 @@ export default function Create({ companies = [], branches = [], sites = [], mate
             if (line.id === id) {
                 const updated = { ...line, [field]: value };
                 // Clear description if type changes away from "other"
-                if (field === 'quantity_type' && value !== 'other') {
-                    updated.description = '';
-                }
                 return updated;
             }
             return line;
@@ -209,12 +173,8 @@ export default function Create({ companies = [], branches = [], sites = [], mate
     };
 
     const getQuantityTypeLabel = (value) => {
-        if (data.order_type === 'waste' && containerOptions?.length) {
-            const opt = containerOptions.find(o => String(o.id) === String(value));
-            return opt ? opt.name : value;
-        }
-        const allTypes = [...wasteQuantityTypes, ...recyclingQuantityTypes];
-        return allTypes.find(type => type.value === value)?.label || value;
+        const opt = activeContainerOptions.find((o) => String(o.id) === String(value));
+        return opt ? opt.name : value;
     };
 
     const getTotalContainers = () => {
@@ -413,6 +373,11 @@ export default function Create({ companies = [], branches = [], sites = [], mate
 
                         {/* Quantity Lines Table */}
                         <div>
+                            {quantityTypes.length === 0 && (
+                                <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-100">
+                                    No container options are configured for this order type in Settings → Container Options. Add at least one active option before creating an order.
+                                </div>
+                            )}
                             <div className="flex items-center justify-between mb-4">
                                 <h4 className="text-md font-medium text-gray-900 dark:text-gray-100">Quantities</h4>
                                 <button
@@ -435,9 +400,9 @@ export default function Create({ companies = [], branches = [], sites = [], mate
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                                 Quantity
                                             </th>
-                                            {(data.order_type === 'recycling' && quantityLines.some(line => line.quantity_type === 'other')) && (
+                                            {data.order_type === 'recycling' && (
                                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                                    Description
+                                                    Notes (optional)
                                                 </th>
                                             )}
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -474,20 +439,15 @@ export default function Create({ companies = [], branches = [], sites = [], mate
                                                         required
                                                     />
                                                 </td>
-                                                {data.order_type === 'recycling' && quantityLines.some(l => l.quantity_type === 'other') && (
+                                                {data.order_type === 'recycling' && (
                                                     <td className="px-6 py-4 whitespace-nowrap">
-                                                        {line.quantity_type === 'other' ? (
-                                                            <input
-                                                                type="text"
-                                                                value={line.description || ''}
-                                                                onChange={(e) => updateQuantityLine(line.id, 'description', e.target.value)}
-                                                                className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-                                                                placeholder="Describe container type..."
-                                                                required={line.quantity_type === 'other'}
-                                                            />
-                                                        ) : (
-                                                            <span className="text-gray-400 dark:text-gray-500">—</span>
-                                                        )}
+                                                        <input
+                                                            type="text"
+                                                            value={line.description || ''}
+                                                            onChange={(e) => updateQuantityLine(line.id, 'description', e.target.value)}
+                                                            className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                                            placeholder="Optional notes for this line"
+                                                        />
                                                     </td>
                                                 )}
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
