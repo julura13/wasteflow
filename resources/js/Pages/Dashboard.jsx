@@ -351,13 +351,13 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
         return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(Math.ceil(Number(num)));
     };
 
-    // Client palette: classification dials (avoidance / recycling / recovery / disposal / diverted)
+    // Client palette: KPI / dial colours (PIE DASHBOARD & KPI spec)
     const classificationColors = {
-        avoidance: '#eab308',
-        recycling: '#93c5fd',
-        recovery: '#2563eb',
-        disposal: '#171717',
-        diverted: '#ca8a04',
+        avoidance: '#BDBDBD',
+        recycling: '#6FCF97',
+        recovery: '#2D9CDB',
+        disposal: '#1C1C1C',
+        diverted: '#C69200',
     };
 
     const classificationDonutHeight = 158;
@@ -856,8 +856,8 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
                             {renderClassificationDonut('DIVERTED', classificationData.diverted.percentage, classificationColors.diverted)}
                             {renderLandfillSavedPanel()}
                         </div>
-                        <p className="text-center text-[10px] text-gray-500 dark:text-gray-400 -mt-1 max-w-2xl mx-auto px-2 leading-snug">
-                            Diverted = avoidance + recycling + recovery (everything not disposal). Landfill saved = airspace avoided (m³) using the same densities as the landfill space calculator.
+                        <p className="text-center text-xs text-gray-500 dark:text-gray-400 -mt-1 max-w-2xl mx-auto px-2 leading-snug">
+                            All environmental equivalencies are calculated using industry-standard recycling conversion factors and South African emission benchmarks.
                         </p>
                     </div>
                 </div>
@@ -884,12 +884,18 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
                         <p className="text-lg font-bold text-cyan-600 dark:text-cyan-400">
                             {formatImpactWhole(environmentalImpact.waterSaved)} kL
                         </p>
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-snug px-0.5 mb-2">
+                            Water Savings (kL – Recycling vs Virgin Production)
+                        </p>
                     </div>
                     <div className="text-center p-3 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-100 dark:border-green-800/50">
                         <TreePine className="w-8 h-8 mx-auto mb-1 text-green-600 dark:text-green-400" />
                         <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Trees Saved</p>
                         <p className="text-lg font-bold text-green-600 dark:text-green-400">
                             {formatImpactWhole(environmentalImpact.treesSaved)} trees
+                        </p>
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-snug px-0.5 mb-2">
+                            Trees saved – Paper based tree conversion
                         </p>
                     </div>
                     <div className="text-center p-3 bg-yellow-50 dark:bg-amber-900/30 rounded-lg border border-yellow-100 dark:border-amber-800/50">

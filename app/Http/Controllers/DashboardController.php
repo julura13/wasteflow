@@ -364,21 +364,22 @@ class DashboardController extends Controller
             $totals[$wasteStreamName] += $weight;
         }
 
-        // Client palette: waste stream pie segments (see product spec)
+        // Client palette: PIE DASHBOARD COLOUR CHART (waste streams)
         $colors = [
-            'Paper' => '#2563eb',
-            'Plastic' => '#eab308',
-            'Metal' => '#6b7280',
-            'Aluminium' => '#9333ea',
-            'Aluminum' => '#9333ea',
-            'Organic Waste' => '#2563eb',
-            'Waste' => '#171717',
-            'General Waste' => '#171717',
-            'Hazardous Waste' => '#dc2626',
-            'Glass' => '#475569',
-            'Garden Waste' => '#1d4ed8',
-            'Wood' => '#78716c',
-            'Recycling' => '#94a3b8',
+            'Paper' => '#2F80ED',
+            'Plastic' => '#F2994A',
+            'Organic Waste' => '#27AE60',
+            'Waste' => '#1C1C1C',
+            'General Waste' => '#1C1C1C',
+            'Glass' => '#56CCF2',
+            'Metal' => '#4F4F4F',
+            'Aluminium' => '#BDBDBD',
+            'Aluminum' => '#BDBDBD',
+            'Woven Bags' => '#8D6E63',
+            'Wood' => '#A0522D',
+            'Hazardous Waste' => '#EB5757',
+            'Garden Waste' => '#27AE60',
+            'Recycling' => '#6FCF97',
         ];
 
         $result = [];
@@ -386,7 +387,7 @@ class DashboardController extends Controller
             $result[] = [
                 'name' => $name,
                 'value' => round($weight, 2),
-                'color' => $colors[$name] ?? '#6b7280',
+                'color' => $colors[$name] ?? '#828282',
             ];
         }
 

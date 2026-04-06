@@ -35,10 +35,10 @@ it('assigns client palette hex colors to dashboard waste stream pie segments', f
     $classification = \App\Models\Classification::firstOrCreate(['name' => 'Recycling'], ['is_active' => true]);
 
     $streams = [
-        'Paper' => ['grade' => 'G Paper', 'color' => '#2563eb'],
-        'Plastic' => ['grade' => 'G Plastic', 'color' => '#eab308'],
-        'Metal' => ['grade' => 'G Metal', 'color' => '#6b7280'],
-        'Waste' => ['grade' => 'G Waste', 'color' => '#171717'],
+        'Paper' => ['grade' => 'G Paper', 'color' => '#2F80ED'],
+        'Plastic' => ['grade' => 'G Plastic', 'color' => '#F2994A'],
+        'Metal' => ['grade' => 'G Metal', 'color' => '#4F4F4F'],
+        'Waste' => ['grade' => 'G Waste', 'color' => '#1C1C1C'],
     ];
 
     $materials = [];
