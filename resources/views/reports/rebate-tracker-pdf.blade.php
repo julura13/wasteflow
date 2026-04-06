@@ -11,12 +11,15 @@
         }
         body {
             font-family: 'DejaVu Sans', sans-serif;
-            font-size: 9px;
+            font-size: 11px;
             color: #333;
-            line-height: 1.3;
+            line-height: 1.4;
         }
         @page {
-            margin: 15mm;
+            margin: 24mm 22mm;
+        }
+        .page-shell {
+            padding: 0 4mm;
         }
         .header {
             background-color: #2563eb;
@@ -24,6 +27,7 @@
             padding: 15px 20px;
             text-align: center;
             margin-bottom: 15px;
+            border-radius: 4px;
         }
         .header h1 {
             font-size: 18px;
@@ -31,32 +35,35 @@
             margin-bottom: 8px;
         }
         .header .filters {
-            font-size: 10px;
+            font-size: 9px;
             margin-top: 6px;
+            letter-spacing: -0.02em;
         }
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 8px;
+            font-size: 10.5px;
         }
         table thead {
             background-color: #1e3a5f;
             color: white;
         }
         table thead th {
-            padding: 6px 4px;
+            padding: 7px 5px;
             text-align: left;
             border: 1px solid #2c5a7a;
             font-weight: 600;
+            font-size: 10.5px;
         }
         table thead th.text-right {
             text-align: right;
         }
         table tbody td {
-            padding: 4px;
+            padding: 5px 4px;
             border: 1px solid #ddd;
             font-weight: 600;
             color: #222;
+            font-size: 10.5px;
         }
         table tbody td.tracking-cell {
             max-width: 120px;
@@ -69,6 +76,11 @@
         table tbody td.text-right {
             text-align: right;
         }
+        table thead th.date-col,
+        table tbody td.date-col {
+            white-space: nowrap;
+            width: 1%;
+        }
         .summary-box {
             margin-top: 15px;
             padding: 12px;
@@ -77,7 +89,7 @@
             border-radius: 4px;
         }
         .summary-box h3 {
-            font-size: 11px;
+            font-size: 12px;
             color: #2563eb;
             margin-bottom: 8px;
         }
@@ -101,23 +113,24 @@
             padding-top: 10px;
             border-top: 2px solid #2563eb;
             text-align: center;
-            font-size: 10px;
+            font-size: 11px;
             color: #2563eb;
         }
     </style>
 </head>
 <body>
+    <div class="page-shell">
     <div class="header">
         <h1>WASTE COLLECTION &amp; RECYCLING REPORT</h1>
         <div class="filters">
-            Period: {{ \Carbon\Carbon::parse($filters['start_date'])->format('d M Y') }} – {{ \Carbon\Carbon::parse($filters['end_date'])->format('d M Y') }}
+            Period: {{ \Carbon\Carbon::parse($filters['start_date'])->format('d/m/Y') }} – {{ \Carbon\Carbon::parse($filters['end_date'])->format('d/m/Y') }}
         </div>
     </div>
 
     <table>
         <thead>
             <tr>
-                <th>Date</th>
+                <th class="date-col">Date</th>
                 <th>Company</th>
                 <th>Branch</th>
                 <th>Site</th>
@@ -131,7 +144,7 @@
         <tbody>
             @forelse($rebateData as $item)
             <tr>
-                <td>{{ \Carbon\Carbon::parse($item['date'])->format('d M Y') }}</td>
+                <td class="date-col">{{ \Carbon\Carbon::parse($item['date'])->format('d/m/Y') }}</td>
                 <td>{{ $item['company_name'] }}</td>
                 <td>{{ $item['branch_name'] }}</td>
                 <td>{{ $item['site_name'] }}</td>
@@ -167,6 +180,7 @@
 
     <div class="footer">
         <strong>WASTEFLOW</strong> – Sustainable Waste Management
+    </div>
     </div>
 </body>
 </html>

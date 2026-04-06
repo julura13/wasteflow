@@ -1,9 +1,10 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
-import { ArrowLeft, Calendar, Filter, Download, Loader2 } from 'lucide-react';
+import { ArrowLeft, Calendar, Filter, Download, FileText, Loader2 } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import SearchableDropdown from '@/Components/SearchableDropdown';
+import { formatDateSouthAfrica } from '@/utils/formatDateSouthAfrica';
 
 const siteOptionLabel = (site) =>
     `${site.name}${site.branch?.company ? ` (${site.branch.company.name})` : ''}`;
@@ -140,55 +141,56 @@ export default function RebateTracker({ rebateData, companies, filters, totalReb
         <DashboardLayout title="Waste Collection & Recycling Report">
             <Head title="Waste Collection & Recycling Report" />
 
-            <div className="mb-6">
-                <Link
-                    href={route('reports.index')}
-                    className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 mb-2"
-                >
-                    <ArrowLeft className="h-4 w-4 mr-1" />
-                    Back to Reports
-                </Link>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                    Waste Collection & Recycling Report
-                </h1>
-                <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                    Track recycling rebates per company, branch, and site
-                </p>
-            </div>
-
-            {(pdfExportUuid || flash?.rebate_pdf_export_uuid) ? (
-                <div className="mb-4 rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/25 p-4 space-y-3">
-                    {flash?.success && flash?.rebate_pdf_export_uuid && (
-                        <p className="text-sm text-green-900 dark:text-green-100">{flash.success}</p>
-                    )}
-                    {pdfIsProcessing && (
-                        <div className="flex items-center gap-2 text-sm text-green-800 dark:text-green-200">
-                            <Loader2 className="h-4 w-4 animate-spin shrink-0" />
-                            <span>Generating PDF in the background… This page will update when it is ready.</span>
-                        </div>
-                    )}
-                    {pdfStatus?.status === 'completed' && pdfStatus.download_url && (
-                        <div>
-                            <a
-                                href={pdfStatus.download_url}
-                                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                            >
-                                <Download className="h-4 w-4 mr-2" />
-                                Download PDF
-                            </a>
-                        </div>
-                    )}
-                    {pdfStatus?.status === 'failed' && (
-                        <p className="text-sm text-red-700 dark:text-red-300">
-                            {pdfStatus.error_message || 'Report generation failed. Please try again.'}
-                        </p>
-                    )}
+            <div className="mx-auto max-w-[1600px] px-2 py-4 sm:px-4 sm:py-6 lg:px-6">
+                <div className="mb-6">
+                    <Link
+                        href={route('reports.index')}
+                        className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 mb-2"
+                    >
+                        <ArrowLeft className="h-4 w-4 mr-1" />
+                        Back to Reports
+                    </Link>
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                        Waste Collection & Recycling Report
+                    </h1>
+                    <p className="mt-1 text-base text-gray-600 dark:text-gray-400">
+                        Track recycling rebates per company, branch, and site
+                    </p>
                 </div>
-            ) : null}
 
-            <div className="bg-white dark:bg-gray-800 shadow rounded-lg mb-6">
-                <div className="px-4 py-5 sm:p-6">
-                    <form onSubmit={handleFilter} className="space-y-4">
+                {(pdfExportUuid || flash?.rebate_pdf_export_uuid) ? (
+                    <div className="mb-4 rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/25 p-4 space-y-3">
+                        {flash?.success && flash?.rebate_pdf_export_uuid && (
+                            <p className="text-sm text-green-900 dark:text-green-100">{flash.success}</p>
+                        )}
+                        {pdfIsProcessing && (
+                            <div className="flex items-center gap-2 text-sm text-green-800 dark:text-green-200">
+                                <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                                <span>Generating PDF in the background… This page will update when it is ready.</span>
+                            </div>
+                        )}
+                        {pdfStatus?.status === 'completed' && pdfStatus.download_url && (
+                            <div>
+                                <a
+                                    href={pdfStatus.download_url}
+                                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                                >
+                                    <Download className="h-4 w-4 mr-2" />
+                                    Download PDF
+                                </a>
+                            </div>
+                        )}
+                        {pdfStatus?.status === 'failed' && (
+                            <p className="text-sm text-red-700 dark:text-red-300">
+                                {pdfStatus.error_message || 'Report generation failed. Please try again.'}
+                            </p>
+                        )}
+                    </div>
+                ) : null}
+
+                <div className="bg-white dark:bg-gray-800 shadow rounded-lg mb-6">
+                    <div className="px-4 py-5 sm:p-6">
+                        <form onSubmit={handleFilter} className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
                             <div>
                                 <label htmlFor="start_date" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
@@ -300,6 +302,15 @@ export default function RebateTracker({ rebateData, companies, filters, totalReb
                     <li>• <strong>Company only:</strong> Rebates across all branches and sites of that company</li>
                     <li>• <strong>Company + Branch:</strong> Rebates across all sites of that branch</li>
                     <li>• <strong>Company + Branch + Site:</strong> Rebates for that specific site only</li>
+                    <li>
+                        • <strong>Date column:</strong> Collection date — actual collection date when recorded, otherwise
+                        the requested collection date (finalized orders only).
+                    </li>
+                    <li>
+                        • <strong>Multiple tracking numbers:</strong> Same-day rows for the same grade and location
+                        combine weight and rebate from every matching finalized order; each distinct order number is
+                        listed so you can trace all collections behind that total.
+                    </li>
                 </ul>
             </div>
 
@@ -330,7 +341,7 @@ export default function RebateTracker({ rebateData, companies, filters, totalReb
 
             <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
                 <div className="px-4 py-5 sm:p-6">
-                    <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
+                    <h3 className="text-xl font-medium text-gray-900 dark:text-gray-100 mb-4">
                         Rebate Details
                     </h3>
                     {rebateData && rebateData.length > 0 ? (
@@ -338,34 +349,34 @@ export default function RebateTracker({ rebateData, companies, filters, totalReb
                             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                                 <thead className="bg-gray-50 dark:bg-gray-700">
                                     <tr>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                             Date
                                         </th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                             Company
                                         </th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                             Branch
                                         </th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                             Site
                                         </th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                             Tracking No
                                         </th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                             Grade
                                         </th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                             Weight (kg)
                                         </th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                             Rate (R/kg)
                                         </th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                             Total (R)
                                         </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                             Invoice
                                         </th>
                                     </tr>
@@ -373,34 +384,34 @@ export default function RebateTracker({ rebateData, companies, filters, totalReb
                                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                     {rebateData.map((item, index) => (
                                         <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                                                {new Date(item.date).toLocaleDateString()}
+                                            <td className="px-4 py-3 whitespace-nowrap text-base tabular-nums text-gray-900 dark:text-gray-100">
+                                                {formatDateSouthAfrica(item.date)}
                                             </td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                                            <td className="px-4 py-3 whitespace-nowrap text-base text-gray-900 dark:text-gray-100">
                                                 {item.company_name}
                                             </td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                                            <td className="px-4 py-3 whitespace-nowrap text-base text-gray-900 dark:text-gray-100">
                                                 {item.branch_name}
                                             </td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                                            <td className="px-4 py-3 whitespace-nowrap text-base text-gray-900 dark:text-gray-100">
                                                 {item.site_name}
                                             </td>
-                                            <td className="px-4 py-3 text-sm font-semibold text-gray-900 dark:text-gray-100 max-w-[14rem] break-words">
+                                            <td className="px-4 py-3 text-base font-semibold text-gray-900 dark:text-gray-100 max-w-[14rem] break-words">
                                                 {item.tracking_numbers ?? '—'}
                                             </td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                                            <td className="px-4 py-3 whitespace-nowrap text-base text-gray-900 dark:text-gray-100">
                                                 {item.grade}
                                             </td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                                            <td className="px-4 py-3 whitespace-nowrap text-base text-gray-900 dark:text-gray-100">
                                                 {Number(item.weight).toFixed(2)}
                                             </td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                                            <td className="px-4 py-3 whitespace-nowrap text-base text-gray-900 dark:text-gray-100">
                                                 R {Number(item.rate).toFixed(2)}
                                             </td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-green-600 dark:text-green-400">
+                                            <td className="px-4 py-3 whitespace-nowrap text-base font-medium text-green-600 dark:text-green-400">
                                                 R {Number(item.total).toFixed(2)}
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                            <td className="px-6 py-4 whitespace-nowrap text-base">
                                                 {item.supporting_documents && item.supporting_documents.length > 0 ? (
                                                     <div className="flex flex-col gap-1">
                                                         {item.supporting_documents.map((doc) => (
@@ -435,6 +446,7 @@ export default function RebateTracker({ rebateData, companies, filters, totalReb
                         </div>
                     )}
                 </div>
+            </div>
             </div>
         </DashboardLayout>
     );

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Plus, Edit, Trash2, Eye, Search, Filter, CheckCircle, X, Loader2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, Search, Filter, CheckCircle, X, Loader2, Download } from 'lucide-react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import DataTable from '@/Components/Dashboard/DataTable';
 
@@ -395,6 +395,27 @@ export default function MaterialsIndex({ materials, filters, wasteStreams, facil
         return candidate === '' || candidate === null || candidate === undefined ? undefined : candidate;
     };
 
+    const exportPdfHref = useMemo(() => {
+        const params = new URLSearchParams();
+        if (search) {
+            params.set('search', search);
+        }
+        if (wasteStreamFilter) {
+            params.set('waste_stream_id', wasteStreamFilter);
+        }
+        if (facilityFilter) {
+            params.set('facility_id', facilityFilter);
+        }
+        if (rebateFilter !== '') {
+            params.set('rebate', rebateFilter);
+        }
+        if (statusFilter !== '') {
+            params.set('status', statusFilter);
+        }
+        const qs = params.toString();
+        return qs ? `${route('materials.export.pdf')}?${qs}` : route('materials.export.pdf');
+    }, [search, wasteStreamFilter, facilityFilter, rebateFilter, statusFilter]);
+
     const applyFilters = (nextFilters = {}) => {
         router.get(
             '/materials',
@@ -446,13 +467,24 @@ export default function MaterialsIndex({ materials, filters, wasteStreams, facil
                         material profiles.
                     </p>
                 </div>
-                <Link
-                    href="/materials/create"
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-                >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Material
-                </Link>
+                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                    <a
+                        href={exportPdfHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex justify-center items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md shadow-sm text-gray-700 dark:text-gray-100 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                    >
+                        <Download className="h-4 w-4 mr-2" />
+                        Export PDF
+                    </a>
+                    <Link
+                        href="/materials/create"
+                        className="inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                    >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Material
+                    </Link>
+                </div>
             </div>
 
             <div className="mb-6 bg-white dark:bg-gray-800 p-4 rounded-lg shadow">

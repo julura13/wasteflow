@@ -81,3 +81,152 @@ it('resolves company and branch from order when site is absent and includes trac
         ->where('rebateData.0.grade', 'HL 1')
     );
 });
+
+it('aggregates same-day same-grade streams and lists distinct order tracking numbers', function () {
+    $user = User::factory()->create();
+    $user->assignRole('admin');
+
+    $company = Company::create(['name' => 'Agg Co', 'is_active' => true]);
+    $branch = Branch::create(['company_id' => $company->id, 'name' => 'CBD', 'is_active' => true]);
+    $serviceProvider = \App\Models\ServiceProvider::create(['name' => 'SP Agg', 'is_active' => true]);
+
+    $facility = \App\Models\Facility::firstOrCreate(
+        ['name' => 'Facility Agg'],
+        ['facility_type' => 'recycling', 'is_active' => true]
+    );
+    $classification = \App\Models\Classification::firstOrCreate(['name' => 'Recycling'], ['is_active' => true]);
+    $wasteStream = \App\Models\WasteStream::firstOrCreate(['name' => 'Paper'], ['is_active' => true]);
+    $grade = \App\Models\Grade::firstOrCreate(['name' => 'CMW'], ['is_active' => true]);
+    $material = Material::create([
+        'waste_stream_id' => $wasteStream->id,
+        'grade_id' => $grade->id,
+        'classification_id' => $classification->id,
+        'facility_id' => $facility->id,
+        'is_active' => true,
+        'rebate_offered' => true,
+        'rebate_rate' => 1,
+        'client_rebate_share' => 100,
+    ]);
+
+    $collectionDate = Carbon::parse('2026-03-06');
+
+    $orderA = Order::create([
+        'company_id' => $company->id,
+        'branch_id' => $branch->id,
+        'site_id' => null,
+        'service_provider_id' => $serviceProvider->id,
+        'created_by' => $user->id,
+        'order_type' => 'recycling',
+        'status' => 'finalized',
+        'tracking_number' => 'RO-2603-30245',
+        'requested_collection_date' => $collectionDate,
+        'actual_collection_date' => $collectionDate,
+    ]);
+
+    $orderB = Order::create([
+        'company_id' => $company->id,
+        'branch_id' => $branch->id,
+        'site_id' => null,
+        'service_provider_id' => $serviceProvider->id,
+        'created_by' => $user->id,
+        'order_type' => 'recycling',
+        'status' => 'finalized',
+        'tracking_number' => 'RO-2603-30284',
+        'requested_collection_date' => $collectionDate,
+        'actual_collection_date' => $collectionDate,
+    ]);
+
+    OrderWasteStream::create([
+        'order_id' => $orderA->id,
+        'material_id' => $material->id,
+        'nett_weight' => 40,
+        'rebate_rate' => 1,
+    ]);
+
+    OrderWasteStream::create([
+        'order_id' => $orderB->id,
+        'material_id' => $material->id,
+        'nett_weight' => 8,
+        'rebate_rate' => 1,
+    ]);
+
+    $response = $this->actingAs($user)->get(route('reports.rebate-tracker', [
+        'start_date' => '2026-03-01',
+        'end_date' => '2026-03-31',
+        'company_id' => $company->id,
+    ]));
+
+    $response->assertOk();
+    $response->assertInertia(fn (Assert $page) => $page
+        ->component('Reports/RebateTracker')
+        ->has('rebateData', 1)
+        ->where('rebateData.0.company_name', 'Agg Co')
+        ->where('rebateData.0.grade', 'CMW')
+        ->where('rebateData.0.weight', 48)
+        ->where('rebateData.0.tracking_numbers', fn (string $v) => str_contains($v, 'RO-2603-30245') && str_contains($v, 'RO-2603-30284'))
+    );
+});
+
+it('includes organic waste when material has rebate_offered false', function () {
+    $user = User::factory()->create();
+    $user->assignRole('admin');
+
+    $company = Company::create(['name' => 'Organic Co', 'is_active' => true]);
+    $branch = Branch::create(['company_id' => $company->id, 'name' => 'Main', 'is_active' => true]);
+    $serviceProvider = \App\Models\ServiceProvider::create(['name' => 'SP Organic', 'is_active' => true]);
+
+    $facility = \App\Models\Facility::firstOrCreate(
+        ['name' => 'Compost Facility'],
+        ['facility_type' => 'compost', 'is_active' => true]
+    );
+    $classification = \App\Models\Classification::firstOrCreate(['name' => 'Recovered'], ['is_active' => true]);
+    $wasteStream = \App\Models\WasteStream::firstOrCreate(['name' => 'Organic Waste'], ['is_active' => true]);
+    $grade = \App\Models\Grade::firstOrCreate(['name' => 'Organics Recovered'], ['is_active' => true]);
+    $material = Material::create([
+        'waste_stream_id' => $wasteStream->id,
+        'grade_id' => $grade->id,
+        'classification_id' => $classification->id,
+        'facility_id' => $facility->id,
+        'is_active' => true,
+        'rebate_offered' => false,
+        'rebate_rate' => null,
+        'client_rebate_share' => null,
+    ]);
+
+    $collectionDate = Carbon::parse('2026-03-12');
+    $order = Order::create([
+        'company_id' => $company->id,
+        'branch_id' => $branch->id,
+        'site_id' => null,
+        'service_provider_id' => $serviceProvider->id,
+        'created_by' => $user->id,
+        'order_type' => 'recycling',
+        'status' => 'finalized',
+        'tracking_number' => 'RO-2603-ORG01',
+        'requested_collection_date' => $collectionDate,
+        'actual_collection_date' => $collectionDate,
+    ]);
+
+    OrderWasteStream::create([
+        'order_id' => $order->id,
+        'material_id' => $material->id,
+        'nett_weight' => 25,
+        'rebate_rate' => null,
+    ]);
+
+    $response = $this->actingAs($user)->get(route('reports.rebate-tracker', [
+        'start_date' => '2026-03-01',
+        'end_date' => '2026-03-31',
+        'company_id' => $company->id,
+    ]));
+
+    $response->assertOk();
+    $response->assertInertia(fn (Assert $page) => $page
+        ->component('Reports/RebateTracker')
+        ->has('rebateData', 1)
+        ->where('rebateData.0.company_name', 'Organic Co')
+        ->where('rebateData.0.grade', 'Organics Recovered')
+        ->where('rebateData.0.weight', 25)
+        ->where('rebateData.0.tracking_numbers', 'RO-2603-ORG01')
+    );
+});

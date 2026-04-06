@@ -85,6 +85,8 @@ Route::patch('materials/{material}/rebate-rate', [App\Http\Controllers\MaterialC
     ->middleware(['auth', 'verified', 'permission:manage-services'])->name('materials.update-rebate-rate');
 Route::patch('materials/{material}/rebate-share', [App\Http\Controllers\MaterialController::class, 'updateRebateShare'])
     ->middleware(['auth', 'verified', 'permission:manage-services'])->name('materials.update-rebate-share');
+Route::get('materials/export/pdf', [App\Http\Controllers\MaterialController::class, 'exportPdf'])
+    ->middleware(['auth', 'verified', 'permission:manage-services'])->name('materials.export.pdf');
 Route::resource('materials', App\Http\Controllers\MaterialController::class)
     ->middleware(['auth', 'verified', 'permission:manage-services']);
 

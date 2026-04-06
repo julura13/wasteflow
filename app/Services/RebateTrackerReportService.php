@@ -11,6 +11,20 @@ use Illuminate\Support\Collection;
 class RebateTrackerReportService
 {
     /**
+     * Build rebate rows for finalized orders in the date range.
+     *
+     * Rows are aggregated by collection date (calendar day), company, branch, site, and material grade.
+     * When multiple finalized orders contribute the same grade on the same day for the same location,
+     * weights and rebate totals are summed and distinct order tracking numbers are listed together.
+     *
+     * Streams are included when the line has a positive rebate rate, or the material offers rebates, or
+     * the material is organic recovery (waste stream Organic Waste or grade Organics Recovered) so
+     * organics appear even when material rebate_offered is false in seed data.
+     *
+     * The displayed date is the order's collection date: actual collection date when set, otherwise
+     * requested collection date. Only finalized orders are included (not the moment a rebate field was
+     * last saved on the order).
+     *
      * @return Collection<int, array<string, mixed>>
      */
     public function getRebateTrackerData(
@@ -58,6 +72,12 @@ class RebateTrackerReportService
                 $q->whereNotNull('rebate_rate')->where('rebate_rate', '>', 0)
                     ->orWhereHas('material', function ($mq) {
                         $mq->where('rebate_offered', true);
+                    })
+                    ->orWhereHas('material.wasteStream', function ($wq) {
+                        $wq->where('name', 'Organic Waste');
+                    })
+                    ->orWhereHas('material.grade', function ($gq) {
+                        $gq->where('name', 'Organics Recovered');
                     });
             });
 

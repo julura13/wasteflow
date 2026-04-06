@@ -9,7 +9,12 @@ use App\Models\Grade;
 use App\Models\Material;
 use App\Models\ServiceProvider;
 use App\Models\WasteStream;
+use Carbon\Carbon;
+use Dompdf\Dompdf;
+use Dompdf\Options;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class MaterialController extends Controller
@@ -19,29 +24,7 @@ class MaterialController extends Controller
      */
     public function index(Request $request)
     {
-        $materials = Material::query()
-            ->with([
-                'wasteStream:id,name',
-                'grade:id,name',
-                'classification:id,name',
-                'facility:id,name',
-                'serviceProvider:id,name',
-            ])
-            ->when($request->search, function ($query, $search) {
-                $query->where(function ($scoped) use ($search) {
-                    $scoped->whereHas('grade', fn ($q) => $q->where('name', 'like', "%{$search}%"))
-                        ->orWhereHas('wasteStream', fn ($q) => $q->where('name', 'like', "%{$search}%"))
-                        ->orWhereHas('facility', fn ($q) => $q->where('name', 'like', "%{$search}%"));
-                });
-            })
-            ->when($request->waste_stream_id, fn ($query, $id) => $query->where('waste_stream_id', $id))
-            ->when($request->facility_id, fn ($query, $id) => $query->where('facility_id', $id))
-            ->when($request->has('rebate'), function ($query) use ($request) {
-                $query->where('rebate_offered', filter_var($request->get('rebate'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false);
-            })
-            ->when($request->has('status'), function ($query) use ($request) {
-                $query->where('is_active', filter_var($request->get('status'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false);
-            })
+        $materials = $this->materialsFilteredQuery($request)
             ->orderByDesc('updated_at')
             ->paginate(100)
             ->withQueryString();
@@ -51,6 +34,45 @@ class MaterialController extends Controller
             'filters' => $request->only(['search', 'waste_stream_id', 'facility_id', 'rebate', 'status']),
             'wasteStreams' => WasteStream::query()->orderBy('name')->get(['id', 'name']),
             'facilities' => Facility::query()->orderBy('name')->get(['id', 'name']),
+        ]);
+    }
+
+    /**
+     * Export material definitions as PDF (same filters as the index listing; all matching rows, no pagination).
+     */
+    public function exportPdf(Request $request)
+    {
+        $materials = $this->materialsFilteredQuery($request)
+            ->join('waste_streams', 'materials.waste_stream_id', '=', 'waste_streams.id')
+            ->join('grades', 'materials.grade_id', '=', 'grades.id')
+            ->orderBy('waste_streams.name')
+            ->orderBy('grades.name')
+            ->orderBy('materials.id')
+            ->select('materials.*')
+            ->get();
+
+        $options = new Options;
+        $options->set('isHtml5ParserEnabled', true);
+        $options->set('isRemoteEnabled', false);
+        $options->set('defaultFont', 'DejaVu Sans');
+
+        $dompdf = new Dompdf($options);
+        $html = view('materials.export-pdf', [
+            'materials' => $materials,
+            'filterSummary' => $this->materialsExportFilterSummary($request),
+            'generatedAt' => Carbon::now(),
+        ])->render();
+
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'landscape');
+        $dompdf->render();
+
+        $filename = 'material_definitions_'.now()->format('Y-m-d_His').'.pdf';
+
+        return response()->streamDownload(function () use ($dompdf) {
+            echo $dompdf->output();
+        }, $filename, [
+            'Content-Type' => 'application/pdf',
         ]);
     }
 
@@ -200,6 +222,64 @@ class MaterialController extends Controller
         }
 
         return back()->with('success', 'Rebate percentage updated successfully.');
+    }
+
+    protected function materialsFilteredQuery(Request $request): Builder
+    {
+        return Material::query()
+            ->with([
+                'wasteStream:id,name',
+                'grade:id,name',
+                'classification:id,name',
+                'facility:id,name',
+                'serviceProvider:id,name',
+            ])
+            ->when($request->search, function ($query, $search) {
+                $query->where(function ($scoped) use ($search) {
+                    $scoped->whereHas('grade', fn ($q) => $q->where('name', 'like', "%{$search}%"))
+                        ->orWhereHas('wasteStream', fn ($q) => $q->where('name', 'like', "%{$search}%"))
+                        ->orWhereHas('facility', fn ($q) => $q->where('name', 'like', "%{$search}%"));
+                });
+            })
+            ->when($request->waste_stream_id, fn ($query, $id) => $query->where('waste_stream_id', $id))
+            ->when($request->facility_id, fn ($query, $id) => $query->where('facility_id', $id))
+            ->when($request->has('rebate'), function ($query) use ($request) {
+                $query->where('rebate_offered', filter_var($request->get('rebate'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false);
+            })
+            ->when($request->has('status'), function ($query) use ($request) {
+                $query->where('is_active', filter_var($request->get('status'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false);
+            });
+    }
+
+    protected function materialsExportFilterSummary(Request $request): string
+    {
+        $parts = [];
+
+        if ($request->filled('search')) {
+            $parts[] = 'Search: '.Str::limit((string) $request->input('search'), 80);
+        }
+
+        if ($request->filled('waste_stream_id')) {
+            $name = WasteStream::query()->whereKey($request->input('waste_stream_id'))->value('name');
+            $parts[] = 'Waste stream: '.($name ?? ('#'.$request->input('waste_stream_id')));
+        }
+
+        if ($request->filled('facility_id')) {
+            $name = Facility::query()->whereKey($request->input('facility_id'))->value('name');
+            $parts[] = 'Facility: '.($name ?? ('#'.$request->input('facility_id')));
+        }
+
+        if ($request->has('rebate') && $request->input('rebate') !== '' && $request->input('rebate') !== null) {
+            $flag = filter_var($request->get('rebate'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            $parts[] = 'Rebate: '.($flag ? 'Offered' : 'Not offered');
+        }
+
+        if ($request->has('status') && $request->input('status') !== '' && $request->input('status') !== null) {
+            $flag = filter_var($request->get('status'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            $parts[] = 'Status: '.($flag ? 'Active' : 'Inactive');
+        }
+
+        return $parts === [] ? 'Filters: none (all materials)' : 'Filters: '.implode(' — ', $parts);
     }
 
     protected function validatePayload(Request $request, ?int $materialId = null): array
