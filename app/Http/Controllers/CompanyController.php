@@ -28,8 +28,8 @@ class CompanyController extends Controller
             ->when($request->status !== null, function ($query, $status) {
                 $query->where('is_active', $status);
             })
-            ->paginate(10)
-            ->withQueryString();
+            ->orderBy('name')
+            ->get();
 
         return Inertia::render('Companies/Index', [
             'companies' => $companies,

@@ -256,14 +256,12 @@ class DashboardController extends Controller
     }
 
     /**
-     * Get orders for yesterday, today, and tomorrow (for selected company/branch/site).
+     * Get orders from yesterday through seven days ahead (for selected company/branch/site).
      */
     private function getOrdersForNearDates(?int $companyId, ?int $branchId, ?int $siteId): array
     {
-        $yesterday = Carbon::today()->subDay();
-        $tomorrow = Carbon::today()->addDay();
-        $start = $yesterday->format('Y-m-d');
-        $end = $tomorrow->format('Y-m-d');
+        $start = Carbon::today()->subDay()->format('Y-m-d');
+        $end = Carbon::today()->addDays(7)->format('Y-m-d');
 
         $query = Order::query()
             ->with(['site:id,name,branch_id', 'site.branch:id,name,company_id', 'site.branch.company:id,name', 'serviceProvider:id,name'])
@@ -289,7 +287,21 @@ class DashboardController extends Controller
         }
 
         $orders = $query->orderBy('requested_collection_date')->orderBy('actual_collection_date')->orderBy('id')
-            ->get(['id', 'tracking_number', 'company_id', 'branch_id', 'site_id', 'service_provider_id', 'order_type', 'status', 'requested_collection_date', 'actual_collection_date']);
+            ->get([
+                'id',
+                'tracking_number',
+                'company_id',
+                'branch_id',
+                'site_id',
+                'service_provider_id',
+                'order_type',
+                'status',
+                'quantity',
+                'quantity_type',
+                'quantity_lines',
+                'requested_collection_date',
+                'actual_collection_date',
+            ]);
 
         return $orders->map(function ($order) {
             $date = $order->actual_collection_date ?? $order->requested_collection_date;
@@ -299,6 +311,9 @@ class DashboardController extends Controller
                 'tracking_number' => $order->tracking_number,
                 'order_type' => $order->order_type,
                 'status' => $order->status,
+                'quantity' => $order->quantity,
+                'quantity_type' => $order->quantity_type,
+                'quantity_lines' => $order->quantity_lines,
                 'collection_date' => $date ? $date->format('Y-m-d') : null,
                 'site' => $order->site ? ['name' => $order->site->name] : null,
                 'service_provider' => $order->serviceProvider?->name,

@@ -92,8 +92,8 @@ export default function RebateTracker({ rebateData, companies, filters, totalReb
     };
 
     return (
-        <DashboardLayout title="Monthly Rebate Tracker">
-            <Head title="Monthly Rebate Tracker" />
+        <DashboardLayout title="Waste Collection & Recycling Report">
+            <Head title="Waste Collection & Recycling Report" />
 
             <div className="mb-6">
                 <Link
@@ -104,7 +104,7 @@ export default function RebateTracker({ rebateData, companies, filters, totalReb
                     Back to Reports
                 </Link>
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                    Monthly Rebate Tracker
+                    Waste Collection & Recycling Report
                 </h1>
                 <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
                     Track recycling rebates per company, branch, and site

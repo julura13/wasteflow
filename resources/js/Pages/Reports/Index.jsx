@@ -1,6 +1,6 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
-import { FileText, TrendingUp, BarChart3, Leaf, Calculator, Box, Droplets } from 'lucide-react';
+import { TrendingUp, Leaf, Calculator, Box, Droplets } from 'lucide-react';
 
 export default function Index() {
     const { auth } = usePage().props;
@@ -46,20 +46,12 @@ export default function Index() {
             requiredPermission: 'view-water-calculator',
         },
         {
-            title: 'Monthly Rebate Tracker',
+            title: 'Waste Collection & Recycling Report',
             description: 'Financial tracking: View rebate earnings per grade and site. Shows how much money was earned from recycling orders.',
             href: '/reports/rebate-tracker',
             icon: TrendingUp,
             color: 'bg-green-500',
             details: 'Requires: Finalized recycling orders with rebate materials and weights captured',
-        },
-        {
-            title: 'Average Weight for Containers',
-            description: 'Operational planning: Calculate average weight per container (REL Skip, Wheelie Bins, or 30m² Skips). Helps understand typical container weights for route optimization.',
-            href: '/reports/average-weight-wheelie-bins',
-            icon: BarChart3,
-            color: 'bg-blue-500',
-            details: 'Requires: Finalized waste orders with selected container type and weights captured',
         },
     ];
 

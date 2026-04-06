@@ -81,6 +81,12 @@
             border: 1px solid #d1d5db;
             font-size: 10px;
         }
+        .consolidated-table td.order-number,
+        .consolidated-table td.site-name,
+        .consolidated-table td.order-details {
+            font-weight: 600;
+            color: #000;
+        }
         .consolidated-table tr:nth-child(even) {
             background-color: #f9fafb;
         }
@@ -179,8 +185,8 @@
                         $notes = $order->notes ?? '';
                     @endphp
                     <tr>
-                        <td>{{ $order->tracking_number ?? $order->id }}</td>
-                        <td>
+                        <td class="order-number">{{ $order->tracking_number ?? $order->id }}</td>
+                        <td class="site-name">
                             @if($site)
                                 {{ optional(optional($site->branch)->company)->name ?? '' }}<br>
                                 {{ optional($site->branch)->name ?? '' }}<br>
@@ -192,7 +198,7 @@
                                 @endif
                             @endif
                         </td>
-                        <td>{!! $orderDetails !!}</td>
+                        <td class="order-details">{!! $orderDetails !!}</td>
                         <td class="{{ !empty($notes) ? 'special-instructions' : '' }}">{{ $notes }}</td>
                     </tr>
                 @endforeach

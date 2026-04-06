@@ -23,6 +23,7 @@ import {
 import axios from 'axios';
 import SearchableDropdown from '@/Components/SearchableDropdown';
 import { formatImpactOneDecimal, formatImpactWhole } from '@/utils/environmentalImpactDisplay';
+import { formatQuantityLineLabel } from '@/utils/orderQuantityLines';
 
 const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
 const MONTH_LABELS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
@@ -53,6 +54,33 @@ function storeFilters(filters) {
     }
 }
 
+/** Yesterday through seven days ahead (inclusive), for the dashboard quick orders viewer. */
+function getOrdersQuickViewDayOptionsAndValues() {
+    const anchor = new Date();
+    const opts = [];
+    const values = new Set();
+    for (let offset = -1; offset <= 7; offset += 1) {
+        const day = new Date(anchor);
+        day.setDate(day.getDate() + offset);
+        const value = day.toISOString().split('T')[0];
+        values.add(value);
+        let labelPrefix;
+        if (offset === -1) {
+            labelPrefix = 'Yesterday';
+        } else if (offset === 0) {
+            labelPrefix = 'Today';
+        } else if (offset === 1) {
+            labelPrefix = 'Tomorrow';
+        } else {
+            labelPrefix = day.toLocaleDateString('en-GB', { weekday: 'long' });
+        }
+        const datePart = day.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+        opts.push({ value, label: `${labelPrefix} (${datePart})` });
+    }
+
+    return { options: opts, valueSet: values };
+}
+
 export default function Dashboard({ companies = [], dashboardData = null, gradeSummaryByYear = [], ordersNearDates = [], filters = {} }) {
     const [branches, setBranches] = useState([]);
     const [sites, setSites] = useState([]);
@@ -62,33 +90,12 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
     const hasRestoredRef = useRef(false);
     const [selectedOrdersDay, setSelectedOrdersDay] = useState(() => new Date().toISOString().split('T')[0]);
 
-    const orderDayOptions = (() => {
-        const d = new Date();
-        const todayStr = d.toISOString().split('T')[0];
-        const yesterday = new Date(d);
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = yesterday.toISOString().split('T')[0];
-        const tomorrow = new Date(d);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const tomorrowStr = tomorrow.toISOString().split('T')[0];
-        return [
-            { value: yesterdayStr, label: `Yesterday (${yesterday.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })})` },
-            { value: todayStr, label: `Today (${d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })})` },
-            { value: tomorrowStr, label: `Tomorrow (${tomorrow.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })})` },
-        ];
-    })();
+    const { options: orderDayOptions } = getOrdersQuickViewDayOptionsAndValues();
 
     useEffect(() => {
-        const d = new Date();
-        const todayStr = d.toISOString().split('T')[0];
-        const yesterdayStr = new Date(d);
-        yesterdayStr.setDate(yesterdayStr.getDate() - 1);
-        const yStr = yesterdayStr.toISOString().split('T')[0];
-        const tomorrowStr = new Date(d);
-        tomorrowStr.setDate(tomorrowStr.getDate() + 1);
-        const tStr = tomorrowStr.toISOString().split('T')[0];
-        if (selectedOrdersDay !== todayStr && selectedOrdersDay !== yStr && selectedOrdersDay !== tStr) {
-            setSelectedOrdersDay(todayStr);
+        const { valueSet } = getOrdersQuickViewDayOptionsAndValues();
+        if (!valueSet.has(selectedOrdersDay)) {
+            setSelectedOrdersDay(new Date().toISOString().split('T')[0]);
         }
     }, [selectedOrdersDay]);
     // Grade Summary drill-down: single inline panel (daily table + optional orders list)
@@ -872,7 +879,7 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
                 </div>
             </div>
 
-            {/* Orders for selected day (yesterday / today / tomorrow) */}
+            {/* Orders for selected day (yesterday through seven days ahead) */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 mt-3 border border-gray-200 dark:border-gray-700">
                 <div className="flex flex-wrap items-center gap-2 mb-2">
                     <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">Orders for</span>
@@ -896,20 +903,21 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
                                 <th className="text-left py-2 px-2 font-semibold text-gray-700 dark:text-gray-300">Tracking No</th>
                                 <th className="text-left py-2 px-2 font-semibold text-gray-700 dark:text-gray-300">Type</th>
                                 <th className="text-left py-2 px-2 font-semibold text-gray-700 dark:text-gray-300">Service Provider</th>
+                                <th className="text-left py-2 px-2 font-semibold text-gray-700 dark:text-gray-300">Collection quantities</th>
                             </tr>
                         </thead>
                         <tbody>
                             {(!ordersNearDates || ordersNearDates.length === 0) ? (
                                 <tr>
-                                    <td colSpan={5} className="py-4 text-center text-gray-500 dark:text-gray-400">
-                                        No orders for yesterday, today or tomorrow. Select company/branch/site and apply to filter.
+                                    <td colSpan={6} className="py-4 text-center text-gray-500 dark:text-gray-400">
+                                        No orders from yesterday through the next 7 days. Select company/branch/site and apply to filter.
                                     </td>
                                 </tr>
                             ) : (() => {
                                 const filtered = ordersNearDates.filter((o) => o.collection_date === selectedOrdersDay);
                                 return filtered.length === 0 ? (
                                     <tr>
-                                        <td colSpan={5} className="py-4 text-center text-gray-500 dark:text-gray-400">
+                                        <td colSpan={6} className="py-4 text-center text-gray-500 dark:text-gray-400">
                                             No orders for the selected day.
                                         </td>
                                     </tr>
@@ -929,6 +937,22 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
                                             </td>
                                             <td className="py-2 px-2 text-gray-600 dark:text-gray-300 capitalize">{order.order_type || '–'}</td>
                                             <td className="py-2 px-2 text-gray-600 dark:text-gray-300">{order.service_provider || '–'}</td>
+                                            <td className="py-2 px-2 font-semibold text-gray-800 dark:text-gray-200">
+                                                {Array.isArray(order.quantity_lines) && order.quantity_lines.length > 0 ? (
+                                                    <div className="flex flex-col gap-0.5">
+                                                        {order.quantity_lines.map((line, index) => (
+                                                            <span key={index}>{formatQuantityLineLabel(line)}</span>
+                                                        ))}
+                                                    </div>
+                                                ) : order.quantity != null && order.quantity_type ? (
+                                                    formatQuantityLineLabel({
+                                                        quantity: order.quantity,
+                                                        quantity_type: order.quantity_type,
+                                                    })
+                                                ) : (
+                                                    <span className="font-normal text-gray-400 dark:text-gray-500">–</span>
+                                                )}
+                                            </td>
                                         </tr>
                                     ))
                                 );

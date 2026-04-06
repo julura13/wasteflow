@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Rebate Tracker Report</title>
+    <title>Waste Collection & Recycling Report</title>
     <style>
         * {
             margin: 0;
@@ -101,7 +101,7 @@
 </head>
 <body>
     <div class="header">
-        <h1>REBATE TRACKER REPORT</h1>
+        <h1>WASTE COLLECTION &amp; RECYCLING REPORT</h1>
         <div class="filters">
             Period: {{ \Carbon\Carbon::parse($filters['start_date'])->format('d M Y') }} – {{ \Carbon\Carbon::parse($filters['end_date'])->format('d M Y') }}
         </div>
