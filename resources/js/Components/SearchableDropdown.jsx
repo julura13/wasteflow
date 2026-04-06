@@ -162,15 +162,15 @@ export default function SearchableDropdown({
         };
 
     return (
-        <div className={`${className} relative`}>
+        <div className={`relative w-full min-w-0 ${className}`.trim()}>
             {label && (
                 <label htmlFor={id} className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                     {label} {required && <span className="text-red-500">*</span>}
                 </label>
             )}
-            <div className="relative z-10" ref={dropdownRef}>
+            <div className="relative z-10 w-full min-w-0" ref={dropdownRef}>
                 <div
-                    className={`relative w-full cursor-pointer rounded-md border ${
+                    className={`relative w-full min-w-0 cursor-pointer rounded-md border ${
                         error 
                             ? 'border-red-300 focus-within:border-red-500 focus-within:ring-red-500' 
                             : `border-gray-300 ${focusWithinClassName}`
@@ -180,11 +180,13 @@ export default function SearchableDropdown({
                     onClick={() => !disabled && setIsOpen(!isOpen)}
                 >
                     {!isOpen && (
-                        <div className={closedRowClass}>
-                            <span className={`block truncate ${selectedOption ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'}`}>
+                        <div className={`${closedRowClass} min-w-0 gap-2`}>
+                            <span
+                                className={`min-w-0 flex-1 truncate ${selectedOption ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'}`}
+                            >
                                 {getDisplayValue() || placeholder}
                             </span>
-                            <div className="flex items-center space-x-2">
+                            <div className="flex shrink-0 items-center space-x-2">
                                 {selectedOption && !disabled && (
                                     <X
                                         className="h-4 w-4 text-gray-400 hover:text-gray-600"

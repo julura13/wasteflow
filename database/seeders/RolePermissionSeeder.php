@@ -57,6 +57,7 @@ class RolePermissionSeeder extends Seeder
         $managerRole = Role::firstOrCreate(['name' => 'manager']);
         $operatorRole = Role::firstOrCreate(['name' => 'operator']);
         $clientRole = Role::firstOrCreate(['name' => 'client']);
+        $companyUserRole = Role::firstOrCreate(['name' => 'company_user']);
         // Data capture roles (WasteFlow staff - different order stages)
         $orderCreatorRole = Role::firstOrCreate(['name' => 'order_creator']);
         $documentCaptureRole = Role::firstOrCreate(['name' => 'document_capture']);
@@ -145,6 +146,12 @@ class RolePermissionSeeder extends Seeder
 
         // Client: dashboard and reports for their company only (no view-reports-all)
         $clientRole->syncPermissions([
+            'view-dashboard',
+            'view-reports',
+        ]);
+
+        // External users linked via company_user pivot; same portal access as client until roles are refined
+        $companyUserRole->syncPermissions([
             'view-dashboard',
             'view-reports',
         ]);

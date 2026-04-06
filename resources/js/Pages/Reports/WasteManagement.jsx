@@ -143,6 +143,7 @@ export default function WasteManagement({ companies, filters }) {
                                 onChange={(v) => setSelectedCompany(v)}
                                 options={companies}
                                 placeholder="Select a company"
+                                menuMatchTriggerWidth
                                 required
                             />
                         </div>
@@ -160,6 +161,7 @@ export default function WasteManagement({ companies, filters }) {
                                 value={selectedBranch}
                                 onChange={(v) => setSelectedBranch(v)}
                                 options={branches}
+                                menuMatchTriggerWidth
                                 placeholder={
                                     !selectedCompany
                                         ? 'Select a company first'
@@ -187,6 +189,7 @@ export default function WasteManagement({ companies, filters }) {
                                 value={selectedSite}
                                 onChange={(v) => setSelectedSite(v)}
                                 options={sites}
+                                menuMatchTriggerWidth
                                 placeholder={
                                     !selectedBranch
                                         ? 'Select a branch first'

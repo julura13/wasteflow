@@ -40,7 +40,6 @@ class RegisteredUserController extends Controller
         ]);
 
         $user = $this->userService->createUser($validated);
-        $this->userService->assignRole($user, 'company_user');
 
         event(new Registered($user));
 
