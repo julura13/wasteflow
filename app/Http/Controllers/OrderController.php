@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\GenerateOrderIndexExportJob;
 use App\Jobs\GenerateRebateTrackerPdfJob;
 use App\Models\ActivityLog;
 use App\Models\Branch;
@@ -9,6 +10,7 @@ use App\Models\Company;
 use App\Models\ContainerOption;
 use App\Models\Material;
 use App\Models\Order;
+use App\Models\OrderIndexExport;
 use App\Models\OrderWasteStream;
 use App\Models\RebateReportExport;
 use App\Models\ServiceProvider;
@@ -16,6 +18,7 @@ use App\Models\Site;
 use App\Repositories\OrderStatusHistoryRepository;
 use App\Services\ClientMonthlySummaryService;
 use App\Services\CompanyUserService;
+use App\Services\OrdersIndexQueryService;
 use App\Services\RebateTrackerReportService;
 use App\Traits\ScopeByClientTrait;
 use Carbon\Carbon;
@@ -44,6 +47,7 @@ class OrderController extends Controller
         protected OrderStatusHistoryRepository $statusHistoryRepository,
         protected CompanyUserService $companyUserService,
         protected RebateTrackerReportService $rebateTrackerReportService,
+        protected OrdersIndexQueryService $ordersIndexQueryService,
     ) {}
 
     public function index(Request $request)
@@ -66,19 +70,19 @@ class OrderController extends Controller
         $orderTypes = $request->has('order_types') ? (array) $request->input('order_types') : [];
         $orderTypes = array_values(array_unique(array_filter(array_map('strtolower', $orderTypes), fn ($t) => in_array($t, ['waste', 'recycling'], true))));
 
-        [$requestedCollectionFrom, $requestedCollectionTo] = $this->parseRequestedCollectionDateRangeInput(
+        [$requestedCollectionFrom, $requestedCollectionTo] = $this->ordersIndexQueryService->parseRequestedCollectionDateRangeInput(
             $request->input('requested_collection_from'),
             $request->input('requested_collection_to'),
         );
 
-        $query = $this->ordersIndexQuery($request->input('search'), $status, $orderTypes, $requestedCollectionFrom, $requestedCollectionTo);
+        $user = auth()->user();
+        $query = $this->ordersIndexQueryService->buildForUser($user, $request->input('search'), $status, $orderTypes, $requestedCollectionFrom, $requestedCollectionTo);
 
         $orders = $query
             ->orderBy('created_at', 'desc')
             ->paginate(100)
             ->withQueryString();
 
-        $user = auth()->user();
         $serviceProviders = ServiceProvider::active()->get();
 
         $userCompanyRoles = [];
@@ -101,92 +105,6 @@ class OrderController extends Controller
             'serviceProviders' => $serviceProviders,
             'userCompanyRoles' => $userCompanyRoles,
         ]);
-    }
-
-    /**
-     * Build the base query for orders index/export with search, status and order_type filters.
-     *
-     * Search matches tracking number, finalized slip number (full value stored on the order), and related
-     * company, branch, site, and service provider names (partial match).
-     *
-     * Optional requested collection date range filters by `orders.requested_collection_date` (inclusive).
-     *
-     * @param  array<int, string>  $orderTypes  ['waste'], ['recycling'], or ['waste','recycling']/[] for all
-     */
-    private function ordersIndexQuery(?string $search, ?string $status, array $orderTypes, ?string $requestedCollectionDateFrom = null, ?string $requestedCollectionDateTo = null): \Illuminate\Database\Eloquent\Builder
-    {
-        $query = Order::with(['site.branch.company', 'company', 'branch', 'creator', 'serviceProvider']);
-
-        $user = auth()->user();
-        if ($user && $user->company_id) {
-            $query->where('company_id', $user->company_id);
-        }
-
-        $query->when($search, function ($q, $search) {
-            $term = '%'.trim($search).'%';
-            $q->where(function ($q) use ($term) {
-                $q->where('orders.tracking_number', 'like', $term)
-                    ->orWhere('orders.slip_number', 'like', $term)
-                    ->orWhereHas('site', fn ($siteQ) => $siteQ->where('sites.name', 'like', $term))
-                    ->orWhereHas('branch', fn ($branchQ) => $branchQ->where('branches.name', 'like', $term))
-                    ->orWhereHas('company', fn ($companyQ) => $companyQ->where('companies.name', 'like', $term))
-                    ->orWhereHas('serviceProvider', fn ($spQ) => $spQ->where('service_providers.name', 'like', $term));
-            });
-        });
-
-        $query->when($status, fn ($q, $status) => $q->where('orders.status', $status));
-
-        // Filter by order type only when exactly one type is selected (one checkbox = filter; both or none = all)
-        if (count($orderTypes) === 1) {
-            $query->where('orders.order_type', $orderTypes[0]);
-        }
-
-        $query->when($requestedCollectionDateFrom, function ($q) use ($requestedCollectionDateFrom) {
-            $q->whereDate('orders.requested_collection_date', '>=', $requestedCollectionDateFrom);
-        });
-        $query->when($requestedCollectionDateTo, function ($q) use ($requestedCollectionDateTo) {
-            $q->whereDate('orders.requested_collection_date', '<=', $requestedCollectionDateTo);
-        });
-
-        return $query;
-    }
-
-    /**
-     * Normalize Y-m-d inputs for requested collection date range. Swaps bounds if from is after to.
-     *
-     * @return array{0: ?string, 1: ?string} Dates as Y-m-d or null when missing/invalid
-     */
-    private function parseRequestedCollectionDateRangeInput(mixed $from, mixed $to): array
-    {
-        $fromParsed = $this->parseDateInputYmd($from);
-        $toParsed = $this->parseDateInputYmd($to);
-
-        if ($fromParsed && $toParsed && $fromParsed->gt($toParsed)) {
-            [$fromParsed, $toParsed] = [$toParsed, $fromParsed];
-        }
-
-        return [
-            $fromParsed?->format('Y-m-d'),
-            $toParsed?->format('Y-m-d'),
-        ];
-    }
-
-    private function parseDateInputYmd(mixed $value): ?Carbon
-    {
-        if (! is_string($value)) {
-            return null;
-        }
-
-        $value = trim($value);
-        if ($value === '') {
-            return null;
-        }
-
-        try {
-            return Carbon::createFromFormat('Y-m-d', $value)->startOfDay();
-        } catch (\Throwable) {
-            return null;
-        }
     }
 
     public function create()
@@ -897,83 +815,90 @@ class OrderController extends Controller
         }
     }
 
-    public function exportPdf(Request $request)
+    public function requestOrderIndexExport(Request $request)
     {
-        $status = $request->input('status');
-        $orderTypes = $request->has('order_types') ? (array) $request->input('order_types') : [];
+        $validated = $request->validate([
+            'format' => ['required', 'string', Rule::in([OrderIndexExport::FORMAT_CSV, OrderIndexExport::FORMAT_PDF])],
+            'search' => ['nullable', 'string'],
+            'status' => ['nullable', 'string'],
+            'order_types' => ['nullable', 'array'],
+            'order_types.*' => ['string', Rule::in(['waste', 'recycling'])],
+            'requested_collection_from' => ['nullable', 'string'],
+            'requested_collection_to' => ['nullable', 'string'],
+        ]);
+
+        $orderTypes = $validated['order_types'] ?? [];
         $orderTypes = array_values(array_unique(array_filter(array_map('strtolower', $orderTypes), fn ($t) => in_array($t, ['waste', 'recycling'], true))));
 
-        [$requestedCollectionFrom, $requestedCollectionTo] = $this->parseRequestedCollectionDateRangeInput(
-            $request->input('requested_collection_from'),
-            $request->input('requested_collection_to'),
+        [$requestedCollectionFrom, $requestedCollectionTo] = $this->ordersIndexQueryService->parseRequestedCollectionDateRangeInput(
+            $validated['requested_collection_from'] ?? null,
+            $validated['requested_collection_to'] ?? null,
         );
 
-        $query = $this->ordersIndexQuery($request->input('search'), $status, $orderTypes, $requestedCollectionFrom, $requestedCollectionTo);
-        $orders = $query->orderBy('created_at', 'desc')->get();
+        $ext = $validated['format'] === OrderIndexExport::FORMAT_CSV ? 'csv' : 'pdf';
+        $filename = 'orders_export_'.now()->format('Y-m-d_His').'.'.$ext;
+        $uuid = (string) Str::uuid();
 
-        $options = new Options;
-        $options->set('isHtml5ParserEnabled', true);
-        $options->set('isRemoteEnabled', false);
-        $options->set('defaultFont', 'DejaVu Sans');
+        $export = OrderIndexExport::query()->create([
+            'uuid' => $uuid,
+            'user_id' => $request->user()->id,
+            'format' => $validated['format'],
+            'status' => OrderIndexExport::STATUS_PENDING,
+            'disk' => 'local',
+            'filename' => $filename,
+            'filters' => [
+                'search' => $validated['search'] ?? null,
+                'status' => $validated['status'] ?? null,
+                'order_types' => $orderTypes,
+                'requested_collection_from' => $requestedCollectionFrom,
+                'requested_collection_to' => $requestedCollectionTo,
+            ],
+            'expires_at' => now()->addDay(),
+        ]);
 
-        $dompdf = new Dompdf($options);
-        $html = view('orders.export-pdf', ['orders' => $orders])->render();
-        $dompdf->loadHtml($html);
-        $dompdf->setPaper('A4', 'landscape');
-        $dompdf->render();
+        GenerateOrderIndexExportJob::dispatch($export->id)->afterResponse();
 
-        $filename = 'orders_export_'.now()->format('Y-m-d_His').'.pdf';
+        return back()
+            ->with('order_export_uuid', $uuid)
+            ->with('order_export_format', $validated['format']);
+    }
 
-        return response()->streamDownload(function () use ($dompdf) {
-            echo $dompdf->output();
-        }, $filename, [
-            'Content-Type' => 'application/pdf',
+    public function orderIndexExportStatus(Request $request, string $uuid)
+    {
+        $export = OrderIndexExport::query()
+            ->where('uuid', $uuid)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
+        return response()->json([
+            'status' => $export->status,
+            'download_url' => $export->status === OrderIndexExport::STATUS_COMPLETED
+                ? route('orders.export.download', ['uuid' => $uuid])
+                : null,
+            'error_message' => $export->error_message,
         ]);
     }
 
-    public function exportCsv(Request $request)
+    public function downloadOrderIndexExport(Request $request, string $uuid)
     {
-        $status = $request->input('status');
-        $orderTypes = $request->has('order_types') ? (array) $request->input('order_types') : [];
-        $orderTypes = array_values(array_unique(array_filter(array_map('strtolower', $orderTypes), fn ($t) => in_array($t, ['waste', 'recycling'], true))));
+        $export = OrderIndexExport::query()
+            ->where('uuid', $uuid)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
 
-        [$requestedCollectionFrom, $requestedCollectionTo] = $this->parseRequestedCollectionDateRangeInput(
-            $request->input('requested_collection_from'),
-            $request->input('requested_collection_to'),
-        );
+        if ($export->status !== OrderIndexExport::STATUS_COMPLETED) {
+            abort(404, 'This export is not ready yet.');
+        }
 
-        $query = $this->ordersIndexQuery($request->input('search'), $status, $orderTypes, $requestedCollectionFrom, $requestedCollectionTo);
-        $orders = $query->with(['site.branch.company', 'company', 'branch', 'serviceProvider'])
-            ->orderBy('created_at', 'desc')
-            ->get();
+        if ($export->expires_at->isPast()) {
+            abort(410, 'This download link has expired.');
+        }
 
-        $filename = 'orders_export_'.now()->format('Y-m-d_His').'.csv';
+        if ($export->path === null || ! Storage::disk($export->disk)->exists($export->path)) {
+            abort(404, 'The export file is no longer available.');
+        }
 
-        return response()->streamDownload(function () use ($orders) {
-            $out = fopen('php://output', 'w');
-            fputcsv($out, ['Tracking Number', 'Company', 'Branch', 'Site', 'Service Provider', 'Order Type', 'Status', 'Requested Date', 'Actual Date', 'Slip Number']);
-            foreach ($orders as $order) {
-                $site = $order->site;
-                $branch = $site?->branch ?? $order->branch;
-                $company = $branch?->company ?? $order->company;
-                fputcsv($out, [
-                    $order->tracking_number,
-                    $company?->name ?? '',
-                    $branch?->name ?? '',
-                    $site?->name ?? '',
-                    $order->serviceProvider?->name ?? (is_string($order->service_provider) ? $order->service_provider : ''),
-                    $order->order_type === 'waste' ? 'Waste Order' : 'Recycling Order',
-                    $order->status,
-                    $order->requested_collection_date?->format('Y-m-d') ?? '',
-                    $order->actual_collection_date?->format('Y-m-d') ?? '',
-                    $order->slip_number ?? '',
-                ]);
-            }
-            fclose($out);
-        }, $filename, [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
-        ]);
+        return Storage::disk($export->disk)->download($export->path, $export->filename);
     }
 
     public function getServiceProvidersByDate(Request $request)

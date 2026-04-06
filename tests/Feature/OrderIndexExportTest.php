@@ -1,8 +1,10 @@
 <?php
 
+use App\Jobs\GenerateOrderIndexExportJob;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\Order;
+use App\Models\OrderIndexExport;
 use App\Models\ServiceProvider;
 use App\Models\Site;
 use App\Models\User;
@@ -215,7 +217,7 @@ it('filters orders by requested collection date range', function () {
         ->where('orders.data.0.tracking_number', 'WO-RANGE-B'));
 });
 
-it('exports filtered orders as PDF', function () {
+it('queues orders PDF export and allows download when ready', function () {
     $user = User::factory()->create();
     $user->assignRole('admin');
 
@@ -225,6 +227,7 @@ it('exports filtered orders as PDF', function () {
     $provider = ServiceProvider::create(['name' => 'P', 'is_active' => true]);
 
     Order::create([
+        'tracking_number' => 'WO-EXPORT-PDF-1',
         'company_id' => $company->id,
         'branch_id' => $branch->id,
         'site_id' => $site->id,
@@ -235,12 +238,26 @@ it('exports filtered orders as PDF', function () {
         'requested_collection_date' => Carbon::parse('2025-12-15'),
     ]);
 
-    $response = $this->actingAs($user)->get(route('orders.export.pdf'));
-    $response->assertOk();
-    $response->assertHeader('content-type', 'application/pdf');
+    $response = $this->actingAs($user)->post(route('orders.export.request'), [
+        'format' => 'pdf',
+    ]);
+    $response->assertRedirect();
+
+    $export = OrderIndexExport::query()->first();
+    expect($export)->not->toBeNull();
+    expect($export->format)->toBe(OrderIndexExport::FORMAT_PDF);
+
+    GenerateOrderIndexExportJob::dispatchSync($export->id);
+
+    $export->refresh();
+    expect($export->status)->toBe(OrderIndexExport::STATUS_COMPLETED);
+
+    $download = $this->actingAs($user)->get(route('orders.export.download', $export->uuid));
+    $download->assertOk();
+    expect($download->headers->get('content-type'))->toContain('pdf');
 });
 
-it('exports filtered orders as CSV', function () {
+it('queues orders CSV export and allows download when ready', function () {
     $user = User::factory()->create();
     $user->assignRole('admin');
 
@@ -261,10 +278,86 @@ it('exports filtered orders as CSV', function () {
         'requested_collection_date' => Carbon::parse('2025-12-15'),
     ]);
 
-    $response = $this->actingAs($user)->get(route('orders.export.csv'));
-    $response->assertOk();
-    $response->assertHeader('content-type', 'text/csv');
-    $response->assertSee('Tracking Number');
-    $response->assertSee('WO-2501-30099');
-    $response->assertSee('Recycling Order');
+    $this->actingAs($user)->post(route('orders.export.request'), [
+        'format' => 'csv',
+    ])->assertRedirect();
+
+    $export = OrderIndexExport::query()->firstOrFail();
+    GenerateOrderIndexExportJob::dispatchSync($export->id);
+    $export->refresh();
+    expect($export->status)->toBe(OrderIndexExport::STATUS_COMPLETED);
+
+    $download = $this->actingAs($user)->get(route('orders.export.download', $export->uuid));
+    $download->assertOk();
+    expect($download->headers->get('content-type'))->toContain('csv');
+    $csv = $download->streamedContent();
+    expect($csv)->toContain('Tracking Number');
+    expect($csv)->toContain('WO-2501-30099');
+    expect($csv)->toContain('Recycling Order');
+});
+
+it('sorts queued CSV export rows by service provider name then newest order first', function () {
+    $user = User::factory()->create();
+    $user->assignRole('admin');
+
+    $company = Company::create(['name' => 'Sort Co', 'is_active' => true]);
+    $branch = Branch::create(['company_id' => $company->id, 'name' => 'B', 'is_active' => true]);
+    $site = Site::create(['branch_id' => $branch->id, 'name' => 'S', 'is_active' => true]);
+    $zebra = ServiceProvider::create(['name' => 'Zebra Hauliers', 'is_active' => true]);
+    $alpha = ServiceProvider::create(['name' => 'Alpha Logistics', 'is_active' => true]);
+
+    Order::create([
+        'tracking_number' => 'WO-ZEBRA-OLD',
+        'company_id' => $company->id,
+        'branch_id' => $branch->id,
+        'site_id' => $site->id,
+        'service_provider_id' => $zebra->id,
+        'created_by' => $user->id,
+        'order_type' => 'waste',
+        'status' => 'pending',
+        'requested_collection_date' => Carbon::parse('2025-12-15'),
+    ]);
+    Order::create([
+        'tracking_number' => 'WO-ALPHA-NEW',
+        'company_id' => $company->id,
+        'branch_id' => $branch->id,
+        'site_id' => $site->id,
+        'service_provider_id' => $alpha->id,
+        'created_by' => $user->id,
+        'order_type' => 'waste',
+        'status' => 'pending',
+        'requested_collection_date' => Carbon::parse('2025-12-16'),
+    ]);
+    Order::create([
+        'tracking_number' => 'WO-ALPHA-OLD',
+        'company_id' => $company->id,
+        'branch_id' => $branch->id,
+        'site_id' => $site->id,
+        'service_provider_id' => $alpha->id,
+        'created_by' => $user->id,
+        'order_type' => 'waste',
+        'status' => 'pending',
+        'requested_collection_date' => Carbon::parse('2025-12-14'),
+    ]);
+
+    $this->actingAs($user)->post(route('orders.export.request'), ['format' => 'csv'])->assertRedirect();
+
+    $export = OrderIndexExport::query()->firstOrFail();
+    GenerateOrderIndexExportJob::dispatchSync($export->id);
+
+    $download = $this->actingAs($user)->get(route('orders.export.download', $export->uuid));
+    $download->assertOk();
+    $content = $download->streamedContent();
+    expect($content)->toContain('WO-ALPHA-NEW');
+    expect($content)->toContain('WO-ALPHA-OLD');
+    expect($content)->toContain('WO-ZEBRA-OLD');
+
+    $posAlphaNew = strpos($content, 'WO-ALPHA-NEW');
+    $posAlphaOld = strpos($content, 'WO-ALPHA-OLD');
+    $posZebra = strpos($content, 'WO-ZEBRA-OLD');
+    expect($posAlphaNew)->not->toBeFalse();
+    expect($posAlphaOld)->not->toBeFalse();
+    expect($posZebra)->not->toBeFalse();
+    expect($posAlphaNew)->toBeLessThan($posAlphaOld);
+    expect($posAlphaOld)->toBeLessThan($posZebra);
 });

@@ -67,10 +67,12 @@ Route::put('orders/{order}/collection-date', [App\Http\Controllers\OrderControll
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.update-collection-date');
 Route::post('orders/{order}/delete', [App\Http\Controllers\OrderController::class, 'deleteOrder'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.delete');
-Route::get('orders/export/pdf', [App\Http\Controllers\OrderController::class, 'exportPdf'])
-    ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.export.pdf');
-Route::get('orders/export/csv', [App\Http\Controllers\OrderController::class, 'exportCsv'])
-    ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.export.csv');
+Route::post('orders/export', [App\Http\Controllers\OrderController::class, 'requestOrderIndexExport'])
+    ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.export.request');
+Route::get('orders/export/{uuid}/status', [App\Http\Controllers\OrderController::class, 'orderIndexExportStatus'])
+    ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.export.status');
+Route::get('orders/export/{uuid}/download', [App\Http\Controllers\OrderController::class, 'downloadOrderIndexExport'])
+    ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.export.download');
 Route::get('orders/seeder/index', [App\Http\Controllers\OrderSeederController::class, 'index'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.seeder.index');
 Route::post('orders/seeder/generate', [App\Http\Controllers\OrderSeederController::class, 'store'])

@@ -2,8 +2,8 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import DataTable from '@/Components/Dashboard/DataTable';
 import { formatQuantityLineLabel } from '@/utils/orderQuantityLines';
-import { useMemo, useState, useEffect } from 'react';
-import { Plus, Trash2, Eye, Search, Filter, Package, CheckCircle, X, FileDown, FileText, FileSpreadsheet, Pencil, ChevronDown } from 'lucide-react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
+import { Plus, Trash2, Eye, Search, Filter, Package, CheckCircle, X, FileDown, FileText, FileSpreadsheet, Pencil, ChevronDown, Loader2, Download } from 'lucide-react';
 import axios from 'axios';
 
 export default function OrdersIndex({ orders, filters, serviceProviders = [], userCompanyRoles = {} }) {
@@ -18,9 +18,13 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
     const [orderToDelete, setOrderToDelete] = useState(null);
     const [deleteReason, setDeleteReason] = useState('');
     const [deleteReasonDetails, setDeleteReasonDetails] = useState('');
+    const [exportOpen, setExportOpen] = useState(false);
+    const [orderExportUuid, setOrderExportUuid] = useState(null);
+    const [orderExportFormat, setOrderExportFormat] = useState(null);
+    const [orderExportStatus, setOrderExportStatus] = useState(null);
 
     useEffect(() => {
-        if (flash?.success) {
+        if (flash?.success && !flash?.order_export_uuid) {
             setShowSuccess(true);
             const timer = setTimeout(() => setShowSuccess(false), 5000);
             return () => clearTimeout(timer);
@@ -31,6 +35,42 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
         setRequestedCollectionFrom(filters.requested_collection_from || '');
         setRequestedCollectionTo(filters.requested_collection_to || '');
     }, [filters.requested_collection_from, filters.requested_collection_to]);
+
+    useEffect(() => {
+        if (flash?.order_export_uuid) {
+            setOrderExportUuid(flash.order_export_uuid);
+            setOrderExportFormat(flash.order_export_format ?? null);
+            setOrderExportStatus(null);
+        }
+    }, [flash?.order_export_uuid, flash?.order_export_format]);
+
+    useEffect(() => {
+        if (!orderExportUuid) {
+            return undefined;
+        }
+
+        let intervalId;
+        const poll = async () => {
+            try {
+                const { data } = await axios.get(route('orders.export.status', orderExportUuid));
+                setOrderExportStatus(data);
+                if (data.status === 'completed' || data.status === 'failed') {
+                    clearInterval(intervalId);
+                }
+            } catch {
+                clearInterval(intervalId);
+                setOrderExportStatus({
+                    status: 'failed',
+                    error_message: 'Could not check export status. Please refresh the page.',
+                });
+            }
+        };
+
+        poll();
+        intervalId = setInterval(poll, 2500);
+
+        return () => clearInterval(intervalId);
+    }, [orderExportUuid]);
 
     // Fetch service providers when date changes
     useEffect(() => {
@@ -69,7 +109,6 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
     const [orderTypeRecycling, setOrderTypeRecycling] = useState(
         () => !filters.order_types?.length || filters.order_types.includes('recycling')
     );
-    const [exportOpen, setExportOpen] = useState(false);
 
     const columns = useMemo(() => [
         {
@@ -387,16 +426,49 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
         router.get('/orders', buildFilterParams(types), { preserveState: true, replace: true });
     };
 
-    const exportUrl = (format) => {
-        const params = new URLSearchParams();
-        if (search) params.set('search', search);
-        if (statusFilter) params.set('status', statusFilter);
-        if (requestedCollectionFrom) params.set('requested_collection_from', requestedCollectionFrom);
-        if (requestedCollectionTo) params.set('requested_collection_to', requestedCollectionTo);
-        getOrderTypesParam().forEach((t) => params.append('order_types[]', t));
-        const qs = params.toString();
-        return `/orders/export/${format}${qs ? `?${qs}` : ''}`;
-    };
+    const buildExportPostBody = useCallback(
+        (format) => {
+            const data = { format };
+            if (search) {
+                data.search = search;
+            }
+            if (statusFilter) {
+                data.status = statusFilter;
+            }
+            if (requestedCollectionFrom) {
+                data.requested_collection_from = requestedCollectionFrom;
+            }
+            if (requestedCollectionTo) {
+                data.requested_collection_to = requestedCollectionTo;
+            }
+            const types = [];
+            if (orderTypeWaste) {
+                types.push('waste');
+            }
+            if (orderTypeRecycling) {
+                types.push('recycling');
+            }
+            if (types.length === 1) {
+                data.order_types = types;
+            } else if (types.length === 2) {
+                data.order_types = ['waste', 'recycling'];
+            }
+            return data;
+        },
+        [search, statusFilter, requestedCollectionFrom, requestedCollectionTo, orderTypeWaste, orderTypeRecycling],
+    );
+
+    const requestOrderExport = useCallback(
+        (format) => {
+            setOrderExportStatus(null);
+            router.post(route('orders.export.request'), buildExportPostBody(format), { preserveScroll: true });
+        },
+        [buildExportPostBody],
+    );
+
+    const orderExportIsProcessing =
+        orderExportUuid &&
+        (!orderExportStatus || orderExportStatus.status === 'pending' || orderExportStatus.status === 'processing');
 
     const handleGenerateConsolidatedPDF = (e) => {
         e.preventDefault();
@@ -497,6 +569,41 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
                     <p className="text-sm font-medium text-red-800 dark:text-red-200">
                         {flash?.error || pageErrors?.reason || pageErrors?.reason_details}
                     </p>
+                </div>
+            )}
+
+            {(orderExportUuid || flash?.order_export_uuid) && (
+                <div className="mb-6 rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/25 p-4 space-y-3">
+                    <p className="text-sm text-green-900 dark:text-green-100">
+                        Export queued using your current filters. Large exports run in the background—download below when
+                        the button appears.
+                    </p>
+                    {orderExportIsProcessing && (
+                        <div className="flex items-center gap-2 text-sm text-green-800 dark:text-green-200">
+                            <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                            <span>
+                                Generating {orderExportFormat === 'csv' ? 'CSV' : 'PDF'} in the background… This
+                                section will update when the file is ready.
+                            </span>
+                        </div>
+                    )}
+                    {orderExportStatus?.status === 'completed' && orderExportStatus.download_url && (
+                        <div>
+                            <a
+                                href={orderExportStatus.download_url}
+                                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                            >
+                                <Download className="h-4 w-4 mr-2" />
+                                Download {orderExportFormat === 'csv' ? 'CSV' : 'PDF'}
+                            </a>
+                        </div>
+                    )}
+                    {orderExportStatus?.status === 'failed' && (
+                        <p className="text-sm text-red-700 dark:text-red-300">
+                            {orderExportStatus.error_message ||
+                                'Export failed. Please try again.'}
+                        </p>
+                    )}
                 </div>
             )}
 
@@ -785,25 +892,28 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
                                     <div className="fixed inset-0 z-10" onClick={() => setExportOpen(false)} aria-hidden="true" />
                                     <div className="absolute right-0 mt-1 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 z-20">
                                         <div className="py-1">
-                                            <a
-                                                href={exportUrl('pdf')}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                                                onClick={() => setExportOpen(false)}
+                                            <button
+                                                type="button"
+                                                className="flex w-full items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 text-left"
+                                                onClick={() => {
+                                                    requestOrderExport('pdf');
+                                                    setExportOpen(false);
+                                                }}
                                             >
-                                                <FileText className="h-4 w-4 mr-2 text-red-600" />
+                                                <FileText className="h-4 w-4 mr-2 text-red-600 shrink-0" />
                                                 Export to PDF
-                                            </a>
-                                            <a
-                                                href={exportUrl('csv')}
-                                                download
-                                                className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                                                onClick={() => setExportOpen(false)}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="flex w-full items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 text-left"
+                                                onClick={() => {
+                                                    requestOrderExport('csv');
+                                                    setExportOpen(false);
+                                                }}
                                             >
-                                                <FileSpreadsheet className="h-4 w-4 mr-2 text-green-600" />
+                                                <FileSpreadsheet className="h-4 w-4 mr-2 text-green-600 shrink-0" />
                                                 Export to CSV
-                                            </a>
+                                            </button>
                                         </div>
                                     </div>
                                 </>
