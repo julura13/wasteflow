@@ -7,11 +7,22 @@ import {
     Cell,
     ResponsiveContainer,
     Tooltip,
-    Legend,
 } from 'recharts';
-import { Cloud, Droplet, TreePine, Zap, LayoutDashboard, Table2, X } from 'lucide-react';
+import {
+    CarFront,
+    Cloud,
+    Droplet,
+    Fuel,
+    LayoutDashboard,
+    Table2,
+    TreePine,
+    Truck,
+    X,
+    Zap,
+} from 'lucide-react';
 import axios from 'axios';
 import SearchableDropdown from '@/Components/SearchableDropdown';
+import { formatImpactOneDecimal, formatImpactWhole } from '@/utils/environmentalImpactDisplay';
 
 const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
 const MONTH_LABELS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
@@ -259,11 +270,13 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
     };
 
     const wasteStreamData = dashboardData?.wasteStreamTotals || [];
-    const classificationData = dashboardData?.classificationTotals || {
+    const classificationData = {
         avoidance: { total: 0, percentage: 0 },
         recycling: { total: 0, percentage: 0 },
         recovery: { total: 0, percentage: 0 },
         disposal: { total: 0, percentage: 0 },
+        diverted: { total: 0, percentage: 0 },
+        ...(dashboardData?.classificationTotals || {}),
     };
     const environmentalImpact = dashboardData?.environmentalImpact || {
         treesSaved: 0,
@@ -290,12 +303,100 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
         return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(Math.ceil(Number(num)));
     };
 
-    // Classification colors
+    // Client palette: classification dials (avoidance / recycling / recovery / disposal / diverted)
     const classificationColors = {
-        avoidance: '#9ca3af',
-        recycling: '#3b82f6',
-        recovery: '#3b82f6',
-        disposal: '#1e3a5f',
+        avoidance: '#eab308',
+        recycling: '#93c5fd',
+        recovery: '#2563eb',
+        disposal: '#171717',
+        diverted: '#ca8a04',
+    };
+
+    const classificationDonutHeight = 158;
+
+    const renderClassificationDonut = (title, percentage, fill) => {
+        const renderTotalRowBelowChart = () => {
+            if (title === 'AVOIDANCE') {
+                return (
+                    <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700/50 rounded">
+                        <p className="text-xs text-gray-600 dark:text-gray-400">Total Avoidance</p>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{formatNumber(classificationData.avoidance.total)} kg</p>
+                    </div>
+                );
+            }
+            if (title === 'RECYCLING') {
+                return (
+                    <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700/50 rounded">
+                        <p className="text-xs text-gray-600 dark:text-gray-400">Total Recycling</p>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{formatNumber(classificationData.recycling.total)} kg</p>
+                    </div>
+                );
+            }
+            if (title === 'RECOVERY') {
+                return (
+                    <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700/50 rounded">
+                        <p className="text-xs text-gray-600 dark:text-gray-400">Total Recovery</p>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{formatNumber(classificationData.recovery.total)} kg</p>
+                    </div>
+                );
+            }
+            if (title === 'DISPOSAL') {
+                return (
+                    <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700/50 rounded">
+                        <p className="text-xs text-gray-600 dark:text-gray-400">Total Disposal</p>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{formatNumber(classificationData.disposal.total)} kg</p>
+                    </div>
+                );
+            }
+            if (title === 'DIVERTED') {
+                return (
+                    <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700/50 rounded">
+                        <p className="text-xs text-gray-600 dark:text-gray-400">Total Diverted</p>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{formatNumber(classificationData.diverted.total)} kg</p>
+                    </div>
+                );
+            }
+            return null;
+        };
+
+        return (
+            <div className="text-center">
+                <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300">{title}</h3>
+                <div
+                    className="relative isolate mx-auto w-full overflow-visible"
+                    style={{ height: classificationDonutHeight }}
+                >
+                    <div className="absolute inset-0 z-0 [&_.recharts-surface]:outline-none">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+                                <Pie
+                                    data={[
+                                        { name: title, value: percentage, fill },
+                                        { name: 'Other', value: Math.max(0, 100 - percentage), fill: '#e5e7eb' },
+                                    ]}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius="56%"
+                                    outerRadius="76%"
+                                    dataKey="value"
+                                    startAngle={90}
+                                    endAngle={-270}
+                                >
+                                    <Cell fill={fill} />
+                                    <Cell fill="#e5e7eb" />
+                                </Pie>
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+                    <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+                        <span className="text-sm font-semibold tabular-nums text-gray-900 dark:text-gray-100">
+                            {percentage}%
+                        </span>
+                    </div>
+                </div>
+                {renderTotalRowBelowChart()}
+            </div>
+        );
     };
 
     // Create pie chart data for classifications
@@ -311,7 +412,7 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
             <Head title="Dashboard" />
 
             {/* Filters */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 mb-3 border border-gray-200 dark:border-gray-700">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 mb-1 border border-gray-200 dark:border-gray-700">
                 <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-6 gap-2 items-end">
                     <div>
                         <label htmlFor="dashboard_company_id" className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -414,7 +515,7 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
             </div>
 
             {/* Tabs */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow mb-3 overflow-hidden border border-gray-200 dark:border-gray-700">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow mb-1 overflow-hidden border border-gray-200 dark:border-gray-700">
                 <div className="border-b border-gray-200 dark:border-gray-700">
                     <nav className="flex -mb-px" aria-label="Tabs">
                         <button
@@ -622,177 +723,70 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
             {activeTab === 'dashboard' && (
             <>
             {/* All Charts in One Row */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 mb-3 border border-gray-200 dark:border-gray-700">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 mb-1 border border-gray-200 dark:border-gray-700">
                 <h2 className="text-sm font-semibold mb-2 text-gray-900 dark:text-gray-100">Summary of Waste Treatment Outputs and achievements at a glance (kg per waste category)</h2>
                 <div className="grid grid-cols-1 lg:grid-cols-10 gap-3">
                     {/* Main Waste Stream Pie Chart */}
                     {wasteStreamData.length > 0 && (
-                        <div className="lg:col-span-3">
-                            <ResponsiveContainer width="100%" height={180}>
-                                <PieChart>
-                                    <Pie
-                                        data={wasteStreamData}
-                                        cx="50%"
-                                        cy="50%"
-                                        labelLine={false}
-                                        // label={({ name, value }) => `${name}: ${formatNumber(value)} kg`}
-                                        outerRadius={90}
-                                        fill="#8884d8"
-                                        dataKey="value"
-                                    >
-                                        {wasteStreamData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={entry.color} />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip formatter={(value) => `${formatNumber(value)} kg`} />
-                                    {/* <Legend wrapperStyle={{ fontSize: '10px' }} /> */}
-                                </PieChart>
-                            </ResponsiveContainer>
-                            <div className="mt-1 space-y-0.5 flex items-center space-x-2">
-                                {wasteStreamData.map((item, index) => (
-                                    <div key={index} className="flex items-center space-x-1">
-                                        <div
-                                            className="w-2 h-2 rounded"
-                                            style={{ backgroundColor: item.color }}
-                                        />
-                                        <span className="text-xs text-gray-700 dark:text-gray-300">{item.name}: {formatNumber(item.value)} kg</span>
-                                    </div>
-                                ))}
+                        <div className="lg:col-span-4 flex flex-col lg:items-start justify-between">
+                            <div className="w-full mx-auto  h-full">
+                                <ResponsiveContainer width="100%" height={380}>
+                                    <PieChart>
+                                        <Pie
+                                            data={wasteStreamData}
+                                            cx="50%"
+                                            cy="50%"
+                                            labelLine={false}
+                                            outerRadius={180}
+                                            fill="#8884d8"
+                                            dataKey="value"
+                                        >
+                                            {wasteStreamData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.color} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip formatter={(value) => `${formatNumber(value)} kg`} />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+                            <div
+                                className="h-24 min-w-0 w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50/70 dark:bg-gray-800/50 p-3 overflow-y-auto overscroll-contain"
+                                role="region"
+                                aria-label="Waste stream breakdown by category"
+                            >
+                                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5">
+                                    {wasteStreamData.map((item, index) => (
+                                        <li key={index} className="flex items-start gap-2 min-w-0">
+                                            <span
+                                                className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-sm ring-1 ring-black/5 dark:ring-white/10"
+                                                style={{ backgroundColor: item.color }}
+                                                aria-hidden
+                                            />
+                                            <span className="text-xs text-gray-700 dark:text-gray-300 leading-snug text-left">
+                                                <span className="font-medium text-gray-900 dark:text-gray-100">{item.name}</span>
+                                                <span className="text-gray-500 dark:text-gray-400"> — {formatNumber(item.value)} kg</span>
+                                            </span>
+                                        </li>
+                                    ))}
+                                </ul>
                             </div>
                         </div>
                     )}
 
-                    {/* Classification Pie Charts */}
-                    <div className="lg:col-span-7">
-                        <div className="grid grid-cols-4 gap-2 mb-2">
-                            {/* Avoidance */}
-                            <div className="text-center">
-                                <h3 className="text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">AVOIDANCE</h3>
-                                <ResponsiveContainer width="100%" height={100}>
-                                    <PieChart>
-                                        <Pie
-                                            data={[
-                                                { name: 'Avoidance', value: classificationData.avoidance.percentage, fill: classificationColors.avoidance },
-                                                { name: 'Other', value: 100 - classificationData.avoidance.percentage, fill: '#e5e7eb' },
-                                            ]}
-                                            cx="50%"
-                                            cy="50%"
-                                            innerRadius={25}
-                                            outerRadius={40}
-                                            dataKey="value"
-                                            startAngle={90}
-                                            endAngle={-270}
-                                        >
-                                            <Cell fill={classificationColors.avoidance} />
-                                            <Cell fill="#e5e7eb" />
-                                        </Pie>
-                                    </PieChart>
-                                </ResponsiveContainer>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{classificationData.avoidance.percentage}%</p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">kg</p>
-                            </div>
-
-                            {/* Recycling */}
-                            <div className="text-center">
-                                <h3 className="text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">RECYCLING</h3>
-                                <ResponsiveContainer width="100%" height={100}>
-                                    <PieChart>
-                                        <Pie
-                                            data={[
-                                                { name: 'Recycling', value: classificationData.recycling.percentage, fill: classificationColors.recycling },
-                                                { name: 'Other', value: 100 - classificationData.recycling.percentage, fill: '#e5e7eb' },
-                                            ]}
-                                            cx="50%"
-                                            cy="50%"
-                                            innerRadius={25}
-                                            outerRadius={40}
-                                            dataKey="value"
-                                            startAngle={90}
-                                            endAngle={-270}
-                                        >
-                                            <Cell fill={classificationColors.recycling} />
-                                            <Cell fill="#e5e7eb" />
-                                        </Pie>
-                                    </PieChart>
-                                </ResponsiveContainer>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{classificationData.recycling.percentage}%</p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">kg</p>
-                            </div>
-
-                            {/* Recovery */}
-                            <div className="text-center">
-                                <h3 className="text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">RECOVERY</h3>
-                                <ResponsiveContainer width="100%" height={100}>
-                                    <PieChart>
-                                        <Pie
-                                            data={[
-                                                { name: 'Recovery', value: classificationData.recovery.percentage, fill: classificationColors.recovery },
-                                                { name: 'Other', value: 100 - classificationData.recovery.percentage, fill: '#e5e7eb' },
-                                            ]}
-                                            cx="50%"
-                                            cy="50%"
-                                            innerRadius={25}
-                                            outerRadius={40}
-                                            dataKey="value"
-                                            startAngle={90}
-                                            endAngle={-270}
-                                        >
-                                            <Cell fill={classificationColors.recovery} />
-                                            <Cell fill="#e5e7eb" />
-                                        </Pie>
-                                    </PieChart>
-                                </ResponsiveContainer>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{classificationData.recovery.percentage}%</p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">kg</p>
-                            </div>
-
-                            {/* Disposal */}
-                            <div className="text-center">
-                                <h3 className="text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">DISPOSAL</h3>
-                                <ResponsiveContainer width="100%" height={100}>
-                                    <PieChart>
-                                        <Pie
-                                            data={[
-                                                { name: 'Disposal', value: classificationData.disposal.percentage, fill: classificationColors.disposal },
-                                                { name: 'Other', value: 100 - classificationData.disposal.percentage, fill: '#e5e7eb' },
-                                            ]}
-                                            cx="50%"
-                                            cy="50%"
-                                            innerRadius={25}
-                                            outerRadius={40}
-                                            dataKey="value"
-                                            startAngle={90}
-                                            endAngle={-270}
-                                        >
-                                            <Cell fill={classificationColors.disposal} />
-                                            <Cell fill="#e5e7eb" />
-                                        </Pie>
-                                    </PieChart>
-                                </ResponsiveContainer>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{classificationData.disposal.percentage}%</p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">kg</p>
-                            </div>
+                    {/* Classification donut charts: row 1 avoidance / recycling / recovery; row 2 disposal / diverted */}
+                    <div className="lg:col-span-6 flex flex-col gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-3">
+                            {renderClassificationDonut('AVOIDANCE', classificationData.avoidance.percentage, classificationColors.avoidance)}
+                            {renderClassificationDonut('RECYCLING', classificationData.recycling.percentage, classificationColors.recycling)}
+                            {renderClassificationDonut('RECOVERY', classificationData.recovery.percentage, classificationColors.recovery)}
                         </div>
-
-                        {/* Classification Totals */}
-                        <div className="grid grid-cols-4 gap-2">
-                            <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700/50 rounded">
-                                <p className="text-xs text-gray-600 dark:text-gray-400">Total Avoidance</p>
-                                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{formatNumber(classificationData.avoidance.total)} kg</p>
-                            </div>
-                            <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700/50 rounded">
-                                <p className="text-xs text-gray-600 dark:text-gray-400">Total Recycling</p>
-                                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{formatNumber(classificationData.recycling.total)} kg</p>
-                            </div>
-                            <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700/50 rounded">
-                                <p className="text-xs text-gray-600 dark:text-gray-400">Total Recovery</p>
-                                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{formatNumber(classificationData.recovery.total)} kg</p>
-                            </div>
-                            <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700/50 rounded">
-                                <p className="text-xs text-gray-600 dark:text-gray-400">Total Disposal</p>
-                                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{formatNumber(classificationData.disposal.total)} kg</p>
-                            </div>
+                        <div className="grid grid-cols-3 gap-4 sm:gap-3 mx-auto w-full">
+                            {renderClassificationDonut('DISPOSAL', classificationData.disposal.percentage, classificationColors.disposal)}
+                            {renderClassificationDonut('DIVERTED', classificationData.diverted.percentage, classificationColors.diverted)}
                         </div>
+                        <p className="text-center text-[10px] text-gray-500 dark:text-gray-400 -mt-1 max-w-xl mx-auto px-2 leading-snug">
+                            Diverted = avoidance + recycling + recovery (everything not disposal).
+                        </p>
                     </div>
                 </div>
             </div>
@@ -809,67 +803,71 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
                             Total Lifecycle Carbon Avoided (kg CO₂e)
                         </p>
                         <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                            {formatNumber(environmentalImpact.co2Saved)} kg CO₂e
+                            {formatImpactWhole(environmentalImpact.co2Saved)} kg CO₂e
                         </p>
                     </div>
                     <div className="text-center p-3 bg-cyan-50 dark:bg-cyan-900/30 rounded-lg border border-cyan-100 dark:border-cyan-800/50">
                         <Droplet className="w-8 h-8 mx-auto mb-1 text-cyan-600 dark:text-cyan-400" />
                         <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Water Saved</p>
                         <p className="text-lg font-bold text-cyan-600 dark:text-cyan-400">
-                            {formatNumber(environmentalImpact.waterSaved)} kL
+                            {formatImpactWhole(environmentalImpact.waterSaved)} kL
                         </p>
                     </div>
                     <div className="text-center p-3 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-100 dark:border-green-800/50">
                         <TreePine className="w-8 h-8 mx-auto mb-1 text-green-600 dark:text-green-400" />
                         <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Trees Saved</p>
                         <p className="text-lg font-bold text-green-600 dark:text-green-400">
-                            {formatNumber(environmentalImpact.treesSaved)} trees
+                            {formatImpactWhole(environmentalImpact.treesSaved)} trees
                         </p>
                     </div>
                     <div className="text-center p-3 bg-yellow-50 dark:bg-amber-900/30 rounded-lg border border-yellow-100 dark:border-amber-800/50">
                         <Zap className="w-8 h-8 mx-auto mb-1 text-yellow-600 dark:text-amber-400" />
-                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Energy Saved (recycling)</p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-1 leading-snug px-0.5">
+                            Electricity Equivalent (kWh – SA Grid)
+                        </p>
                         <p className="text-lg font-bold text-yellow-600 dark:text-amber-400">
-                            {formatNumber(environmentalImpact.energySaved)} kWh
+                            {formatImpactWhole(environmentalImpact.electricityEquivalentKwhSaGrid)} kWh
                         </p>
                     </div>
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-3 mb-2">
-                    Carbon equivalency indicators (from lifecycle saving, SA factors — see docs/Dashboard &amp; Reports -
-                    Metrics)
-                </p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    <div className="text-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-600">
-                        <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight mb-0.5">
-                            Electricity Equivalent (kWh – SA Grid)
-                        </p>
-                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                            {formatNumber(environmentalImpact.electricityEquivalentKwhSaGrid)}
-                        </p>
-                    </div>
-                    <div className="text-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-600">
-                        <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight mb-0.5">
-                            Transport Equivalent (km Avoided)
-                        </p>
-                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                            {formatNumber(environmentalImpact.transportEquivalentKm)}
-                        </p>
-                    </div>
-                    <div className="text-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-600">
-                        <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight mb-0.5">
-                            Fuel Equivalent (L Petrol Avoided)
-                        </p>
-                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                            {formatNumber(environmentalImpact.fuelEquivalentLitresPetrol)}
-                        </p>
-                    </div>
-                    <div className="text-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-600">
-                        <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight mb-0.5">
-                            Cars Off the Road (Annual Equiv.)
-                        </p>
-                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                            {formatNumber(environmentalImpact.carsOffRoadAnnualEquivalent)}
-                        </p>
+                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-700 dark:text-gray-300 mb-1">
+                        Carbon equivalency indicators
+                    </h3>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed mb-4 max-w-3xl">
+                        From lifecycle saving, SA factors — see docs/Dashboard &amp; Reports - Metrics
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="text-center p-3.5 bg-indigo-50 dark:bg-indigo-950/40 rounded-lg border border-indigo-100 dark:border-indigo-800/50 shadow-sm">
+                            <Truck className="w-7 h-7 mx-auto mb-2 text-indigo-600 dark:text-indigo-400" strokeWidth={1.75} />
+                            <p className="text-xs text-gray-600 dark:text-gray-400 mb-1.5 leading-snug px-1">
+                                Transport Equivalent (km Avoided)
+                            </p>
+                            <p className="text-base sm:text-lg font-bold text-indigo-600 dark:text-indigo-400 tabular-nums tracking-tight">
+                                {formatImpactWhole(environmentalImpact.transportEquivalentKm)}{' '}
+                                <span className="text-sm font-semibold text-indigo-500/90 dark:text-indigo-400/80">km</span>
+                            </p>
+                        </div>
+                        <div className="text-center p-3.5 bg-orange-50 dark:bg-orange-950/35 rounded-lg border border-orange-100 dark:border-orange-900/50 shadow-sm">
+                            <Fuel className="w-7 h-7 mx-auto mb-2 text-orange-600 dark:text-orange-400" strokeWidth={1.75} />
+                            <p className="text-xs text-gray-600 dark:text-gray-400 mb-1.5 leading-snug px-1">
+                                Fuel Equivalent (L Petrol Avoided)
+                            </p>
+                            <p className="text-base sm:text-lg font-bold text-orange-600 dark:text-orange-400 tabular-nums tracking-tight">
+                                {formatImpactWhole(environmentalImpact.fuelEquivalentLitresPetrol)}{' '}
+                                <span className="text-sm font-semibold text-orange-500/90 dark:text-orange-400/80">L</span>
+                            </p>
+                        </div>
+                        <div className="text-center p-3.5 bg-violet-50 dark:bg-violet-950/40 rounded-lg border border-violet-100 dark:border-violet-800/50 shadow-sm">
+                            <CarFront className="w-7 h-7 mx-auto mb-2 text-violet-600 dark:text-violet-400" strokeWidth={1.75} />
+                            <p className="text-xs text-gray-600 dark:text-gray-400 mb-1.5 leading-snug px-1">
+                                Cars Off the Road (Annual Equiv.)
+                            </p>
+                            <p className="text-base sm:text-lg font-bold text-violet-600 dark:text-violet-400 tabular-nums tracking-tight">
+                                {formatImpactOneDecimal(environmentalImpact.carsOffRoadAnnualEquivalent)}{' '}
+                                <span className="text-sm font-semibold text-violet-500/90 dark:text-violet-400/80">cars</span>
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>

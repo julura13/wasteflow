@@ -241,7 +241,7 @@ class DashboardController extends Controller
         // Get waste stream totals (main pie chart)
         $wasteStreamTotals = $this->getWasteStreamTotals($materialSummaries);
 
-        // Get classification totals (4 smaller pie charts)
+        // Get classification totals (donut charts + diverted aggregate)
         $classificationTotals = $this->getClassificationTotals($materialSummaries);
 
         // Calculate environmental impact (shared with report and summary)
@@ -327,17 +327,21 @@ class DashboardController extends Controller
             $totals[$wasteStreamName] += $weight;
         }
 
-        // Convert to array format for charts
+        // Client palette: waste stream pie segments (see product spec)
         $colors = [
-            'Paper' => '#60a5fa',
-            'Plastic' => '#3b82f6',
-            'Waste' => '#fbbf24',
-            'Metal' => '#ef4444',
-            'Glass' => '#3b82f6',
-            'Aluminium' => '#8b5cf6',
-            'Organic Waste' => '#10b981',
-            'Garden Waste' => '#84cc16',
+            'Paper' => '#2563eb',
+            'Plastic' => '#eab308',
+            'Metal' => '#6b7280',
+            'Aluminium' => '#9333ea',
+            'Aluminum' => '#9333ea',
+            'Organic Waste' => '#2563eb',
+            'Waste' => '#171717',
+            'General Waste' => '#171717',
             'Hazardous Waste' => '#dc2626',
+            'Glass' => '#475569',
+            'Garden Waste' => '#1d4ed8',
+            'Wood' => '#78716c',
+            'Recycling' => '#94a3b8',
         ];
 
         $result = [];
@@ -353,8 +357,8 @@ class DashboardController extends Controller
     }
 
     /**
-     * Get classification totals for the 4 pie charts
-     * Groups by classification_id and sums weights
+     * Get classification totals for dashboard donut charts.
+     * Diverted = avoidance + recycling + recovery (all weight not sent to disposal).
      */
     private function getClassificationTotals($materialSummaries): array
     {
@@ -389,6 +393,7 @@ class DashboardController extends Controller
         }
 
         $totalWeight = array_sum($totals);
+        $divertedTotal = $totals['Avoidance'] + $totals['Recycling'] + $totals['Recovery'];
 
         return [
             'avoidance' => [
@@ -406,6 +411,10 @@ class DashboardController extends Controller
             'disposal' => [
                 'total' => round($totals['Disposal'], 2),
                 'percentage' => $totalWeight > 0 ? round(($totals['Disposal'] / $totalWeight) * 100, 1) : 0,
+            ],
+            'diverted' => [
+                'total' => round($divertedTotal, 2),
+                'percentage' => $totalWeight > 0 ? round(($divertedTotal / $totalWeight) * 100, 1) : 0,
             ],
         ];
     }

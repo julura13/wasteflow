@@ -1,6 +1,7 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import DataTable from '@/Components/Dashboard/DataTable';
+import { formatQuantityLineLabel } from '@/utils/orderQuantityLines';
 import { useMemo, useState, useEffect } from 'react';
 import { Plus, Trash2, Eye, Search, Filter, Package, CheckCircle, X, FileDown, FileText, FileSpreadsheet, Pencil, ChevronDown } from 'lucide-react';
 import axios from 'axios';
@@ -25,6 +26,11 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
             return () => clearTimeout(timer);
         }
     }, [flash]);
+
+    useEffect(() => {
+        setRequestedCollectionFrom(filters.requested_collection_from || '');
+        setRequestedCollectionTo(filters.requested_collection_to || '');
+    }, [filters.requested_collection_from, filters.requested_collection_to]);
 
     // Fetch service providers when date changes
     useEffect(() => {
@@ -53,6 +59,10 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
     }, [consolidatedDate, showConsolidatedForm]);
     const [search, setSearch] = useState(filters.search || '');
     const [statusFilter, setStatusFilter] = useState(filters.status || '');
+    const [requestedCollectionFrom, setRequestedCollectionFrom] = useState(
+        filters.requested_collection_from || ''
+    );
+    const [requestedCollectionTo, setRequestedCollectionTo] = useState(filters.requested_collection_to || '');
     const [orderTypeWaste, setOrderTypeWaste] = useState(
         () => !filters.order_types?.length || filters.order_types.includes('waste')
     );
@@ -75,6 +85,18 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
                     >
                         {trackingNumber}
                     </Link>
+                );
+            },
+        },
+        {
+            accessorKey: 'slip_number',
+            header: 'Slip number',
+            cell: ({ getValue }) => {
+                const slip = getValue();
+                return slip ? (
+                    <span className="text-sm text-gray-900 dark:text-gray-100 font-mono">{slip}</span>
+                ) : (
+                    <span className="text-sm text-gray-400 dark:text-gray-500">—</span>
                 );
             },
         },
@@ -182,6 +204,46 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
             },
         },
         {
+            id: 'collection_quantities',
+            header: 'Collection quantities',
+            cell: ({ row }) => {
+                const order = row.original;
+                const lines = order.quantity_lines;
+
+                if (Array.isArray(lines) && lines.length > 0) {
+                    return (
+                        <div className="flex flex-col gap-0.5 text-sm">
+                            {lines.map((line, index) => (
+                                <span
+                                    key={index}
+                                    className="text-gray-900 dark:text-gray-100"
+                                >
+                                    {formatQuantityLineLabel(line)}
+                                </span>
+                            ))}
+                        </div>
+                    );
+                }
+
+                if (order.quantity != null && order.quantity_type) {
+                    return (
+                        <div className="flex flex-col text-sm">
+                            <span className="text-gray-900 dark:text-gray-100">
+                                {formatQuantityLineLabel({
+                                    quantity: order.quantity,
+                                    quantity_type: order.quantity_type,
+                                })}
+                            </span>
+                        </div>
+                    );
+                }
+
+                return (
+                    <span className="text-sm text-gray-400 dark:text-gray-500">—</span>
+                );
+            },
+        },
+        {
             id: 'actions',
             header: 'Actions',
             cell: ({ row }) => {
@@ -284,11 +346,19 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
         return types;
     };
 
-    const buildFilterParams = () => {
-        const params = { search: search || undefined, status: statusFilter || undefined };
-        const types = getOrderTypesParam();
-        if (types.length === 1) params.order_types = types;
-        else if (types.length === 2) params.order_types = ['waste', 'recycling'];
+    const buildFilterParams = (orderTypesOverride) => {
+        const params = {
+            search: search || undefined,
+            status: statusFilter || undefined,
+            requested_collection_from: requestedCollectionFrom || undefined,
+            requested_collection_to: requestedCollectionTo || undefined,
+        };
+        const types = orderTypesOverride ?? getOrderTypesParam();
+        if (types.length === 1) {
+            params.order_types = types;
+        } else if (types.length === 2) {
+            params.order_types = ['waste', 'recycling'];
+        }
         return params;
     };
 
@@ -314,16 +384,15 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
         const types = [];
         if (waste) types.push('waste');
         if (recycling) types.push('recycling');
-        const params = { search: search || undefined, status: statusFilter || undefined };
-        if (types.length === 1) params.order_types = types;
-        else if (types.length === 2) params.order_types = ['waste', 'recycling'];
-        router.get('/orders', params, { preserveState: true, replace: true });
+        router.get('/orders', buildFilterParams(types), { preserveState: true, replace: true });
     };
 
     const exportUrl = (format) => {
         const params = new URLSearchParams();
         if (search) params.set('search', search);
         if (statusFilter) params.set('status', statusFilter);
+        if (requestedCollectionFrom) params.set('requested_collection_from', requestedCollectionFrom);
+        if (requestedCollectionTo) params.set('requested_collection_to', requestedCollectionTo);
         getOrderTypesParam().forEach((t) => params.append('order_types[]', t));
         const qs = params.toString();
         return `/orders/export/${format}${qs ? `?${qs}` : ''}`;
@@ -649,7 +718,7 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
                                     className="pl-10 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-400"
-                                    placeholder="Order number, company, branch, site, service provider..."
+                                    placeholder="Tracking number, slip number, company, branch, site, service provider…"
                                 />
                             </div>
                         </div>
@@ -740,6 +809,41 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
                                 </>
                             )}
                         </div>
+                    </div>
+                    <div className="flex flex-wrap gap-4 items-end pt-4 border-t border-gray-200 dark:border-gray-600">
+                        <div className="w-full sm:w-auto min-w-[160px]">
+                            <label
+                                htmlFor="requested_collection_from"
+                                className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
+                            >
+                                Requested collection from
+                            </label>
+                            <input
+                                type="date"
+                                id="requested_collection_from"
+                                value={requestedCollectionFrom}
+                                onChange={(e) => setRequestedCollectionFrom(e.target.value)}
+                                className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                            />
+                        </div>
+                        <div className="w-full sm:w-auto min-w-[160px]">
+                            <label
+                                htmlFor="requested_collection_to"
+                                className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
+                            >
+                                Requested collection to
+                            </label>
+                            <input
+                                type="date"
+                                id="requested_collection_to"
+                                value={requestedCollectionTo}
+                                onChange={(e) => setRequestedCollectionTo(e.target.value)}
+                                className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                            />
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 max-w-md pb-1 sm:pb-0 sm:self-end">
+                            Filters by each order&apos;s <span className="font-medium text-gray-600 dark:text-gray-300">requested</span> collection date (inclusive). Leave both blank for no date limit, then click Filter.
+                        </p>
                     </div>
                 </form>
             </div>

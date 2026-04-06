@@ -28,7 +28,7 @@ class ActivityLogController extends Controller
                     ->where('subject_type', Order::class)
                     ->where('subject_id', $order->id)
                     ->with('causer:id,name,email')
-                    ->orderByDesc('created_at')
+                    ->orderBy('created_at')
                     ->get();
             }
         }

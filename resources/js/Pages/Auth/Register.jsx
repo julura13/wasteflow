@@ -42,7 +42,7 @@ export default function Register() {
                             </div>
                             <div>
                                 <h1 className="text-3xl font-bold text-white">WasteFlow</h1>
-                                <p className="text-primary-100 text-sm">Waste Management Portal</p>
+                                <p className="text-primary-100 text-sm">Real-Time Waste Intelligence Portal</p>
                             </div>
                         </div>
                     </div>

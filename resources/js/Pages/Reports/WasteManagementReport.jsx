@@ -117,28 +117,28 @@ export default function WasteManagementReport() {
             { name: 'Total Lifecycle Carbon Avoided (kg CO₂e)', value: 8, color: '#6b7280' },
         ],
         recyclingBreakdown: [
-            { name: 'Paper', value: 25, color: '#60a5fa' },
-            { name: 'Plastics', value: 30, color: '#a3e635' },
-            { name: 'Aluminium', value: 10, color: '#4b5563' },
-            { name: 'Organics', value: 5, color: '#fbbf24' },
+            { name: 'Paper', value: 25, color: '#2563eb' },
+            { name: 'Plastics', value: 30, color: '#eab308' },
+            { name: 'Aluminium', value: 10, color: '#9333ea' },
+            { name: 'Organics', value: 5, color: '#2563eb' },
             { name: 'Tetrapak', value: 8, color: '#fde047' },
-            { name: 'Steel', value: 7, color: '#e5e7eb' },
-            { name: 'Glass', value: 15, color: '#3b82f6' },
+            { name: 'Steel', value: 7, color: '#6b7280' },
+            { name: 'Glass', value: 15, color: '#475569' },
         ],
         // Page 5: Gauge and pie data
         wasteVsRecovery: [
-            { name: 'Waste', value: 15, color: '#1e3a5f' },
-            { name: 'Recovery', value: 85, color: '#3b82f6' },
+            { name: 'Waste', value: 15, color: '#171717' },
+            { name: 'Recovery', value: 85, color: '#2563eb' },
         ],
     }), []);
 
     // Pie chart data
     const pieData = useMemo(() => [
-        { name: 'General Waste', value: reportData.grades.generalWaste, color: '#1e3a5f' },
-        { name: 'Non Compactable Waste', value: reportData.grades.nonCompactableWaste || 1, color: '#5ba3c0' },
+        { name: 'General Waste', value: reportData.grades.generalWaste, color: '#171717' },
+        { name: 'Non Compactable Waste', value: reportData.grades.nonCompactableWaste || 1, color: '#404040' },
         { name: 'Hazardous Waste', value: reportData.grades.hazardousWaste || 1, color: '#dc2626' },
-        { name: 'Organics Recovered', value: reportData.grades.organicsRecovered || 1, color: '#a3e635' },
-        { name: 'Recycling Recovered', value: reportData.summary.recyclingRecovered, color: '#3b82f6' },
+        { name: 'Organics Recovered', value: reportData.grades.organicsRecovered || 1, color: '#2563eb' },
+        { name: 'Recycling Recovered', value: reportData.summary.recyclingRecovered, color: '#93c5fd' },
     ], [reportData]);
 
     const totalWaste = reportData.grades.generalWaste +

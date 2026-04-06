@@ -1,5 +1,6 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
+import { formatQuantityLinesCommaSeparated } from '@/utils/orderQuantityLines';
 import { History, Search, Package, AlertCircle } from 'lucide-react';
 import { useState } from 'react';
 
@@ -61,23 +62,6 @@ function descriptionWithShortDates(text) {
         .replace(/(\d{4}-\d{2}-\d{2})T[\d.:]+Z?/g, '$1');
 }
 
-/** Format quantity_lines array for display (waste: container name + qty; recycling: type + qty). */
-function formatQuantityLines(lines) {
-    if (!Array.isArray(lines) || lines.length === 0) return '—';
-    return lines
-        .map((line) => {
-            if (line.container_option_name != null) {
-                return `${line.quantity}× ${line.container_option_name}`;
-            }
-            if (line.quantity_type) {
-                const label = line.quantity_type.replace(/_/g, ' ');
-                return line.description ? `${line.quantity}× ${label} (${line.description})` : `${line.quantity}× ${label}`;
-            }
-            return `${line.quantity}×`;
-        })
-        .join(', ');
-}
-
 function PropertySummary({ properties, logName }) {
     if (!properties || typeof properties !== 'object') return null;
     const entries = [];
@@ -85,8 +69,8 @@ function PropertySummary({ properties, logName }) {
         entries.push({ label: 'Status', value: `${properties.old_status} → ${properties.new_status}` });
     }
     if (properties.old_quantity_lines != null && properties.new_quantity_lines != null) {
-        const oldStr = formatQuantityLines(properties.old_quantity_lines);
-        const newStr = formatQuantityLines(properties.new_quantity_lines);
+        const oldStr = formatQuantityLinesCommaSeparated(properties.old_quantity_lines);
+        const newStr = formatQuantityLinesCommaSeparated(properties.new_quantity_lines);
         entries.push({ label: 'Quantity lines', value: `${oldStr} → ${newStr}` });
     }
     if (properties.old_estimated_quantity != null && properties.new_estimated_quantity != null) {
@@ -289,7 +273,7 @@ export default function Index({ filterOrder = '', order, entries }) {
                                 {order.tracking_number}
                             </Link>
                         )}
-                        <span className="ml-1">(newest first)</span>
+                        <span className="ml-1">(oldest first)</span>
                     </p>
 
                     <ul className="relative space-y-0">
@@ -302,19 +286,20 @@ export default function Index({ filterOrder = '', order, entries }) {
                         {entries.map((entry, index) => {
                             const { date, time } = formatDate(entry.created_at);
                             const label = LOG_LABELS[entry.log_name] || entry.log_name.replace(/_/g, ' ');
+                            const isLatest = index === entries.length - 1;
                             return (
                                 <li key={entry.id} className="relative flex gap-6 pb-8 last:pb-0">
                                     {/* Dot */}
                                     <div
                                         className={`relative z-10 mt-1.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 ${
-                                            index === 0
+                                            isLatest
                                                 ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30'
                                                 : 'border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-800'
                                         }`}
                                     >
                                         <span
                                             className={`h-2 w-2 rounded-full ${
-                                                index === 0 ? 'bg-primary-500' : 'bg-gray-400 dark:bg-gray-500'
+                                                isLatest ? 'bg-primary-500' : 'bg-gray-400 dark:bg-gray-500'
                                             }`}
                                         />
                                     </div>

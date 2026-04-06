@@ -61,7 +61,12 @@ class OrderController extends Controller
         $orderTypes = $request->has('order_types') ? (array) $request->input('order_types') : [];
         $orderTypes = array_values(array_unique(array_filter(array_map('strtolower', $orderTypes), fn ($t) => in_array($t, ['waste', 'recycling'], true))));
 
-        $query = $this->ordersIndexQuery($request->input('search'), $status, $orderTypes);
+        [$requestedCollectionFrom, $requestedCollectionTo] = $this->parseRequestedCollectionDateRangeInput(
+            $request->input('requested_collection_from'),
+            $request->input('requested_collection_to'),
+        );
+
+        $query = $this->ordersIndexQuery($request->input('search'), $status, $orderTypes, $requestedCollectionFrom, $requestedCollectionTo);
 
         $orders = $query
             ->orderBy('created_at', 'desc')
@@ -85,6 +90,8 @@ class OrderController extends Controller
                 'search' => $request->input('search'),
                 'status' => $status,
                 'order_types' => $orderTypes,
+                'requested_collection_from' => $requestedCollectionFrom,
+                'requested_collection_to' => $requestedCollectionTo,
             ],
             'serviceProviders' => $serviceProviders,
             'userCompanyRoles' => $userCompanyRoles,
@@ -94,9 +101,14 @@ class OrderController extends Controller
     /**
      * Build the base query for orders index/export with search, status and order_type filters.
      *
+     * Search matches tracking number, finalized slip number (full value stored on the order), and related
+     * company, branch, site, and service provider names (partial match).
+     *
+     * Optional requested collection date range filters by `orders.requested_collection_date` (inclusive).
+     *
      * @param  array<int, string>  $orderTypes  ['waste'], ['recycling'], or ['waste','recycling']/[] for all
      */
-    private function ordersIndexQuery(?string $search, ?string $status, array $orderTypes): \Illuminate\Database\Eloquent\Builder
+    private function ordersIndexQuery(?string $search, ?string $status, array $orderTypes, ?string $requestedCollectionDateFrom = null, ?string $requestedCollectionDateTo = null): \Illuminate\Database\Eloquent\Builder
     {
         $query = Order::with(['site.branch.company', 'company', 'branch', 'creator', 'serviceProvider']);
 
@@ -124,7 +136,52 @@ class OrderController extends Controller
             $query->where('orders.order_type', $orderTypes[0]);
         }
 
+        $query->when($requestedCollectionDateFrom, function ($q) use ($requestedCollectionDateFrom) {
+            $q->whereDate('orders.requested_collection_date', '>=', $requestedCollectionDateFrom);
+        });
+        $query->when($requestedCollectionDateTo, function ($q) use ($requestedCollectionDateTo) {
+            $q->whereDate('orders.requested_collection_date', '<=', $requestedCollectionDateTo);
+        });
+
         return $query;
+    }
+
+    /**
+     * Normalize Y-m-d inputs for requested collection date range. Swaps bounds if from is after to.
+     *
+     * @return array{0: ?string, 1: ?string} Dates as Y-m-d or null when missing/invalid
+     */
+    private function parseRequestedCollectionDateRangeInput(mixed $from, mixed $to): array
+    {
+        $fromParsed = $this->parseDateInputYmd($from);
+        $toParsed = $this->parseDateInputYmd($to);
+
+        if ($fromParsed && $toParsed && $fromParsed->gt($toParsed)) {
+            [$fromParsed, $toParsed] = [$toParsed, $fromParsed];
+        }
+
+        return [
+            $fromParsed?->format('Y-m-d'),
+            $toParsed?->format('Y-m-d'),
+        ];
+    }
+
+    private function parseDateInputYmd(mixed $value): ?Carbon
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $value = trim($value);
+        if ($value === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::createFromFormat('Y-m-d', $value)->startOfDay();
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     public function create()
@@ -841,7 +898,12 @@ class OrderController extends Controller
         $orderTypes = $request->has('order_types') ? (array) $request->input('order_types') : [];
         $orderTypes = array_values(array_unique(array_filter(array_map('strtolower', $orderTypes), fn ($t) => in_array($t, ['waste', 'recycling'], true))));
 
-        $query = $this->ordersIndexQuery($request->input('search'), $status, $orderTypes);
+        [$requestedCollectionFrom, $requestedCollectionTo] = $this->parseRequestedCollectionDateRangeInput(
+            $request->input('requested_collection_from'),
+            $request->input('requested_collection_to'),
+        );
+
+        $query = $this->ordersIndexQuery($request->input('search'), $status, $orderTypes, $requestedCollectionFrom, $requestedCollectionTo);
         $orders = $query->orderBy('created_at', 'desc')->get();
 
         $options = new Options;
@@ -870,7 +932,12 @@ class OrderController extends Controller
         $orderTypes = $request->has('order_types') ? (array) $request->input('order_types') : [];
         $orderTypes = array_values(array_unique(array_filter(array_map('strtolower', $orderTypes), fn ($t) => in_array($t, ['waste', 'recycling'], true))));
 
-        $query = $this->ordersIndexQuery($request->input('search'), $status, $orderTypes);
+        [$requestedCollectionFrom, $requestedCollectionTo] = $this->parseRequestedCollectionDateRangeInput(
+            $request->input('requested_collection_from'),
+            $request->input('requested_collection_to'),
+        );
+
+        $query = $this->ordersIndexQuery($request->input('search'), $status, $orderTypes, $requestedCollectionFrom, $requestedCollectionTo);
         $orders = $query->with(['site.branch.company', 'company', 'branch', 'serviceProvider'])
             ->orderBy('created_at', 'desc')
             ->get();
