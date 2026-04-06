@@ -3,7 +3,7 @@ import DashboardLayout from '@/Layouts/DashboardLayout';
 import { ArrowLeft, Save } from 'lucide-react';
 import { Link } from '@inertiajs/react';
 
-export default function Edit({ company }) {
+export default function Edit({ company, serviceProviders = [] }) {
     const { data, setData, put, processing, errors } = useForm({
         name: company.name || '',
         email: company.email || '',
@@ -12,6 +12,8 @@ export default function Edit({ company }) {
         contact_person: company.contact_person || '',
         registration_number: company.registration_number || '',
         rebate_percentage: company.rebate_percentage || '',
+        default_waste_service_provider_id: company.default_waste_service_provider_id ?? '',
+        default_recycling_service_provider_id: company.default_recycling_service_provider_id ?? '',
         is_active: company.is_active ?? true,
     });
 
@@ -127,6 +129,50 @@ export default function Edit({ company }) {
                                 </p>
                                 {errors.rebate_percentage && (
                                     <p className="mt-1 text-sm text-red-600">{errors.rebate_percentage}</p>
+                                )}
+                            </div>
+
+                            <div>
+                                <label htmlFor="default_waste_service_provider_id" className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                                    Default service provider (waste orders)
+                                </label>
+                                <select
+                                    id="default_waste_service_provider_id"
+                                    value={data.default_waste_service_provider_id}
+                                    onChange={(e) => setData('default_waste_service_provider_id', e.target.value)}
+                                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                >
+                                    <option value="">None</option>
+                                    {serviceProviders.map((sp) => (
+                                        <option key={sp.id} value={sp.id}>
+                                            {sp.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                {errors.default_waste_service_provider_id && (
+                                    <p className="mt-1 text-sm text-red-600">{errors.default_waste_service_provider_id}</p>
+                                )}
+                            </div>
+
+                            <div>
+                                <label htmlFor="default_recycling_service_provider_id" className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                                    Default service provider (recycling orders)
+                                </label>
+                                <select
+                                    id="default_recycling_service_provider_id"
+                                    value={data.default_recycling_service_provider_id}
+                                    onChange={(e) => setData('default_recycling_service_provider_id', e.target.value)}
+                                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                >
+                                    <option value="">None</option>
+                                    {serviceProviders.map((sp) => (
+                                        <option key={sp.id} value={sp.id}>
+                                            {sp.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                {errors.default_recycling_service_provider_id && (
+                                    <p className="mt-1 text-sm text-red-600">{errors.default_recycling_service_provider_id}</p>
                                 )}
                             </div>
 

@@ -54,23 +54,24 @@ function storeFilters(filters) {
     }
 }
 
-/** Yesterday through seven days ahead (inclusive), for the dashboard quick orders viewer. */
+/** Tomorrow, today, then seven calendar days back (inclusive), for the dashboard quick orders viewer. */
 function getOrdersQuickViewDayOptionsAndValues() {
     const anchor = new Date();
     const opts = [];
     const values = new Set();
-    for (let offset = -1; offset <= 7; offset += 1) {
+    const offsets = [1, 0, -1, -2, -3, -4, -5, -6, -7];
+    for (const offset of offsets) {
         const day = new Date(anchor);
         day.setDate(day.getDate() + offset);
         const value = day.toISOString().split('T')[0];
         values.add(value);
         let labelPrefix;
-        if (offset === -1) {
-            labelPrefix = 'Yesterday';
+        if (offset === 1) {
+            labelPrefix = 'Tomorrow';
         } else if (offset === 0) {
             labelPrefix = 'Today';
-        } else if (offset === 1) {
-            labelPrefix = 'Tomorrow';
+        } else if (offset === -1) {
+            labelPrefix = 'Yesterday';
         } else {
             labelPrefix = day.toLocaleDateString('en-GB', { weekday: 'long' });
         }
@@ -879,7 +880,7 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
                 </div>
             </div>
 
-            {/* Orders for selected day (yesterday through seven days ahead) */}
+            {/* Orders for selected day (tomorrow, today, and seven days back) */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 mt-3 border border-gray-200 dark:border-gray-700">
                 <div className="flex flex-wrap items-center gap-2 mb-2">
                     <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">Orders for</span>
@@ -910,7 +911,7 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
                             {(!ordersNearDates || ordersNearDates.length === 0) ? (
                                 <tr>
                                     <td colSpan={6} className="py-4 text-center text-gray-500 dark:text-gray-400">
-                                        No orders from yesterday through the next 7 days. Select company/branch/site and apply to filter.
+                                        No orders from the last 7 days through tomorrow. Select company/branch/site and apply to filter.
                                     </td>
                                 </tr>
                             ) : (() => {

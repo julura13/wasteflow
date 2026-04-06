@@ -1,7 +1,7 @@
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
-import { ArrowLeft, Calendar, Filter, Download } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { ArrowLeft, Calendar, Filter, Download, Loader2 } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import SearchableDropdown from '@/Components/SearchableDropdown';
 
@@ -9,6 +9,10 @@ const siteOptionLabel = (site) =>
     `${site.name}${site.branch?.company ? ` (${site.branch.company.name})` : ''}`;
 
 export default function RebateTracker({ rebateData, companies, filters, totalRebate, totalWeight }) {
+    const { flash } = usePage().props;
+    const [pdfExportUuid, setPdfExportUuid] = useState(null);
+    const [pdfStatus, setPdfStatus] = useState(null);
+
     const { data, setData, get } = useForm({
         start_date: filters.start_date || '',
         end_date: filters.end_date || '',
@@ -81,15 +85,56 @@ export default function RebateTracker({ rebateData, companies, filters, totalReb
         });
     };
 
-    const buildPdfUrl = () => {
-        const params = new URLSearchParams();
-        if (filters.start_date) params.append('start_date', filters.start_date);
-        if (filters.end_date) params.append('end_date', filters.end_date);
-        if (filters.company_id) params.append('company_id', filters.company_id);
-        if (filters.branch_id) params.append('branch_id', filters.branch_id);
-        if (filters.site_id) params.append('site_id', filters.site_id);
-        return route('reports.rebate-tracker-pdf') + '?' + params.toString();
-    };
+    useEffect(() => {
+        if (flash?.rebate_pdf_export_uuid) {
+            setPdfExportUuid(flash.rebate_pdf_export_uuid);
+            setPdfStatus(null);
+        }
+    }, [flash?.rebate_pdf_export_uuid]);
+
+    useEffect(() => {
+        if (!pdfExportUuid) {
+            return undefined;
+        }
+
+        let intervalId;
+        const poll = async () => {
+            try {
+                const { data } = await axios.get(route('reports.rebate-tracker-pdf.status', pdfExportUuid));
+                setPdfStatus(data);
+                if (data.status === 'completed' || data.status === 'failed') {
+                    clearInterval(intervalId);
+                }
+            } catch {
+                clearInterval(intervalId);
+                setPdfStatus({ status: 'failed', error_message: 'Could not check report status. Please refresh the page.' });
+            }
+        };
+
+        poll();
+        intervalId = setInterval(poll, 2500);
+
+        return () => clearInterval(intervalId);
+    }, [pdfExportUuid]);
+
+    const requestPdfExport = useCallback(() => {
+        setPdfStatus(null);
+        router.post(
+            route('reports.rebate-tracker-pdf.request'),
+            {
+                start_date: filters.start_date,
+                end_date: filters.end_date,
+                company_id: filters.company_id ?? '',
+                branch_id: filters.branch_id ?? '',
+                site_id: filters.site_id ?? '',
+            },
+            { preserveScroll: true },
+        );
+    }, [filters.start_date, filters.end_date, filters.company_id, filters.branch_id, filters.site_id]);
+
+    const pdfIsProcessing =
+        pdfExportUuid &&
+        (!pdfStatus || pdfStatus.status === 'pending' || pdfStatus.status === 'processing');
 
     return (
         <DashboardLayout title="Waste Collection & Recycling Report">
@@ -110,6 +155,36 @@ export default function RebateTracker({ rebateData, companies, filters, totalReb
                     Track recycling rebates per company, branch, and site
                 </p>
             </div>
+
+            {(pdfExportUuid || flash?.rebate_pdf_export_uuid) ? (
+                <div className="mb-4 rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/25 p-4 space-y-3">
+                    {flash?.success && flash?.rebate_pdf_export_uuid && (
+                        <p className="text-sm text-green-900 dark:text-green-100">{flash.success}</p>
+                    )}
+                    {pdfIsProcessing && (
+                        <div className="flex items-center gap-2 text-sm text-green-800 dark:text-green-200">
+                            <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                            <span>Generating PDF in the background… This page will update when it is ready.</span>
+                        </div>
+                    )}
+                    {pdfStatus?.status === 'completed' && pdfStatus.download_url && (
+                        <div>
+                            <a
+                                href={pdfStatus.download_url}
+                                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                            >
+                                <Download className="h-4 w-4 mr-2" />
+                                Download PDF
+                            </a>
+                        </div>
+                    )}
+                    {pdfStatus?.status === 'failed' && (
+                        <p className="text-sm text-red-700 dark:text-red-300">
+                            {pdfStatus.error_message || 'Report generation failed. Please try again.'}
+                        </p>
+                    )}
+                </div>
+            ) : null}
 
             <div className="bg-white dark:bg-gray-800 shadow rounded-lg mb-6">
                 <div className="px-4 py-5 sm:p-6">
@@ -200,15 +275,19 @@ export default function RebateTracker({ rebateData, companies, filters, totalReb
                                     <Filter className="h-4 w-4 mr-2" />
                                     Filter
                                 </button>
-                                <a
-                                    href={buildPdfUrl()}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                                <button
+                                    type="button"
+                                    onClick={requestPdfExport}
+                                    className="inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-60"
+                                    disabled={pdfIsProcessing}
                                 >
-                                    <Download className="h-4 w-4 mr-2" />
-                                    PDF
-                                </a>
+                                    {pdfIsProcessing ? (
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    ) : (
+                                        <Download className="h-4 w-4 mr-2" />
+                                    )}
+                                    {pdfIsProcessing ? 'Preparing…' : 'PDF'}
+                                </button>
                             </div>
                         </div>
                     </form>
@@ -272,6 +351,9 @@ export default function RebateTracker({ rebateData, companies, filters, totalReb
                                             Site
                                         </th>
                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                            Tracking No
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                             Grade
                                         </th>
                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -302,6 +384,9 @@ export default function RebateTracker({ rebateData, companies, filters, totalReb
                                             </td>
                                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                                                 {item.site_name}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm font-semibold text-gray-900 dark:text-gray-100 max-w-[14rem] break-words">
+                                                {item.tracking_numbers ?? '—'}
                                             </td>
                                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                                                 {item.grade}

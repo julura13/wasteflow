@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -19,6 +20,8 @@ class Company extends Model
         'contact_person',
         'registration_number',
         'rebate_percentage',
+        'default_waste_service_provider_id',
+        'default_recycling_service_provider_id',
         'is_active',
     ];
 
@@ -28,6 +31,16 @@ class Company extends Model
             'is_active' => 'boolean',
             'rebate_percentage' => 'decimal:2',
         ];
+    }
+
+    public function defaultWasteServiceProvider(): BelongsTo
+    {
+        return $this->belongsTo(ServiceProvider::class, 'default_waste_service_provider_id');
+    }
+
+    public function defaultRecyclingServiceProvider(): BelongsTo
+    {
+        return $this->belongsTo(ServiceProvider::class, 'default_recycling_service_provider_id');
     }
 
     /**

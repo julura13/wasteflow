@@ -5,6 +5,38 @@ import { Link } from '@inertiajs/react';
 import { useState, useEffect, useMemo } from 'react';
 import SearchableDropdown from '@/Components/SearchableDropdown';
 
+function filterServiceProvidersByOrderType(providers, orderType) {
+    if (!providers?.length) {
+        return [];
+    }
+    return providers.filter((provider) => {
+        const providerTypes = provider.types || [];
+        if (orderType === 'waste') {
+            return providerTypes.some((type) => ['waste_collection', 'general'].includes(type));
+        }
+        if (orderType === 'recycling') {
+            return providerTypes.some((type) => ['recycling', 'general'].includes(type));
+        }
+        return true;
+    });
+}
+
+function resolveDefaultServiceProviderId(companies, companyId, orderType, providersForOrderType) {
+    const company = companies.find((c) => String(c.id) === String(companyId));
+    if (!company) {
+        return '';
+    }
+    const rawId =
+        orderType === 'recycling'
+            ? company.default_recycling_service_provider_id
+            : company.default_waste_service_provider_id;
+    if (rawId == null || rawId === '') {
+        return '';
+    }
+    const allowed = providersForOrderType.some((p) => String(p.id) === String(rawId));
+    return allowed ? String(rawId) : '';
+}
+
 export default function Create({
     companies = [],
     branches = [],
@@ -49,6 +81,29 @@ export default function Create({
         requested_collection_date: getNextWorkWeekday(),
         notes: '',
     });
+
+    const filteredServiceProviders = useMemo(
+        () => filterServiceProvidersByOrderType(serviceProviders, data.order_type),
+        [serviceProviders, data.order_type]
+    );
+
+    useEffect(() => {
+        if (!data.company_id) {
+            if (data.service_provider_id !== '') {
+                setData('service_provider_id', '');
+            }
+            return;
+        }
+        const nextId = resolveDefaultServiceProviderId(
+            companies,
+            data.company_id,
+            data.order_type,
+            filteredServiceProviders
+        );
+        if (String(data.service_provider_id) !== String(nextId)) {
+            setData('service_provider_id', nextId);
+        }
+    }, [data.company_id, data.order_type, companies, filteredServiceProviders]);
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -339,17 +394,8 @@ export default function Create({
                                         id="service_provider_id"
                                         name="service_provider_id"
                                         label="Service Provider"
-                                        placeholder="Select a service provider"
-                                        options={serviceProviders ? serviceProviders.filter(provider => {
-                                            const providerTypes = provider.types || [];
-                                            // Filter by order type
-                                            if (data.order_type === 'waste') {
-                                                return providerTypes.some(type => ['waste_collection', 'general'].includes(type));
-                                            } else if (data.order_type === 'recycling') {
-                                                return providerTypes.some(type => ['recycling', 'general'].includes(type));
-                                            }
-                                            return true;
-                                        }) : []}
+                                        placeholder="Select"
+                                        options={filteredServiceProviders}
                                         value={data.service_provider_id}
                                         onChange={(providerId) => setData('service_provider_id', providerId)}
                                         getOptionLabel={(provider) => {

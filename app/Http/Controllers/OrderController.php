@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\GenerateRebateTrackerPdfJob;
 use App\Models\ActivityLog;
 use App\Models\Branch;
 use App\Models\Company;
@@ -9,23 +10,26 @@ use App\Models\ContainerOption;
 use App\Models\Material;
 use App\Models\Order;
 use App\Models\OrderWasteStream;
+use App\Models\RebateReportExport;
 use App\Models\ServiceProvider;
 use App\Models\Site;
 use App\Repositories\OrderStatusHistoryRepository;
 use App\Services\ClientMonthlySummaryService;
+use App\Services\CompanyUserService;
+use App\Services\RebateTrackerReportService;
 use App\Traits\ScopeByClientTrait;
 use Carbon\Carbon;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class OrderController extends Controller
 {
     use ScopeByClientTrait;
-
-    protected $statusHistoryRepository;
 
     /** When user has company_id, restrict order access to that company. */
     protected function ensureOrderInScope(Order $order): void
@@ -36,10 +40,11 @@ class OrderController extends Controller
         }
     }
 
-    public function __construct(OrderStatusHistoryRepository $statusHistoryRepository)
-    {
-        $this->statusHistoryRepository = $statusHistoryRepository;
-    }
+    public function __construct(
+        protected OrderStatusHistoryRepository $statusHistoryRepository,
+        protected CompanyUserService $companyUserService,
+        protected RebateTrackerReportService $rebateTrackerReportService,
+    ) {}
 
     public function index(Request $request)
     {
@@ -1066,7 +1071,7 @@ class OrderController extends Controller
 
         [$companyId, $branchId, $siteId] = $this->enforceCompanyScope($companyId, $branchId, $siteId);
 
-        $rebateData = $this->getRebateTrackerData($startDate, $endDate, $companyId, $branchId, $siteId, $user, $companyIds);
+        $rebateData = $this->rebateTrackerReportService->getRebateTrackerData($startDate, $endDate, $companyId, $branchId, $siteId, $user, $companyIds);
 
         $companies = $this->scopeCompaniesForUser();
 
@@ -1085,133 +1090,96 @@ class OrderController extends Controller
         ]);
     }
 
-    public function rebateTrackerPdf(Request $request)
+    public function requestRebateTrackerPdf(Request $request)
     {
         $user = $request->user();
         $companyIds = $user->isAdmin() ? [] : $this->companyUserService->getCompanyIdsForUser($user);
 
-        $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->format('Y-m-d'));
-        $endDate = $request->input('end_date', Carbon::now()->endOfMonth()->format('Y-m-d'));
-        $companyId = $request->input('company_id') ? (int) $request->input('company_id') : null;
-        $branchId = $request->input('branch_id') ? (int) $request->input('branch_id') : null;
-        $siteId = $request->input('site_id') ? (int) $request->input('site_id') : null;
+        if (! $user->isAdmin() && empty($companyIds)) {
+            abort(403, 'No company assigned. Please contact administrator.');
+        }
+
+        $request->merge([
+            'company_id' => $request->input('company_id') === '' || $request->input('company_id') === null ? null : $request->input('company_id'),
+            'branch_id' => $request->input('branch_id') === '' || $request->input('branch_id') === null ? null : $request->input('branch_id'),
+            'site_id' => $request->input('site_id') === '' || $request->input('site_id') === null ? null : $request->input('site_id'),
+        ]);
+
+        $validated = $request->validate([
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
+            'company_id' => ['nullable', 'integer', 'exists:companies,id'],
+            'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
+            'site_id' => ['nullable', 'integer', 'exists:sites,id'],
+        ]);
+
+        $companyId = $validated['company_id'] ?? null;
+        $branchId = $validated['branch_id'] ?? null;
+        $siteId = $validated['site_id'] ?? null;
 
         [$companyId, $branchId, $siteId] = $this->enforceCompanyScope($companyId, $branchId, $siteId);
 
-        $rebateData = $this->getRebateTrackerData($startDate, $endDate, $companyId, $branchId, $siteId, $user, $companyIds);
+        $uuid = (string) Str::uuid();
+        $filename = 'Rebate_Tracker_'.$validated['start_date'].'_to_'.$validated['end_date'].'.pdf';
 
-        $options = new \Dompdf\Options;
-        $options->set('isHtml5ParserEnabled', true);
-        $options->set('isRemoteEnabled', false);
-        $options->set('defaultFont', 'DejaVu Sans');
-
-        $dompdf = new \Dompdf\Dompdf($options);
-        $html = view('reports.rebate-tracker-pdf', [
-            'rebateData' => $rebateData,
+        $export = RebateReportExport::query()->create([
+            'uuid' => $uuid,
+            'user_id' => $user->id,
+            'status' => RebateReportExport::STATUS_PENDING,
+            'disk' => 'local',
+            'filename' => $filename,
             'filters' => [
-                'start_date' => $startDate,
-                'end_date' => $endDate,
+                'start_date' => $validated['start_date'],
+                'end_date' => $validated['end_date'],
                 'company_id' => $companyId,
                 'branch_id' => $branchId,
                 'site_id' => $siteId,
             ],
-            'totalRebate' => $rebateData->sum('total'),
-            'totalWeight' => $rebateData->sum('weight'),
-        ])->render();
+            'expires_at' => now()->addDay(),
+        ]);
 
-        $dompdf->loadHtml($html);
-        $dompdf->setPaper('A4', 'landscape');
-        $dompdf->render();
+        GenerateRebateTrackerPdfJob::dispatch($export->id)->afterResponse();
 
-        $filename = 'Rebate_Tracker_'.$startDate.'_to_'.$endDate.'.pdf';
+        return back()->with('success', 'Your PDF report is being prepared. You can download it when it is ready using the button below.')
+            ->with('rebate_pdf_export_uuid', $uuid);
+    }
 
-        return response()->streamDownload(function () use ($dompdf) {
-            echo $dompdf->output();
-        }, $filename, [
-            'Content-Type' => 'application/pdf',
+    public function rebateTrackerPdfStatus(Request $request, string $uuid)
+    {
+        $export = RebateReportExport::query()
+            ->where('uuid', $uuid)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
+        return response()->json([
+            'status' => $export->status,
+            'download_url' => $export->status === RebateReportExport::STATUS_COMPLETED
+                ? route('reports.rebate-tracker-pdf.download', ['uuid' => $uuid])
+                : null,
+            'error_message' => $export->error_message,
         ]);
     }
 
-    private function getRebateTrackerData(string $startDate, string $endDate, ?string $companyId, ?string $branchId, ?string $siteId, $user, array $companyIds)
+    public function downloadRebateTrackerPdf(Request $request, string $uuid)
     {
-        $query = OrderWasteStream::with([
-            'order.site.branch.company',
-            'order.supportingDocuments',
-            'material.grade',
-            'material.wasteStream',
-        ])
-            ->whereHas('order', function ($q) use ($startDate, $endDate, $companyId, $branchId, $siteId, $user, $companyIds) {
-                $q->where('status', 'finalized')
-                    ->where(function ($query) use ($startDate, $endDate) {
-                        $query->whereBetween('actual_collection_date', [$startDate, $endDate])
-                            ->orWhere(function ($q) use ($startDate, $endDate) {
-                                $q->whereNull('actual_collection_date')
-                                    ->whereBetween('requested_collection_date', [$startDate, $endDate]);
-                            });
-                    });
-                if ($companyId) {
-                    $q->where('company_id', $companyId);
-                }
-                if ($branchId) {
-                    $q->where('branch_id', $branchId);
-                }
-                if ($siteId) {
-                    $q->where('site_id', $siteId);
-                }
-                if (! $user->isAdmin()) {
-                    $q->whereHas('site.branch.company', function ($q) use ($companyIds) {
-                        $q->whereIn('companies.id', $companyIds);
-                    });
-                }
-            })
-            ->where(function ($q) {
-                $q->whereNotNull('rebate_rate')->where('rebate_rate', '>', 0)
-                    ->orWhereHas('material', function ($mq) {
-                        $mq->where('rebate_offered', true);
-                    });
-            });
+        $export = RebateReportExport::query()
+            ->where('uuid', $uuid)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
 
-        return $query->get()->map(function ($stream) {
-            $collectionDate = $stream->order->actual_collection_date ?? $stream->order->requested_collection_date;
-            $site = $stream->order->site;
-            $branch = $site?->branch;
-            $company = $branch?->company;
+        if ($export->status !== RebateReportExport::STATUS_COMPLETED) {
+            abort(404, 'This report is not ready yet.');
+        }
 
-            return [
-                'id' => $stream->id,
-                'order_id' => $stream->order_id,
-                'tracking_number' => $stream->order->tracking_number ?? '—',
-                'date' => $collectionDate,
-                'company_name' => $company?->name ?? '—',
-                'branch_name' => $branch?->name ?? '—',
-                'site_name' => $site?->name ?? '—',
-                'grade' => $stream->material->grade->name ?? '—',
-                'weight' => $stream->nett_weight,
-                'rate' => $stream->rebate_rate ?? $stream->material?->rebate_rate ?? 0,
-                'total' => $stream->client_rebate_amount,
-                'material_id' => $stream->material_id,
-                'supporting_documents' => $stream->order->supportingDocuments->map(function ($doc) {
-                    return [
-                        'id' => $doc->id,
-                        'original_name' => $doc->original_name,
-                        'file_name' => $doc->file_name,
-                    ];
-                })->values()->toArray(),
-            ];
-        })->groupBy(function ($item) {
-            return Carbon::parse($item['date'])->format('Y-m-d').'|'.($item['company_name'] ?? '').'|'.($item['branch_name'] ?? '').'|'.($item['site_name'] ?? '').'|'.$item['grade'];
-        })->map(function ($group) {
-            return [
-                'date' => $group->first()['date'],
-                'company_name' => $group->first()['company_name'],
-                'branch_name' => $group->first()['branch_name'],
-                'site_name' => $group->first()['site_name'],
-                'grade' => $group->first()['grade'],
-                'weight' => $group->sum('weight'),
-                'rate' => $group->first()['rate'],
-                'total' => $group->sum('total'),
-            ];
-        })->values()->sortBy(['company_name', 'branch_name', 'site_name', 'date']);
+        if ($export->expires_at->isPast()) {
+            abort(410, 'This download link has expired.');
+        }
+
+        if ($export->path === null || ! Storage::disk($export->disk)->exists($export->path)) {
+            abort(404, 'The report file is no longer available.');
+        }
+
+        return Storage::disk($export->disk)->download($export->path, $export->filename);
     }
 
     public function getAverageWeightForWheelieBins(Request $request)

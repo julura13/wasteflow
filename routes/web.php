@@ -100,7 +100,9 @@ Route::middleware(['auth', 'verified', 'permission:view-reports'])->prefix('repo
         return Inertia::render('Reports/Index');
     })->name('index');
     Route::get('/rebate-tracker', [App\Http\Controllers\OrderController::class, 'rebateTracker'])->name('rebate-tracker');
-    Route::get('/rebate-tracker/pdf', [App\Http\Controllers\OrderController::class, 'rebateTrackerPdf'])->name('rebate-tracker-pdf');
+    Route::post('/rebate-tracker/pdf', [App\Http\Controllers\OrderController::class, 'requestRebateTrackerPdf'])->name('rebate-tracker-pdf.request');
+    Route::get('/rebate-tracker/pdf/{uuid}/status', [App\Http\Controllers\OrderController::class, 'rebateTrackerPdfStatus'])->name('rebate-tracker-pdf.status');
+    Route::get('/rebate-tracker/pdf/{uuid}/download', [App\Http\Controllers\OrderController::class, 'downloadRebateTrackerPdf'])->name('rebate-tracker-pdf.download');
     Route::get('/average-weight-wheelie-bins', [App\Http\Controllers\OrderController::class, 'getAverageWeightForWheelieBins'])->name('average-weight-wheelie-bins');
     Route::get('/waste-management', [App\Http\Controllers\ReportController::class, 'wasteManagement'])->name('waste-management');
     Route::get('/waste-management/pdf', [App\Http\Controllers\ReportController::class, 'wasteManagementPdf'])->name('waste-management-pdf');

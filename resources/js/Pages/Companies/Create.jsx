@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { ArrowLeft, Save } from 'lucide-react';
 import { Link } from '@inertiajs/react';
 
-export default function Create() {
+export default function Create({ serviceProviders = [] }) {
     const { data, setData, post, processing, errors } = useForm({
         name: '',
         email: '',
@@ -13,6 +13,8 @@ export default function Create() {
         contact_person: '',
         registration_number: '',
         rebate_percentage: '',
+        default_waste_service_provider_id: '',
+        default_recycling_service_provider_id: '',
         is_active: true,
     });
 
@@ -128,6 +130,50 @@ export default function Create() {
                                 </p>
                                 {errors.rebate_percentage && (
                                     <p className="mt-1 text-sm text-red-600">{errors.rebate_percentage}</p>
+                                )}
+                            </div>
+
+                            <div>
+                                <label htmlFor="default_waste_service_provider_id" className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                                    Default service provider (waste orders)
+                                </label>
+                                <select
+                                    id="default_waste_service_provider_id"
+                                    value={data.default_waste_service_provider_id}
+                                    onChange={(e) => setData('default_waste_service_provider_id', e.target.value)}
+                                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                >
+                                    <option value="">None</option>
+                                    {serviceProviders.map((sp) => (
+                                        <option key={sp.id} value={sp.id}>
+                                            {sp.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                {errors.default_waste_service_provider_id && (
+                                    <p className="mt-1 text-sm text-red-600">{errors.default_waste_service_provider_id}</p>
+                                )}
+                            </div>
+
+                            <div>
+                                <label htmlFor="default_recycling_service_provider_id" className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                                    Default service provider (recycling orders)
+                                </label>
+                                <select
+                                    id="default_recycling_service_provider_id"
+                                    value={data.default_recycling_service_provider_id}
+                                    onChange={(e) => setData('default_recycling_service_provider_id', e.target.value)}
+                                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                >
+                                    <option value="">None</option>
+                                    {serviceProviders.map((sp) => (
+                                        <option key={sp.id} value={sp.id}>
+                                            {sp.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                {errors.default_recycling_service_provider_id && (
+                                    <p className="mt-1 text-sm text-red-600">{errors.default_recycling_service_provider_id}</p>
                                 )}
                             </div>
 

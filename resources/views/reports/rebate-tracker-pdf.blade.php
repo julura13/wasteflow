@@ -55,6 +55,13 @@
         table tbody td {
             padding: 4px;
             border: 1px solid #ddd;
+            font-weight: 600;
+            color: #222;
+        }
+        table tbody td.tracking-cell {
+            max-width: 120px;
+            word-wrap: break-word;
+            word-break: break-word;
         }
         table tbody tr:nth-child(even) {
             background-color: #f9fafb;
@@ -114,6 +121,7 @@
                 <th>Company</th>
                 <th>Branch</th>
                 <th>Site</th>
+                <th>Tracking No</th>
                 <th>Grade</th>
                 <th class="text-right">Weight (kg)</th>
                 <th class="text-right">Rate (R/kg)</th>
@@ -127,6 +135,7 @@
                 <td>{{ $item['company_name'] }}</td>
                 <td>{{ $item['branch_name'] }}</td>
                 <td>{{ $item['site_name'] }}</td>
+                <td class="tracking-cell">{{ $item['tracking_numbers'] ?? '—' }}</td>
                 <td>{{ $item['grade'] }}</td>
                 <td class="text-right">{{ number_format($item['weight'], 2) }}</td>
                 <td class="text-right">{{ number_format($item['rate'], 2) }}</td>
@@ -134,7 +143,7 @@
             </tr>
             @empty
             <tr>
-                <td colspan="8" style="text-align: center; padding: 20px;">No rebate data found for the selected filters.</td>
+                <td colspan="9" style="text-align: center; padding: 20px;">No rebate data found for the selected filters.</td>
             </tr>
             @endforelse
         </tbody>

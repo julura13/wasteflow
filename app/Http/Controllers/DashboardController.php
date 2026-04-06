@@ -256,12 +256,12 @@ class DashboardController extends Controller
     }
 
     /**
-     * Get orders from yesterday through seven days ahead (for selected company/branch/site).
+     * Get orders from seven days before today through tomorrow (for selected company/branch/site).
      */
     private function getOrdersForNearDates(?int $companyId, ?int $branchId, ?int $siteId): array
     {
-        $start = Carbon::today()->subDay()->format('Y-m-d');
-        $end = Carbon::today()->addDays(7)->format('Y-m-d');
+        $start = Carbon::today()->subDays(7)->format('Y-m-d');
+        $end = Carbon::today()->addDay()->format('Y-m-d');
 
         $query = Order::query()
             ->with(['site:id,name,branch_id', 'site.branch:id,name,company_id', 'site.branch.company:id,name', 'serviceProvider:id,name'])

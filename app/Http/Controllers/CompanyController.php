@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
 use App\Models\Company;
+use App\Models\ServiceProvider;
 use App\Services\CompanyUserService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -42,7 +43,9 @@ class CompanyController extends Controller
      */
     public function create()
     {
-        return Inertia::render('Companies/Create');
+        return Inertia::render('Companies/Create', [
+            'serviceProviders' => ServiceProvider::active()->orderBy('name')->get(['id', 'name']),
+        ]);
     }
 
     /**
@@ -58,6 +61,8 @@ class CompanyController extends Controller
             'contact_person' => 'nullable|string|max:255',
             'registration_number' => 'nullable|string|max:255',
             'rebate_percentage' => 'nullable|numeric|min:0|max:100',
+            'default_waste_service_provider_id' => 'nullable|exists:service_providers,id',
+            'default_recycling_service_provider_id' => 'nullable|exists:service_providers,id',
             'is_active' => 'boolean',
         ]);
 
@@ -103,6 +108,7 @@ class CompanyController extends Controller
     {
         return Inertia::render('Companies/Edit', [
             'company' => $company,
+            'serviceProviders' => ServiceProvider::active()->orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -119,6 +125,8 @@ class CompanyController extends Controller
             'contact_person' => 'nullable|string|max:255',
             'registration_number' => 'nullable|string|max:255',
             'rebate_percentage' => 'nullable|numeric|min:0|max:100',
+            'default_waste_service_provider_id' => 'nullable|exists:service_providers,id',
+            'default_recycling_service_provider_id' => 'nullable|exists:service_providers,id',
             'is_active' => 'boolean',
         ]);
 

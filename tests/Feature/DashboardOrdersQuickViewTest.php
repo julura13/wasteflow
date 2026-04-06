@@ -20,7 +20,7 @@ afterEach(function () {
     Carbon::setTestNow();
 });
 
-it('includes orders from yesterday through seven days ahead in dashboard quick view and exposes quantity lines', function () {
+it('includes orders from seven days back through tomorrow in dashboard quick view and exposes quantity lines', function () {
     Carbon::setTestNow(Carbon::parse('2026-04-10 12:00:00'));
 
     $user = User::factory()->create();
@@ -31,9 +31,10 @@ it('includes orders from yesterday through seven days ahead in dashboard quick v
     $site = Site::create(['branch_id' => $branch->id, 'name' => 'Site', 'is_active' => true]);
     $serviceProvider = \App\Models\ServiceProvider::create(['name' => 'Provider QV', 'is_active' => true]);
 
-    $yesterday = Carbon::today()->subDay();
-    $plusSeven = Carbon::today()->addDays(7);
-    $plusEight = Carbon::today()->addDays(8);
+    $sevenDaysBack = Carbon::today()->subDays(7);
+    $tomorrow = Carbon::today()->addDay();
+    $dayBeforeWindow = Carbon::today()->subDays(8);
+    $dayAfterWindow = Carbon::today()->addDays(2);
 
     $lines = [
         ['quantity' => 1, 'quantity_type' => 'cage_8m3', 'container_option_name' => '8m³ Cage'],
@@ -47,7 +48,7 @@ it('includes orders from yesterday through seven days ahead in dashboard quick v
         'created_by' => $user->id,
         'order_type' => 'waste',
         'status' => 'scheduled',
-        'requested_collection_date' => $yesterday,
+        'requested_collection_date' => $sevenDaysBack,
         'quantity_lines' => $lines,
     ]);
 
@@ -59,7 +60,7 @@ it('includes orders from yesterday through seven days ahead in dashboard quick v
         'created_by' => $user->id,
         'order_type' => 'waste',
         'status' => 'scheduled',
-        'requested_collection_date' => $plusSeven,
+        'requested_collection_date' => $tomorrow,
         'quantity_lines' => [],
         'quantity' => 2,
         'quantity_type' => 'loose_bags',
@@ -73,7 +74,18 @@ it('includes orders from yesterday through seven days ahead in dashboard quick v
         'created_by' => $user->id,
         'order_type' => 'waste',
         'status' => 'scheduled',
-        'requested_collection_date' => $plusEight,
+        'requested_collection_date' => $dayBeforeWindow,
+    ]);
+
+    Order::create([
+        'company_id' => $company->id,
+        'branch_id' => $branch->id,
+        'site_id' => $site->id,
+        'service_provider_id' => $serviceProvider->id,
+        'created_by' => $user->id,
+        'order_type' => 'waste',
+        'status' => 'scheduled',
+        'requested_collection_date' => $dayAfterWindow,
     ]);
 
     $response = $this->actingAs($user)->get(route('dashboard', [
