@@ -119,6 +119,37 @@ class ReportController extends Controller
     }
 
     /**
+     * PDF export for customer order frequency report (same scope and lookback as the on-screen report).
+     */
+    public function customerOrderFrequenciesExportPdf(Request $request)
+    {
+        [$lookbackMonths, $rows] = $this->customerOrderFrequencyReportPayload($request);
+
+        $options = new Options;
+        $options->set('isHtml5ParserEnabled', true);
+        $options->set('isRemoteEnabled', true);
+        $options->set('defaultFont', 'DejaVu Sans');
+
+        $dompdf = new Dompdf($options);
+        $html = view('reports.customer-order-frequencies-pdf', [
+            'rows' => $rows,
+            'lookbackMonths' => $lookbackMonths,
+        ])->render();
+
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'landscape');
+        $dompdf->render();
+
+        $filename = 'customer_order_frequencies_'.now()->format('Y-m-d_His').'.pdf';
+
+        return response()->streamDownload(function () use ($dompdf) {
+            echo $dompdf->output();
+        }, $filename, [
+            'Content-Type' => 'application/pdf',
+        ]);
+    }
+
+    /**
      * @return array{0: int, 1: list<array<string, mixed>>}
      */
     private function customerOrderFrequencyReportPayload(Request $request): array

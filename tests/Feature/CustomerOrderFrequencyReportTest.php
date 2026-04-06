@@ -203,6 +203,38 @@ it('exports customer order frequencies as csv', function () {
     Carbon::setTestNow();
 });
 
+it('exports customer order frequencies as pdf', function () {
+    Carbon::setTestNow(Carbon::parse('2026-04-06 12:00:00'));
+
+    $admin = User::factory()->create();
+    $admin->assignRole('manager');
+
+    $company = Company::create(['name' => 'Pdf Co', 'is_active' => true]);
+    $branch = Branch::create(['company_id' => $company->id, 'name' => 'B1', 'is_active' => true]);
+    $site = Site::create(['branch_id' => $branch->id, 'name' => 'S1', 'is_active' => true]);
+    $provider = ServiceProvider::create(['name' => 'Prov', 'is_active' => true]);
+
+    Order::create([
+        'tracking_number' => 'WO-PDF-30001',
+        'company_id' => $company->id,
+        'branch_id' => $branch->id,
+        'site_id' => $site->id,
+        'service_provider_id' => $provider->id,
+        'created_by' => $admin->id,
+        'order_type' => 'waste',
+        'status' => 'finalized',
+        'requested_collection_date' => Carbon::parse('2026-04-01'),
+        'actual_collection_date' => Carbon::parse('2026-04-02'),
+    ]);
+
+    $response = $this->actingAs($admin)->get(route('reports.customer-order-frequencies.export-pdf', ['lookback_months' => 3]));
+
+    $response->assertOk();
+    $response->assertHeader('content-type', 'application/pdf');
+
+    Carbon::setTestNow();
+});
+
 it('rejects invalid lookback months', function () {
     $admin = User::factory()->create();
     $admin->assignRole('manager');
@@ -222,5 +254,8 @@ it('forbids users without view-reports', function () {
         ->assertForbidden();
 
     $this->actingAs($user)->get(route('reports.customer-order-frequencies.export'))
+        ->assertForbidden();
+
+    $this->actingAs($user)->get(route('reports.customer-order-frequencies.export-pdf'))
         ->assertForbidden();
 });

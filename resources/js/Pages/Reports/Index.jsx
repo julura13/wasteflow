@@ -19,7 +19,7 @@ export default function Index() {
         {
             title: 'Customer order frequencies',
             description:
-                'Per customer: waste vs recycling columns for last finalized, days since, volume in period, and average per month. Export to CSV.',
+                'Per customer: waste vs recycling columns for last finalized, days since, volume in period, and average per month. Export to CSV or PDF.',
             href: '/reports/customer-order-frequencies',
             icon: Users,
             color: 'bg-indigo-600',
