@@ -82,6 +82,42 @@ function getOrdersQuickViewDayOptionsAndValues() {
     return { options: opts, valueSet: values };
 }
 
+/** Isometric cube suggesting airspace volume (m³); used on the dashboard landfill-saved panel. */
+function LandfillAirspaceIcon({ className }) {
+    return (
+        <svg
+            className={className}
+            viewBox="0 0 88 96"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden
+        >
+            <path
+                d="M44 6 78 26v38L44 84 10 64V26L44 6Z"
+                fill="currentColor"
+                fillOpacity={0.15}
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinejoin="round"
+            />
+            <path
+                d="M10 26 44 46l34-20"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+            <path
+                d="M44 46v38"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+        </svg>
+    );
+}
+
 export default function Dashboard({ companies = [], dashboardData = null, gradeSummaryByYear = [], ordersNearDates = [], filters = {} }) {
     const [branches, setBranches] = useState([]);
     const [sites, setSites] = useState([]);
@@ -286,6 +322,10 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
         diverted: { total: 0, percentage: 0 },
         ...(dashboardData?.classificationTotals || {}),
     };
+    const landfillSpaceSaved = {
+        total_m3: 0,
+        ...(dashboardData?.landfillSpaceSaved || {}),
+    };
     const environmentalImpact = dashboardData?.environmentalImpact || {
         treesSaved: 0,
         energySaved: 0,
@@ -321,6 +361,29 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
     };
 
     const classificationDonutHeight = 158;
+
+    const renderLandfillSavedPanel = () => (
+        <div className="text-center">
+            <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300">LANDFILL SAVED</h3>
+            <div
+                className="relative isolate mx-auto mt-0.5 flex w-full max-w-[200px] flex-col items-center justify-center rounded-xl border-0 bg-white px-2 dark:bg-transparent"
+                style={{ height: classificationDonutHeight }}
+                role="img"
+                aria-label={`Landfill space avoided ${formatNumber(landfillSpaceSaved.total_m3)} cubic metres`}
+            >
+                <LandfillAirspaceIcon className="h-[5.5rem] w-[5.0625rem] shrink-0 text-teal-600 dark:text-teal-400" />
+                <p className="mt-1.5 text-xs font-medium text-teal-800 dark:text-teal-300">
+                    Landfill space avoided
+                </p>
+            </div>
+            <div className="mt-0 text-center p-1.5 bg-gray-50 dark:bg-gray-700/50 rounded">
+                <p className="text-xs text-gray-600 dark:text-gray-400">Total Landfill Space Saved</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 tabular-nums">
+                    {formatNumber(landfillSpaceSaved.total_m3)} m³
+                </p>
+            </div>
+        </div>
+    );
 
     const renderClassificationDonut = (title, percentage, fill) => {
         const renderTotalRowBelowChart = () => {
@@ -781,19 +844,20 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
                         </div>
                     )}
 
-                    {/* Classification donut charts: row 1 avoidance / recycling / recovery; row 2 disposal / diverted */}
+                    {/* Classification donut charts: row 1 avoidance / recycling / recovery; row 2 disposal / diverted / landfill saved */}
                     <div className="lg:col-span-6 flex flex-col gap-4">
                         <div className="grid grid-cols-1 sm:grid-cols-3">
                             {renderClassificationDonut('AVOIDANCE', classificationData.avoidance.percentage, classificationColors.avoidance)}
                             {renderClassificationDonut('RECYCLING', classificationData.recycling.percentage, classificationColors.recycling)}
                             {renderClassificationDonut('RECOVERY', classificationData.recovery.percentage, classificationColors.recovery)}
                         </div>
-                        <div className="grid grid-cols-3 gap-4 sm:gap-3 mx-auto w-full">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-3 mx-auto w-full">
                             {renderClassificationDonut('DISPOSAL', classificationData.disposal.percentage, classificationColors.disposal)}
                             {renderClassificationDonut('DIVERTED', classificationData.diverted.percentage, classificationColors.diverted)}
+                            {renderLandfillSavedPanel()}
                         </div>
-                        <p className="text-center text-[10px] text-gray-500 dark:text-gray-400 -mt-1 max-w-xl mx-auto px-2 leading-snug">
-                            Diverted = avoidance + recycling + recovery (everything not disposal).
+                        <p className="text-center text-[10px] text-gray-500 dark:text-gray-400 -mt-1 max-w-2xl mx-auto px-2 leading-snug">
+                            Diverted = avoidance + recycling + recovery (everything not disposal). Landfill saved = airspace avoided (m³) using the same densities as the landfill space calculator.
                         </p>
                     </div>
                 </div>

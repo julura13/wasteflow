@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\Order;
 use App\Models\Site;
 use App\Models\WasteStream;
+use App\Services\LandfillSpaceCalculator;
 use App\Services\OrderWasteStreamReportingService;
 use App\Services\WasteImpactCalculator;
 use App\Traits\ScopeByClientTrait;
@@ -21,6 +22,7 @@ class DashboardController extends Controller
     public function __construct(
         private WasteImpactCalculator $wasteImpactCalculator,
         private OrderWasteStreamReportingService $orderWasteStreamReporting,
+        private LandfillSpaceCalculator $landfillSpaceCalculator,
     ) {}
 
     /**
@@ -248,10 +250,30 @@ class DashboardController extends Controller
         $categoryWeights = $this->wasteImpactCalculator->buildCategoryWeightsFromSummaries($materialSummaries);
         $environmentalImpact = $this->wasteImpactCalculator->calculateImpactFromCategoryWeights($categoryWeights);
 
+        $landfillSpaceSaved = $this->getLandfillSpaceSavedForDashboard($categoryWeights);
+
         return [
             'wasteStreamTotals' => $wasteStreamTotals,
             'classificationTotals' => $classificationTotals,
             'environmentalImpact' => $environmentalImpact,
+            'landfillSpaceSaved' => $landfillSpaceSaved,
+        ];
+    }
+
+    /**
+     * Landfill airspace avoided (m³) uses {@see LandfillSpaceCalculator} with the same category mapping as
+     * environmental impact (aligned with the landfill space calculator densities).
+     *
+     * @param  array<string, float>  $categoryWeights  From {@see WasteImpactCalculator::buildCategoryWeightsFromSummaries()}
+     * @return array{total_m3: float}
+     */
+    private function getLandfillSpaceSavedForDashboard(array $categoryWeights): array
+    {
+        $breakdown = $this->landfillSpaceCalculator->calculate($categoryWeights);
+        $totalM3 = (float) ($breakdown['total'] ?? 0);
+
+        return [
+            'total_m3' => round($totalM3, 2),
         ];
     }
 

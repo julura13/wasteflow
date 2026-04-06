@@ -105,5 +105,6 @@ it('exposes diverted classification totals as non-disposal weight on the dashboa
         ->where('dashboardData.classificationTotals.diverted.percentage', 80)
         ->where('dashboardData.classificationTotals.recycling.total', 100)
         ->where('dashboardData.classificationTotals.disposal.total', 25)
+        ->where('dashboardData.landfillSpaceSaved.total_m3', 1.25)
     );
 });
