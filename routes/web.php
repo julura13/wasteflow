@@ -104,6 +104,8 @@ Route::middleware(['auth', 'verified', 'permission:view-reports'])->prefix('repo
     Route::get('/rebate-tracker/pdf/{uuid}/status', [App\Http\Controllers\OrderController::class, 'rebateTrackerPdfStatus'])->name('rebate-tracker-pdf.status');
     Route::get('/rebate-tracker/pdf/{uuid}/download', [App\Http\Controllers\OrderController::class, 'downloadRebateTrackerPdf'])->name('rebate-tracker-pdf.download');
     Route::get('/average-weight-wheelie-bins', [App\Http\Controllers\OrderController::class, 'getAverageWeightForWheelieBins'])->name('average-weight-wheelie-bins');
+    Route::get('/customer-order-frequencies/export', [App\Http\Controllers\ReportController::class, 'customerOrderFrequenciesExport'])->name('customer-order-frequencies.export');
+    Route::get('/customer-order-frequencies', [App\Http\Controllers\ReportController::class, 'customerOrderFrequencies'])->name('customer-order-frequencies');
     Route::get('/waste-management', [App\Http\Controllers\ReportController::class, 'wasteManagement'])->name('waste-management');
     Route::get('/waste-management/pdf', [App\Http\Controllers\ReportController::class, 'wasteManagementPdf'])->name('waste-management-pdf');
     Route::get('/waste-management/summary', [App\Http\Controllers\ReportController::class, 'wasteManagementSummary'])->name('waste-management-summary');

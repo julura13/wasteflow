@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\Site;
 use App\Services\CarbonCalculator;
 use App\Services\ChartImageService;
+use App\Services\CustomerOrderFrequencyReportService;
 use App\Services\LandfillSpaceCalculator;
 use App\Services\LifecycleCarbonEquivalency;
 use App\Services\OrderWasteStreamReportingService;
@@ -38,6 +39,8 @@ class ReportController extends Controller
 
     protected OrderWasteStreamReportingService $orderWasteStreamReporting;
 
+    protected CustomerOrderFrequencyReportService $customerOrderFrequencyReport;
+
     public function __construct(
         ChartImageService $chartService,
         WasteImpactCalculator $wasteImpactCalculator,
@@ -46,6 +49,7 @@ class ReportController extends Controller
         WaterCalculator $waterCalculator,
         LifecycleCarbonEquivalency $lifecycleCarbonEquivalency,
         OrderWasteStreamReportingService $orderWasteStreamReporting,
+        CustomerOrderFrequencyReportService $customerOrderFrequencyReport,
     ) {
         $this->chartService = $chartService;
         $this->wasteImpactCalculator = $wasteImpactCalculator;
@@ -54,6 +58,80 @@ class ReportController extends Controller
         $this->waterCalculator = $waterCalculator;
         $this->lifecycleCarbonEquivalency = $lifecycleCarbonEquivalency;
         $this->orderWasteStreamReporting = $orderWasteStreamReporting;
+        $this->customerOrderFrequencyReport = $customerOrderFrequencyReport;
+    }
+
+    /**
+     * Customer order frequency: last finalized order and average finalized orders per month (waste vs recycling).
+     */
+    public function customerOrderFrequencies(Request $request)
+    {
+        [$lookbackMonths, $rows] = $this->customerOrderFrequencyReportPayload($request);
+
+        return Inertia::render('Reports/CustomerOrderFrequencies', [
+            'rows' => $rows,
+            'lookback_months' => $lookbackMonths,
+        ]);
+    }
+
+    /**
+     * CSV export for customer order frequency report (same scope and lookback as the on-screen report).
+     */
+    public function customerOrderFrequenciesExport(Request $request)
+    {
+        [$lookbackMonths, $rows] = $this->customerOrderFrequencyReportPayload($request);
+
+        $filename = 'customer_order_frequencies_'.now()->format('Y-m-d_His').'.csv';
+
+        return response()->streamDownload(function () use ($rows, $lookbackMonths) {
+            $out = fopen('php://output', 'w');
+            fputcsv($out, [
+                'Customer',
+                'Lookback months',
+                'Waste last finalized',
+                'Waste days since last',
+                'Waste finalized in period',
+                'Waste avg per month',
+                'Recycling last finalized',
+                'Recycling days since last',
+                'Recycling finalized in period',
+                'Recycling avg per month',
+            ]);
+            foreach ($rows as $row) {
+                fputcsv($out, [
+                    $row['company_name'],
+                    $lookbackMonths,
+                    $row['waste']['last_finalized_date'] ?? '',
+                    $row['waste']['days_since_last_finalized'] ?? '',
+                    $row['waste']['finalized_orders_in_period'],
+                    $row['waste']['average_orders_per_month'],
+                    $row['recycling']['last_finalized_date'] ?? '',
+                    $row['recycling']['days_since_last_finalized'] ?? '',
+                    $row['recycling']['finalized_orders_in_period'],
+                    $row['recycling']['average_orders_per_month'],
+                ]);
+            }
+            fclose($out);
+        }, $filename, [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+        ]);
+    }
+
+    /**
+     * @return array{0: int, 1: list<array<string, mixed>>}
+     */
+    private function customerOrderFrequencyReportPayload(Request $request): array
+    {
+        $validated = $request->validate([
+            'lookback_months' => ['sometimes', 'integer', 'min:1', 'max:60'],
+        ]);
+        $lookbackMonths = (int) ($validated['lookback_months'] ?? 12);
+
+        $companies = $this->scopeCompaniesForUser();
+        $rows = $this->customerOrderFrequencyReport->buildForCompanies($companies, $lookbackMonths, now());
+
+        return [$lookbackMonths, $rows];
     }
 
     /**

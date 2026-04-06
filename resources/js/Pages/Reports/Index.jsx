@@ -1,6 +1,6 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
-import { TrendingUp, Leaf, Calculator, Box, Droplets } from 'lucide-react';
+import { TrendingUp, Leaf, Calculator, Box, Droplets, Users } from 'lucide-react';
 
 export default function Index() {
     const { auth } = usePage().props;
@@ -15,6 +15,15 @@ export default function Index() {
             icon: Leaf,
             color: 'bg-emerald-600',
             details: 'Shows: Trees saved, energy saved, water saved, recycling breakdown, and landfill diversion rate',
+        },
+        {
+            title: 'Customer order frequencies',
+            description:
+                'Per customer: waste vs recycling columns for last finalized, days since, volume in period, and average per month. Export to CSV.',
+            href: '/reports/customer-order-frequencies',
+            icon: Users,
+            color: 'bg-indigo-600',
+            details: 'Finalized orders only; actual collection date (or update date) drives dates; same filters as on-screen report',
         },
         {
             title: 'Carbon Calculator',
