@@ -1,6 +1,7 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import Modal from '@/Components/Modal';
+import { formatDateYyyyMmDd } from '@/utils/formatDateYyyyMmDd';
 import SearchableDropdown from '@/Components/SearchableDropdown';
 import { ArrowLeft, CheckCircle, Upload, Trash2, Download, File, AlertCircle, Plus, Save, AlertTriangle } from 'lucide-react';
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -444,7 +445,7 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
                             <div>
                                 <span className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Requested Collection Date</span>
                                 <p className="text-sm text-gray-900 dark:text-gray-100 font-medium">
-                                    {order.requested_collection_date ? new Date(order.requested_collection_date).toLocaleDateString() : '—'}
+                                    {order.requested_collection_date ? formatDateYyyyMmDd(order.requested_collection_date) : '—'}
                                 </p>
                             </div>
                             <div>

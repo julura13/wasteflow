@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\OrderIndexExport;
 use App\Models\User;
 use App\Services\OrdersIndexQueryService;
+use App\Support\DisplayDate;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -92,8 +93,8 @@ class GenerateOrderIndexExportJob implements ShouldQueue
                         $order->serviceProvider?->name ?? (is_string($order->service_provider) ? $order->service_provider : ''),
                         $order->order_type === 'waste' ? 'Waste Order' : 'Recycling Order',
                         $order->status,
-                        $order->requested_collection_date?->format('Y-m-d') ?? '',
-                        $order->actual_collection_date?->format('Y-m-d') ?? '',
+                        $order->requested_collection_date?->format(DisplayDate::CALENDAR) ?? '',
+                        $order->actual_collection_date?->format(DisplayDate::CALENDAR) ?? '',
                         $order->slip_number ?? '',
                     ]);
                 }

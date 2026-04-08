@@ -112,7 +112,9 @@ Route::middleware(['auth', 'verified', 'permission:view-reports'])->prefix('repo
     Route::get('/customer-order-frequencies/export', [App\Http\Controllers\ReportController::class, 'customerOrderFrequenciesExport'])->name('customer-order-frequencies.export');
     Route::get('/customer-order-frequencies', [App\Http\Controllers\ReportController::class, 'customerOrderFrequencies'])->name('customer-order-frequencies');
     Route::get('/waste-management', [App\Http\Controllers\ReportController::class, 'wasteManagement'])->name('waste-management');
-    Route::get('/waste-management/pdf', [App\Http\Controllers\ReportController::class, 'wasteManagementPdf'])->name('waste-management-pdf');
+    Route::post('/waste-management/pdf/request', [App\Http\Controllers\ReportController::class, 'requestWasteManagementPdf'])->name('waste-management-pdf.request');
+    Route::get('/waste-management/pdf/{uuid}/status', [App\Http\Controllers\ReportController::class, 'wasteManagementPdfStatus'])->name('waste-management-pdf.status');
+    Route::get('/waste-management/pdf/{uuid}/download', [App\Http\Controllers\ReportController::class, 'downloadWasteManagementPdf'])->name('waste-management-pdf.download');
     Route::get('/waste-management/summary', [App\Http\Controllers\ReportController::class, 'wasteManagementSummary'])->name('waste-management-summary');
     Route::get('/carbon-calculator', [App\Http\Controllers\ReportController::class, 'carbonCalculator'])
         ->middleware(['permission:view-carbon-calculator'])

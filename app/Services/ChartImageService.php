@@ -3,20 +3,22 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class ChartImageService
 {
     private const QUICKCHART_API_URL = 'https://quickchart.io/chart';
+
     private const DEFAULT_WIDTH = 900;
+
     private const DEFAULT_HEIGHT = 450;
 
     /**
      * Generate a bar chart image
      *
-     * @param array $config Chart configuration
-     * @param string $filename Output filename
+     * @param  array  $config  Chart configuration
+     * @param  string  $filename  Output filename
      * @return string|null Path to saved image or null on failure
      */
     public function generateBarChart(array $config, string $filename): ?string
@@ -27,16 +29,19 @@ class ChartImageService
                 'labels' => $config['labels'] ?? [],
                 'datasets' => $this->formatBarDatasets($config['datasets'] ?? []),
             ],
-            'options' => array_merge([
+            'options' => $this->mergeChartOptions([
                 'plugins' => [
                     'title' => [
-                        'display' => !empty($config['title']),
+                        'display' => ! empty($config['title']),
                         'text' => $config['title'] ?? '',
                         'font' => ['size' => 18, 'weight' => 'bold'],
                     ],
                     'legend' => [
                         'display' => true,
                         'position' => 'top',
+                    ],
+                    'datalabels' => [
+                        'display' => false,
                     ],
                 ],
                 'scales' => [
@@ -70,31 +75,34 @@ class ChartImageService
     /**
      * Generate a stacked bar chart image
      *
-     * @param array $config Chart configuration
-     * @param string $filename Output filename
+     * @param  array  $config  Chart configuration
+     * @param  string  $filename  Output filename
      * @return string|null Path to saved image or null on failure
      */
     public function generateStackedBarChart(array $config, string $filename): ?string
     {
         $indexAxis = $config['horizontal'] ?? false ? 'y' : 'x';
-        
+
         $chartConfig = [
             'type' => 'bar',
             'data' => [
                 'labels' => $config['labels'] ?? [],
                 'datasets' => $this->formatBarDatasets($config['datasets'] ?? [], true),
             ],
-            'options' => array_merge([
+            'options' => $this->mergeChartOptions([
                 'indexAxis' => $indexAxis,
                 'plugins' => [
                     'title' => [
-                        'display' => !empty($config['title']),
+                        'display' => ! empty($config['title']),
                         'text' => $config['title'] ?? '',
                         'font' => ['size' => 18, 'weight' => 'bold'],
                     ],
                     'legend' => [
                         'display' => true,
                         'position' => $config['legendPosition'] ?? 'right',
+                    ],
+                    'datalabels' => [
+                        'display' => false,
                     ],
                 ],
                 'scales' => [
@@ -133,8 +141,8 @@ class ChartImageService
     /**
      * Generate a pie chart image
      *
-     * @param array $config Chart configuration
-     * @param string $filename Output filename
+     * @param  array  $config  Chart configuration
+     * @param  string  $filename  Output filename
      * @return string|null Path to saved image or null on failure
      */
     public function generatePieChart(array $config, string $filename): ?string
@@ -150,10 +158,10 @@ class ChartImageService
                     'borderWidth' => 2,
                 ]],
             ],
-            'options' => array_merge([
+            'options' => $this->mergeChartOptions([
                 'plugins' => [
                     'title' => [
-                        'display' => !empty($config['title']),
+                        'display' => ! empty($config['title']),
                         'text' => $config['title'] ?? '',
                         'font' => ['size' => 18, 'weight' => 'bold'],
                     ],
@@ -163,6 +171,9 @@ class ChartImageService
                     ],
                     'tooltip' => [
                         'enabled' => true,
+                    ],
+                    'datalabels' => [
+                        'display' => false,
                     ],
                 ],
                 'animation' => false,
@@ -177,8 +188,8 @@ class ChartImageService
     /**
      * Generate a doughnut chart image
      *
-     * @param array $config Chart configuration
-     * @param string $filename Output filename
+     * @param  array  $config  Chart configuration
+     * @param  string  $filename  Output filename
      * @return string|null Path to saved image or null on failure
      */
     public function generateDoughnutChart(array $config, string $filename): ?string
@@ -194,10 +205,10 @@ class ChartImageService
                     'borderWidth' => 2,
                 ]],
             ],
-            'options' => array_merge([
+            'options' => $this->mergeChartOptions([
                 'plugins' => [
                     'title' => [
-                        'display' => !empty($config['title']),
+                        'display' => ! empty($config['title']),
                         'text' => $config['title'] ?? '',
                         'font' => ['size' => 18, 'weight' => 'bold'],
                     ],
@@ -207,6 +218,9 @@ class ChartImageService
                     ],
                     'tooltip' => [
                         'enabled' => true,
+                    ],
+                    'datalabels' => [
+                        'display' => false,
                     ],
                 ],
                 'animation' => false,
@@ -220,12 +234,24 @@ class ChartImageService
     }
 
     /**
+     * Deep-merge chart options so callers can override single plugin keys without dropping defaults.
+     *
+     * @param  array<string, mixed>  $defaults
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, mixed>
+     */
+    protected function mergeChartOptions(array $defaults, array $overrides): array
+    {
+        return array_replace_recursive($defaults, $overrides);
+    }
+
+    /**
      * Generate chart image via QuickChart API
      *
-     * @param array $chartConfig Chart.js configuration
-     * @param string $filename Output filename
-     * @param int $width Image width
-     * @param int $height Image height
+     * @param  array  $chartConfig  Chart.js configuration
+     * @param  string  $filename  Output filename
+     * @param  int  $width  Image width
+     * @param  int  $height  Image height
      * @return string|null Path to saved image or null on failure
      */
     private function generateChart(array $chartConfig, string $filename, int $width, int $height): ?string
@@ -241,10 +267,10 @@ class ChartImageService
 
             if ($response->successful()) {
                 $imageData = $response->body();
-                $path = 'charts/' . $filename;
-                
+                $path = 'charts/'.$filename;
+
                 Storage::disk('public')->put($path, $imageData);
-                
+
                 return Storage::disk('public')->url($path);
             }
 
@@ -266,14 +292,10 @@ class ChartImageService
 
     /**
      * Format bar chart datasets with Excel-style 3D appearance
-     *
-     * @param array $datasets
-     * @param bool $stacked
-     * @return array
      */
     private function formatBarDatasets(array $datasets, bool $stacked = false): array
     {
-        return array_map(function ($dataset) use ($stacked) {
+        return array_map(function ($dataset) {
             return [
                 'label' => $dataset['label'] ?? '',
                 'data' => $dataset['data'] ?? [],
@@ -288,7 +310,7 @@ class ChartImageService
     /**
      * Add depth/shadow effect to color (Excel-style 3D look)
      *
-     * @param string $color Hex color
+     * @param  string  $color  Hex color
      * @return string|array Gradient or color
      */
     private function addDepthToColor(string $color): string
@@ -301,8 +323,8 @@ class ChartImageService
     /**
      * Darken a color for borders
      *
-     * @param string $color Hex color
-     * @param float $factor Darkening factor (0.0 to 1.0, where 0.4 = darken by 40%)
+     * @param  string  $color  Hex color
+     * @param  float  $factor  Darkening factor (0.0 to 1.0, where 0.4 = darken by 40%)
      * @return string Darkened hex color
      */
     private function darkenColor(string $color, float $factor = 0.2): string
@@ -320,16 +342,15 @@ class ChartImageService
             return max(0, min(255, floor($val * $multiplier)));
         }, $rgb);
 
-        return '#' . str_pad(dechex($rgb[0]), 2, '0', STR_PAD_LEFT) .
-                   str_pad(dechex($rgb[1]), 2, '0', STR_PAD_LEFT) .
+        return '#'.str_pad(dechex($rgb[0]), 2, '0', STR_PAD_LEFT).
+                   str_pad(dechex($rgb[1]), 2, '0', STR_PAD_LEFT).
                    str_pad(dechex($rgb[2]), 2, '0', STR_PAD_LEFT);
     }
 
     /**
      * Get default color palette
      *
-     * @param int $count Number of colors needed
-     * @return array
+     * @param  int  $count  Number of colors needed
      */
     private function getDefaultColors(int $count): array
     {

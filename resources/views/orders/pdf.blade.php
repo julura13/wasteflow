@@ -186,7 +186,7 @@
         <div class="header-info">
             <div class="header-info-left">
                 <strong>Tracking Number:</strong> {{ $order->tracking_number }}<br>
-                <strong>Order Date:</strong> {{ $order->created_at->format('d M Y, H:i') }}
+                <strong>Order Date:</strong> {{ $order->created_at->format(\App\Support\DisplayDate::CALENDAR_DATETIME) }}
             </div>
         </div>
     </div>
@@ -326,12 +326,12 @@
             </div>
             <div class="info-item">
                 <span class="info-item-label">Requested Collection Date:</span>
-                <span class="info-item-value">{{ $order->requested_collection_date ? $order->requested_collection_date->format('d M Y') : 'N/A' }}</span>
+                <span class="info-item-value">{{ $order->requested_collection_date ? $order->requested_collection_date->format(\App\Support\DisplayDate::CALENDAR) : 'N/A' }}</span>
             </div>
             @if($order->actual_collection_date)
             <div class="info-item">
                 <span class="info-item-label">Actual Collection Date:</span>
-                <span class="info-item-value">{{ $order->actual_collection_date->format('d M Y') }}</span>
+                <span class="info-item-value">{{ $order->actual_collection_date->format(\App\Support\DisplayDate::CALENDAR) }}</span>
             </div>
             @endif
         </div>
@@ -510,7 +510,7 @@
     </div>
 
     <div class="footer">
-        <p>This is an official order form generated on {{ now()->format('d M Y, H:i') }}</p>
+        <p>This is an official order form generated on {{ now()->format(\App\Support\DisplayDate::CALENDAR_DATETIME) }}</p>
         <p>Order Tracking Number: {{ $order->tracking_number }}</p>
     </div>
 </body>

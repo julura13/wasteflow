@@ -1,5 +1,6 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
+import { formatDateYyyyMmDd } from '@/utils/formatDateYyyyMmDd';
 import { ArrowLeft, Calendar, Filter, BarChart3 } from 'lucide-react';
 import SearchableDropdown from '@/Components/SearchableDropdown';
 
@@ -139,7 +140,7 @@ export default function AverageWeight({ averageWeightData, sites, filters, conta
                         <div className="flex items-center mb-4">
                             <BarChart3 className="h-5 w-5 text-blue-600 mr-2" />
                             <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                                Analysis for {new Date(averageWeightData.month + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                                Analysis for {formatDateYyyyMmDd(`${averageWeightData.month}-01`)}
                             </h3>
                         </div>
                         <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">

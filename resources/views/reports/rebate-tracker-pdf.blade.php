@@ -123,7 +123,7 @@
     <div class="header">
         <h1>WASTE COLLECTION &amp; RECYCLING REPORT</h1>
         <div class="filters">
-            Period: {{ \Carbon\Carbon::parse($filters['start_date'])->format('d/m/Y') }} – {{ \Carbon\Carbon::parse($filters['end_date'])->format('d/m/Y') }}
+            Period: {{ \Carbon\Carbon::parse($filters['start_date'])->format(\App\Support\DisplayDate::CALENDAR) }} – {{ \Carbon\Carbon::parse($filters['end_date'])->format(\App\Support\DisplayDate::CALENDAR) }}
         </div>
     </div>
 
@@ -144,7 +144,7 @@
         <tbody>
             @forelse($rebateData as $item)
             <tr>
-                <td class="date-col">{{ \Carbon\Carbon::parse($item['date'])->format('d/m/Y') }}</td>
+                <td class="date-col">{{ \Carbon\Carbon::parse($item['date'])->format(\App\Support\DisplayDate::CALENDAR) }}</td>
                 <td>{{ $item['company_name'] }}</td>
                 <td>{{ $item['branch_name'] }}</td>
                 <td>{{ $item['site_name'] }}</td>

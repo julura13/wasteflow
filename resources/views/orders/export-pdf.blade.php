@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Orders Export - {{ now()->format('Y-m-d') }}</title>
+    <title>Orders Export - {{ now()->format(\App\Support\DisplayDate::CALENDAR) }}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -29,7 +29,7 @@
 <body>
     <div class="header">
         <h1>Orders Export</h1>
-        <div class="meta">Generated {{ now()->format('d/m/Y H:i') }} — {{ count($orders) }} order(s)</div>
+        <div class="meta">Generated {{ now()->format(\App\Support\DisplayDate::CALENDAR_DATETIME) }} — {{ count($orders) }} order(s)</div>
     </div>
     @if($orders->isEmpty())
         <p>No orders match the current filters.</p>
@@ -64,8 +64,8 @@
                         <td>{{ $order->serviceProvider?->name ?? (is_string($order->service_provider) ? $order->service_provider : '—') }}</td>
                         <td>{{ $order->order_type === 'waste' ? 'Waste' : 'Recycling' }}</td>
                         <td>{{ $order->status }}</td>
-                        <td>{{ $order->requested_collection_date ? $order->requested_collection_date->format('Y-m-d') : '—' }}</td>
-                        <td>{{ $order->actual_collection_date ? $order->actual_collection_date->format('Y-m-d') : '—' }}</td>
+                        <td>{{ $order->requested_collection_date ? $order->requested_collection_date->format(\App\Support\DisplayDate::CALENDAR) : '—' }}</td>
+                        <td>{{ $order->actual_collection_date ? $order->actual_collection_date->format(\App\Support\DisplayDate::CALENDAR) : '—' }}</td>
                         <td>{{ $order->slip_number ?? '—' }}</td>
                     </tr>
                 @endforeach

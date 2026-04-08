@@ -48,7 +48,7 @@
         <h1>Customer order frequencies</h1>
         <div class="meta">
             Finalized orders only — lookback {{ $lookbackMonths }} {{ $lookbackMonths === 1 ? 'month' : 'months' }}
-            — generated {{ now()->format('d/m/Y H:i') }}
+            — generated {{ now()->format(\App\Support\DisplayDate::CALENDAR_DATETIME) }}
         </div>
     </div>
 
@@ -81,11 +81,11 @@
                     @endphp
                     <tr>
                         <td>{{ $row['company_name'] }}</td>
-                        <td>{{ $w['last_finalized_date'] ?? '—' }}</td>
+                        <td>{{ isset($w['last_finalized_date']) ? \App\Support\DisplayDate::formatOrEmpty($w['last_finalized_date']) : '—' }}</td>
                         <td class="num">{{ $w['days_since_last_finalized'] ?? '—' }}</td>
                         <td class="num">{{ $w['finalized_orders_in_period'] }}</td>
                         <td class="num">{{ number_format($w['average_orders_per_month'], 2) }}</td>
-                        <td>{{ $r['last_finalized_date'] ?? '—' }}</td>
+                        <td>{{ isset($r['last_finalized_date']) ? \App\Support\DisplayDate::formatOrEmpty($r['last_finalized_date']) : '—' }}</td>
                         <td class="num">{{ $r['days_since_last_finalized'] ?? '—' }}</td>
                         <td class="num">{{ $r['finalized_orders_in_period'] }}</td>
                         <td class="num">{{ number_format($r['average_orders_per_month'], 2) }}</td>

@@ -240,11 +240,9 @@ class DashboardController extends Controller
             $endDate->format('Y-m-d')
         );
 
-        // Get waste stream totals (main pie chart)
-        $wasteStreamTotals = $this->getWasteStreamTotals($materialSummaries);
+        $wasteStreamTotals = $this->orderWasteStreamReporting->wasteStreamTotalsFromSummaries($materialSummaries);
 
-        // Get classification totals (donut charts + diverted aggregate)
-        $classificationTotals = $this->getClassificationTotals($materialSummaries);
+        $classificationTotals = $this->orderWasteStreamReporting->classificationTotalsFromSummaries($materialSummaries);
 
         // Calculate environmental impact (shared with report and summary)
         $categoryWeights = $this->wasteImpactCalculator->buildCategoryWeightsFromSummaries($materialSummaries);
@@ -341,119 +339,5 @@ class DashboardController extends Controller
                 'service_provider' => $order->serviceProvider?->name,
             ];
         })->values()->all();
-    }
-
-    /**
-     * Get waste stream totals for the main pie chart
-     */
-    private function getWasteStreamTotals($materialSummaries): array
-    {
-        $totals = [];
-
-        foreach ($materialSummaries as $summary) {
-            if (! $summary->material || ! $summary->material->wasteStream) {
-                continue;
-            }
-
-            $wasteStreamName = trim($summary->material->wasteStream->name);
-            $weight = (float) $summary->total_weight;
-
-            if (! isset($totals[$wasteStreamName])) {
-                $totals[$wasteStreamName] = 0;
-            }
-            $totals[$wasteStreamName] += $weight;
-        }
-
-        // Client palette: PIE DASHBOARD COLOUR CHART (waste streams)
-        $colors = [
-            'Paper' => '#2F80ED',
-            'Plastic' => '#F2994A',
-            'Organic Waste' => '#27AE60',
-            'Waste' => '#1C1C1C',
-            'General Waste' => '#1C1C1C',
-            'Glass' => '#56CCF2',
-            'Metal' => '#4F4F4F',
-            'Aluminium' => '#BDBDBD',
-            'Aluminum' => '#BDBDBD',
-            'Woven Bags' => '#8D6E63',
-            'Wood' => '#A0522D',
-            'Hazardous Waste' => '#EB5757',
-            'Garden Waste' => '#27AE60',
-            'Recycling' => '#6FCF97',
-        ];
-
-        $result = [];
-        foreach ($totals as $name => $weight) {
-            $result[] = [
-                'name' => $name,
-                'value' => round($weight, 2),
-                'color' => $colors[$name] ?? '#828282',
-            ];
-        }
-
-        return $result;
-    }
-
-    /**
-     * Get classification totals for dashboard donut charts.
-     * Diverted = avoidance + recycling + recovery (all weight not sent to disposal).
-     */
-    private function getClassificationTotals($materialSummaries): array
-    {
-        $totals = [
-            'Avoidance' => 0,
-            'Recycling' => 0,
-            'Recovery' => 0,
-            'Disposal' => 0,
-        ];
-
-        foreach ($materialSummaries as $summary) {
-            if (! $summary->material || ! $summary->material->classification_id || ! $summary->material->classification) {
-                continue;
-            }
-
-            $classificationName = trim($summary->material->classification->name);
-            $weight = (float) $summary->total_weight;
-
-            // Map classification names from database to our display categories
-            // Handle case-insensitive matching and variations
-            $classificationNameLower = strtolower($classificationName);
-
-            if (in_array($classificationNameLower, ['disposed', 'disposal'])) {
-                $totals['Disposal'] += $weight;
-            } elseif (in_array($classificationNameLower, ['recycling', 'recycle'])) {
-                $totals['Recycling'] += $weight;
-            } elseif (in_array($classificationNameLower, ['recovered', 'recovery'])) {
-                $totals['Recovery'] += $weight;
-            } elseif (in_array($classificationNameLower, ['avoidance', 'avoid'])) {
-                $totals['Avoidance'] += $weight;
-            }
-        }
-
-        $totalWeight = array_sum($totals);
-        $divertedTotal = $totals['Avoidance'] + $totals['Recycling'] + $totals['Recovery'];
-
-        return [
-            'avoidance' => [
-                'total' => round($totals['Avoidance'], 2),
-                'percentage' => $totalWeight > 0 ? round(($totals['Avoidance'] / $totalWeight) * 100, 1) : 0,
-            ],
-            'recycling' => [
-                'total' => round($totals['Recycling'], 2),
-                'percentage' => $totalWeight > 0 ? round(($totals['Recycling'] / $totalWeight) * 100, 1) : 0,
-            ],
-            'recovery' => [
-                'total' => round($totals['Recovery'], 2),
-                'percentage' => $totalWeight > 0 ? round(($totals['Recovery'] / $totalWeight) * 100, 1) : 0,
-            ],
-            'disposal' => [
-                'total' => round($totals['Disposal'], 2),
-                'percentage' => $totalWeight > 0 ? round(($totals['Disposal'] / $totalWeight) * 100, 1) : 0,
-            ],
-            'diverted' => [
-                'total' => round($divertedTotal, 2),
-                'percentage' => $totalWeight > 0 ? round(($divertedTotal / $totalWeight) * 100, 1) : 0,
-            ],
-        ];
     }
 }

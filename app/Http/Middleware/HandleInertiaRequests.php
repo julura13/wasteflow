@@ -37,6 +37,7 @@ class HandleInertiaRequests extends Middleware
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
                 'rebate_pdf_export_uuid' => fn () => $request->session()->get('rebate_pdf_export_uuid'),
+                'waste_management_pdf_export_uuid' => fn () => $request->session()->get('waste_management_pdf_export_uuid'),
                 'order_export_uuid' => fn () => $request->session()->get('order_export_uuid'),
                 'order_export_format' => fn () => $request->session()->get('order_export_format'),
             ],

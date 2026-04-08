@@ -39,8 +39,8 @@ export default function WasteManagementSummary({ reportData, companies, filters 
     const years = Array.from({ length: 3 }, (_, i) => currentYear - i);
 
     return (
-        <DashboardLayout title="Waste Management Report - Summary">
-            <Head title="Waste Management Report - Summary" />
+        <DashboardLayout title="Resource Intelligence Report - Summary">
+            <Head title="Resource Intelligence Report - Summary" />
 
             <div className="max-w-7xl mx-auto">
                 <div className="mb-6">
@@ -52,7 +52,7 @@ export default function WasteManagementSummary({ reportData, companies, filters 
                         Back to Reports
                     </Link>
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                        Waste Management Report - Data Summary
+                        Resource Intelligence Report — data summary
                     </h1>
                     <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
                         JSON data structure for testing

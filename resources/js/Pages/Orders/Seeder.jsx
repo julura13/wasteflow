@@ -31,10 +31,9 @@ export default function Seeder({ companies }) {
             const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
             const year = date.getFullYear();
             const month = String(date.getMonth() + 1).padStart(2, '0');
-            const monthName = date.toLocaleString('default', { month: 'long', year: 'numeric' });
             options.push({
                 value: `${year}-${month}`,
-                label: monthName,
+                label: `${year}/${month}/01`,
             });
         }
         

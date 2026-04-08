@@ -4,7 +4,7 @@ import { ArrowLeft, Calendar, Filter, Download, FileText, Loader2 } from 'lucide
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import SearchableDropdown from '@/Components/SearchableDropdown';
-import { formatDateSouthAfrica } from '@/utils/formatDateSouthAfrica';
+import { formatDateYyyyMmDd } from '@/utils/formatDateYyyyMmDd';
 
 const siteOptionLabel = (site) =>
     `${site.name}${site.branch?.company ? ` (${site.branch.company.name})` : ''}`;
@@ -385,7 +385,7 @@ export default function RebateTracker({ rebateData, companies, filters, totalReb
                                     {rebateData.map((item, index) => (
                                         <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                                             <td className="px-4 py-3 whitespace-nowrap text-base tabular-nums text-gray-900 dark:text-gray-100">
-                                                {formatDateSouthAfrica(item.date)}
+                                                {formatDateYyyyMmDd(item.date)}
                                             </td>
                                             <td className="px-4 py-3 whitespace-nowrap text-base text-gray-900 dark:text-gray-100">
                                                 {item.company_name}

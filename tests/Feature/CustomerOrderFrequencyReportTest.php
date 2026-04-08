@@ -199,6 +199,7 @@ it('exports customer order frequencies as csv', function () {
     $response->assertSee('Recycling last finalized');
     $response->assertSee('Csv Co');
     $response->assertSee('6');
+    $response->assertSee('2026/04/02');
 
     Carbon::setTestNow();
 });

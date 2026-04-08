@@ -20,6 +20,7 @@ use App\Services\ClientMonthlySummaryService;
 use App\Services\CompanyUserService;
 use App\Services\OrdersIndexQueryService;
 use App\Services\RebateTrackerReportService;
+use App\Support\DisplayDate;
 use App\Traits\ScopeByClientTrait;
 use Carbon\Carbon;
 use Dompdf\Dompdf;
@@ -426,15 +427,15 @@ class OrderController extends Controller
         $order->refresh();
         app(ClientMonthlySummaryService::class)->moveOrderSummariesToActualCollectionDate($order, $oldActualCollectionDate);
 
-        $oldDateFormatted = $oldActualCollectionDate ? Carbon::parse($oldActualCollectionDate)->format('Y-m-d') : null;
-        $newDateFormatted = Carbon::parse($validated['actual_collection_date'])->format('Y-m-d');
+        $oldDateFormatted = $oldActualCollectionDate ? Carbon::parse($oldActualCollectionDate)->format(DisplayDate::CALENDAR) : null;
+        $newDateFormatted = Carbon::parse($validated['actual_collection_date'])->format(DisplayDate::CALENDAR);
 
         $reasonLabel = $this->getEditReasonLabel($validated['reason'], $validated['reason_details'] ?? '');
 
         ActivityLog::log('order_collection_date_updated', "Order {$order->tracking_number} collection date changed from {$oldDateFormatted} to {$newDateFormatted} ({$reasonLabel})", $order, [
             'tracking_number' => $order->tracking_number,
-            'old_date' => $oldDateFormatted,
-            'new_date' => $newDateFormatted,
+            'old_date' => $oldActualCollectionDate ? Carbon::parse($oldActualCollectionDate)->format('Y-m-d') : null,
+            'new_date' => Carbon::parse($validated['actual_collection_date'])->format('Y-m-d'),
             'reason' => $validated['reason'],
             'reason_details' => $validated['reason_details'] ?? null,
         ]);

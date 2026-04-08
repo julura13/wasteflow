@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Consolidated Order - {{ $serviceProvider->name }} - {{ $collectionDate->format('d-m-Y') }}</title>
+    <title>Consolidated Order - {{ $serviceProvider->name }} - {{ $collectionDate->format(\App\Support\DisplayDate::CALENDAR) }}</title>
     <style>
         * {
             margin: 0;
@@ -121,7 +121,7 @@
             </div>
         </div>
         <div class="collection-date">
-            Collection Date: {{ $collectionDate->format('d-m-Y') }}
+            Collection Date: {{ $collectionDate->format(\App\Support\DisplayDate::CALENDAR) }}
         </div>
         <div class="service-provider">
             Service Provider: {{ $serviceProvider->name }}
@@ -211,8 +211,8 @@
     @endif
 
     <div class="footer">
-        <p>This is an official consolidated order form generated on {{ now()->format('d M Y, H:i') }}</p>
-        <p>Collection Date: {{ $collectionDate->format('d-m-Y') }} | Service Provider: {{ $serviceProvider->name }}</p>
+        <p>This is an official consolidated order form generated on {{ now()->format(\App\Support\DisplayDate::CALENDAR_DATETIME) }}</p>
+        <p>Collection Date: {{ $collectionDate->format(\App\Support\DisplayDate::CALENDAR) }} | Service Provider: {{ $serviceProvider->name }}</p>
     </div>
 </body>
 </html>

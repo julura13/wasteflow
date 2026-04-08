@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Material Definitions — {{ $generatedAt->format('Y-m-d') }}</title>
+    <title>Material Definitions — {{ $generatedAt->format(\App\Support\DisplayDate::CALENDAR) }}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -62,7 +62,7 @@
 <body>
     <div class="header">
         <h1>MATERIAL DEFINITIONS</h1>
-        <div class="meta">Generated {{ $generatedAt->format('d/m/Y H:i') }} — {{ $materials->count() }} row(s)</div>
+        <div class="meta">Generated {{ $generatedAt->format(\App\Support\DisplayDate::CALENDAR_DATETIME) }} — {{ $materials->count() }} row(s)</div>
         <div class="meta">{{ $filterSummary }}</div>
     </div>
 

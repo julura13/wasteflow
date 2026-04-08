@@ -1,5 +1,6 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
+import { formatDateYyyyMmDd } from '@/utils/formatDateYyyyMmDd';
 import { formatQuantityLinesCommaSeparated } from '@/utils/orderQuantityLines';
 import { History, Search, Package, AlertCircle } from 'lucide-react';
 import { useState } from 'react';
@@ -38,28 +39,37 @@ const LOG_LABELS = {
 
 function formatDate(isoString) {
     const d = new Date(isoString);
-    const date = d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+    if (Number.isNaN(d.getTime())) {
+        return { date: '—', time: '' };
+    }
+    const y = d.getFullYear();
+    const mo = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const date = `${y}/${mo}/${day}`;
     const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
     return { date, time };
 }
 
-/** Show only YYYY-MM-DD for date values (strips time and TZ). */
+/** Show only yyyy/mm/dd for date values (strips time and TZ when value is YYYY-MM-DD…). */
 function formatDateOnly(value) {
-    if (value == null || value === '') return value;
-    const s = String(value);
-    const match = s.match(/^(\d{4}-\d{2}-\d{2})/);
-    if (match) return match[1];
-    const d = new Date(s);
-    if (!Number.isNaN(d.getTime())) return d.toISOString().slice(0, 10);
-    return s;
+    if (value == null || value === '') {
+        return value;
+    }
+    return formatDateYyyyMmDd(value);
 }
 
-/** Replace date-like substrings in text with short YYYY-MM-DD (for descriptions stored with time). */
+/** Replace date-like substrings in text with yyyy/mm/dd (for descriptions stored with time). */
 function descriptionWithShortDates(text) {
-    if (!text || typeof text !== 'string') return text;
+    if (!text || typeof text !== 'string') {
+        return text;
+    }
+    const ymdToSlash = (ymd) => {
+        const [y, m, d] = ymd.split('-');
+        return `${y}/${m}/${d}`;
+    };
     return text
-        .replace(/(\d{4}-\d{2}-\d{2})\s+\d{2}:\d{2}(?::\d{2})?/g, '$1')
-        .replace(/(\d{4}-\d{2}-\d{2})T[\d.:]+Z?/g, '$1');
+        .replace(/(\d{4}-\d{2}-\d{2})\s+\d{2}:\d{2}(?::\d{2})?/g, (_, ymd) => ymdToSlash(ymd))
+        .replace(/(\d{4}-\d{2}-\d{2})T[\d.:]+Z?/g, (_, ymd) => ymdToSlash(ymd));
 }
 
 function PropertySummary({ properties, logName }) {

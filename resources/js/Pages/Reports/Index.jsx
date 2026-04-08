@@ -9,12 +9,12 @@ export default function Index() {
 
     const reports = [
         {
-            title: 'Waste Management Report',
-            description: 'Comprehensive waste management summary: Environmental impact, waste grades, recycling commodities, and diversion metrics.',
+            title: 'WasteFlow Resource Intelligence Report',
+            description: 'Dashboard-aligned resource intelligence: waste streams, classifications, environmental KPIs, carbon materials table, and methodology.',
             href: '/reports/waste-management',
             icon: Leaf,
             color: 'bg-emerald-600',
-            details: 'Shows: Trees saved, energy saved, water saved, recycling breakdown, and landfill diversion rate',
+            details: 'Shows: Lifecycle carbon avoided, water and trees saved, electricity (SA grid), diversion, and recycling breakdown',
         },
         {
             title: 'Customer order frequencies',

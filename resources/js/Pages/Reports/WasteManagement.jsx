@@ -1,10 +1,15 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import SearchableDropdown from '@/Components/SearchableDropdown';
+import { Download, Loader2 } from 'lucide-react';
 
 export default function WasteManagement({ companies, filters }) {
+    const { flash } = usePage().props;
+    const [pdfExportUuid, setPdfExportUuid] = useState(null);
+    const [pdfStatus, setPdfStatus] = useState(null);
+
     const [selectedCompany, setSelectedCompany] = useState(filters?.company_id || '');
     const [selectedBranch, setSelectedBranch] = useState(filters?.branch_id || '');
     const [selectedSite, setSelectedSite] = useState(filters?.site_id || '');
@@ -16,14 +21,48 @@ export default function WasteManagement({ companies, filters }) {
     const [loadingBranches, setLoadingBranches] = useState(false);
     const [loadingSites, setLoadingSites] = useState(false);
 
-    // Fetch branches when company changes
+    useEffect(() => {
+        if (flash?.waste_management_pdf_export_uuid) {
+            setPdfExportUuid(flash.waste_management_pdf_export_uuid);
+            setPdfStatus(null);
+        }
+    }, [flash?.waste_management_pdf_export_uuid]);
+
+    useEffect(() => {
+        if (!pdfExportUuid) {
+            return undefined;
+        }
+
+        let intervalId;
+        const poll = async () => {
+            try {
+                const { data } = await axios.get(route('reports.waste-management-pdf.status', pdfExportUuid));
+                setPdfStatus(data);
+                if (data.status === 'completed' || data.status === 'failed') {
+                    clearInterval(intervalId);
+                }
+            } catch {
+                clearInterval(intervalId);
+                setPdfStatus({
+                    status: 'failed',
+                    error_message: 'Could not check report status. Please refresh the page.',
+                });
+            }
+        };
+
+        poll();
+        intervalId = setInterval(poll, 2500);
+
+        return () => clearInterval(intervalId);
+    }, [pdfExportUuid]);
+
     useEffect(() => {
         if (selectedCompany) {
             setLoadingBranches(true);
             axios.get(route('reports.waste-management-branches'), {
-                params: { company_id: selectedCompany }
+                params: { company_id: selectedCompany },
             })
-                .then(response => {
+                .then((response) => {
                     setBranches(response.data);
                     setLoadingBranches(false);
                 })
@@ -32,7 +71,6 @@ export default function WasteManagement({ companies, filters }) {
                     setLoadingBranches(false);
                 });
 
-            // Reset branch and site when company changes
             setSelectedBranch('');
             setSelectedSite('');
             setSites([]);
@@ -44,14 +82,13 @@ export default function WasteManagement({ companies, filters }) {
         }
     }, [selectedCompany]);
 
-    // Fetch sites when branch changes
     useEffect(() => {
         if (selectedBranch) {
             setLoadingSites(true);
             axios.get(route('reports.waste-management-sites'), {
-                params: { branch_id: selectedBranch }
+                params: { branch_id: selectedBranch },
             })
-                .then(response => {
+                .then((response) => {
                     setSites(response.data);
                     setLoadingSites(false);
                 })
@@ -60,7 +97,6 @@ export default function WasteManagement({ companies, filters }) {
                     setLoadingSites(false);
                 });
 
-            // Reset site when branch changes
             setSelectedSite('');
         } else {
             setSites([]);
@@ -68,31 +104,29 @@ export default function WasteManagement({ companies, filters }) {
         }
     }, [selectedBranch]);
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-
-        // At least company must be selected
+    const requestPdfExport = useCallback(() => {
         if (!selectedCompany) {
             alert('Please select at least a company');
             return;
         }
 
-        const params = {
-            company_id: selectedCompany || null,
-            branch_id: selectedBranch || null,
-            site_id: selectedSite || null,
-            month: month,
-            year: year,
-        };
+        setPdfStatus(null);
+        router.post(
+            route('reports.waste-management-pdf.request'),
+            {
+                company_id: selectedCompany,
+                branch_id: selectedBranch || '',
+                site_id: selectedSite || '',
+                month,
+                year,
+            },
+            { preserveScroll: true },
+        );
+    }, [selectedCompany, selectedBranch, selectedSite, month, year]);
 
-        // Remove null values
-        Object.keys(params).forEach(key => {
-            if (params[key] === null || params[key] === '') {
-                delete params[key];
-            }
-        });
-
-        router.get(route('reports.waste-management'), params);
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        requestPdfExport();
     };
 
     const months = [
@@ -113,23 +147,56 @@ export default function WasteManagement({ companies, filters }) {
     const currentYear = new Date().getFullYear();
     const years = Array.from({ length: 10 }, (_, i) => currentYear - i);
 
+    const pdfIsProcessing =
+        pdfExportUuid &&
+        (!pdfStatus || pdfStatus.status === 'pending' || pdfStatus.status === 'processing');
+
     return (
-        <DashboardLayout title="Waste Management Report">
-            <Head title="Waste Management Report" />
+        <DashboardLayout title="WasteFlow Resource Intelligence Report">
+            <Head title="WasteFlow Resource Intelligence Report" />
 
             <div className="max-w-4xl mx-auto">
                 <div className="mb-6">
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                        Waste Management Report
+                        WasteFlow Resource Intelligence Report
                     </h1>
                     <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                        Select filters to generate the report
+                        Choose scope and period. The PDF is generated in the background; when it is ready, use the download button below.
                     </p>
                 </div>
 
+                {(pdfExportUuid || flash?.waste_management_pdf_export_uuid) ? (
+                    <div className="mb-4 rounded-lg border border-primary-200 dark:border-primary-800 bg-primary-50 dark:bg-primary-900/25 p-4 space-y-3">
+                        {flash?.success && flash?.waste_management_pdf_export_uuid && (
+                            <p className="text-sm text-primary-900 dark:text-primary-100">{flash.success}</p>
+                        )}
+                        {pdfIsProcessing && (
+                            <div className="flex items-center gap-2 text-sm text-primary-800 dark:text-primary-200">
+                                <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                                <span>Generating PDF in the background… This panel updates when it is ready.</span>
+                            </div>
+                        )}
+                        {pdfStatus?.status === 'completed' && pdfStatus.download_url && (
+                            <div>
+                                <a
+                                    href={pdfStatus.download_url}
+                                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                                >
+                                    <Download className="h-4 w-4 mr-2" />
+                                    Download PDF
+                                </a>
+                            </div>
+                        )}
+                        {pdfStatus?.status === 'failed' && (
+                            <p className="text-sm text-red-700 dark:text-red-300">
+                                {pdfStatus.error_message || 'Report generation failed. Please try again.'}
+                            </p>
+                        )}
+                    </div>
+                ) : null}
+
                 <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                     <div className="space-y-6">
-                        {/* Company Selection */}
                         <div>
                             <SearchableDropdown
                                 id="company_id"
@@ -148,7 +215,6 @@ export default function WasteManagement({ companies, filters }) {
                             />
                         </div>
 
-                        {/* Branch Selection */}
                         <div>
                             <SearchableDropdown
                                 id="branch_id"
@@ -176,7 +242,6 @@ export default function WasteManagement({ companies, filters }) {
                             </p>
                         </div>
 
-                        {/* Site Selection */}
                         <div>
                             <SearchableDropdown
                                 id="site_id"
@@ -204,7 +269,6 @@ export default function WasteManagement({ companies, filters }) {
                             </p>
                         </div>
 
-                        {/* Month and Year Selection */}
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label htmlFor="month" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -245,13 +309,12 @@ export default function WasteManagement({ companies, filters }) {
                             </div>
                         </div>
 
-                        {/* Submit Button */}
                         <div className="pt-4">
                             <button
                                 type="submit"
                                 className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
                             >
-                                Generate Report
+                                Generate PDF
                             </button>
                         </div>
                     </div>

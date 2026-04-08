@@ -8,6 +8,7 @@ use App\Models\ContainerOption;
 use App\Models\Order;
 use App\Models\ServiceProvider;
 use App\Models\Site;
+use App\Support\DisplayDate;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -186,7 +187,7 @@ class OrderSeederController extends Controller
                 'Order seeder created %d orders for %s in %s',
                 count($createdOrders),
                 $company->name,
-                $month->format('F Y')
+                $month->format(DisplayDate::CALENDAR)
             ), null, [
                 'company_id' => $company->id,
                 'company_name' => $company->name,
@@ -203,7 +204,7 @@ class OrderSeederController extends Controller
                 $validated['recycling_order_count'],
                 $validated['waste_order_count'],
                 $company->name,
-                $month->format('F Y')
+                $month->format(DisplayDate::CALENDAR)
             );
 
             if (! empty($errors)) {

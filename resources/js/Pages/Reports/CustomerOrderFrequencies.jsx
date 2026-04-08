@@ -1,18 +1,13 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
+import { formatDateYyyyMmDd } from '@/utils/formatDateYyyyMmDd';
 import { ArrowLeft, Download, FileText, Users } from 'lucide-react';
 
 function TypeMetricsCells({ metrics, endGroupBorder = false }) {
     return (
         <>
             <td className="px-3 py-3 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                {metrics.last_finalized_date
-                    ? new Date(metrics.last_finalized_date + 'T12:00:00').toLocaleDateString(undefined, {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric',
-                      })
-                    : '—'}
+                {metrics.last_finalized_date ? formatDateYyyyMmDd(metrics.last_finalized_date) : '—'}
             </td>
             <td className="px-3 py-3 text-sm text-gray-700 dark:text-gray-300 tabular-nums">
                 {metrics.days_since_last_finalized !== null ? metrics.days_since_last_finalized : '—'}

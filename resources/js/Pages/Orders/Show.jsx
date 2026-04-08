@@ -1,5 +1,6 @@
 import { Head, Link, usePage, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
+import { formatDateTimeYyyyMmDd, formatDateYyyyMmDd } from '@/utils/formatDateYyyyMmDd';
 import Modal from '@/Components/Modal';
 import { ArrowLeft, CheckCircle, Download, File, FileDown, Clock, PlayCircle, Package, FileText, AlertTriangle, Pencil } from 'lucide-react';
 import { useState } from 'react';
@@ -217,8 +218,8 @@ export default function Show({ order, canManageOrder = true }) {
                         {detailRow('Company', order.site?.branch?.company?.name || order.company?.name || '—')}
                         {detailRow('Branch', order.site?.branch?.name || order.branch?.name || '—')}
                         {detailRow('Service Provider', order.service_provider?.name || order.service_provider || '—')}
-                        {detailRow('Requested Collection Date', order.requested_collection_date ? new Date(order.requested_collection_date).toLocaleDateString() : '—')}
-                        {detailRow('Actual Collection Date', order.actual_collection_date ? new Date(order.actual_collection_date).toLocaleDateString() : '—')}
+                        {detailRow('Requested Collection Date', order.requested_collection_date ? formatDateYyyyMmDd(order.requested_collection_date) : '—')}
+                        {detailRow('Actual Collection Date', order.actual_collection_date ? formatDateYyyyMmDd(order.actual_collection_date) : '—')}
                         {detailRow('Slip Number', order.slip_number || '—')}
                         {detailRow('Estimated Quantity', order.estimated_quantity || '—')}
                         {detailRow('Actual Quantity', order.actual_quantity || '—')}
@@ -324,7 +325,7 @@ export default function Show({ order, canManageOrder = true }) {
                                             {history.status.replace('_', ' ')}
                                         </p>
                                         <p className="text-xs text-gray-500 dark:text-gray-400">
-                                            Changed by {history.changed_by?.name || 'System'} • {new Date(history.created_at).toLocaleString()}
+                                            Changed by {history.changed_by?.name || 'System'} • {formatDateTimeYyyyMmDd(history.created_at)}
                                         </p>
                                         {history.notes && (
                                             <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">

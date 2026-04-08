@@ -1,6 +1,7 @@
 import { Head, Link, useForm, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import EditReasonModal from '@/Components/EditReasonModal';
+import { formatDateYyyyMmDd } from '@/utils/formatDateYyyyMmDd';
 import { ArrowLeft, Save, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -115,7 +116,7 @@ export default function Edit({ order, containerOptions = [] }) {
     const siteName = order.site?.name ?? (order.site_id ? `Site #${order.site_id}` : '—');
     const serviceProviderName = order.service_provider?.name ?? order.service_provider ?? '—';
     const requestedDate = order.requested_collection_date
-        ? new Date(order.requested_collection_date).toLocaleDateString()
+        ? formatDateYyyyMmDd(order.requested_collection_date)
         : '—';
 
     return (

@@ -17,6 +17,9 @@ use Illuminate\Support\Facades\DB;
 /**
  * Dashboard and report aggregations directly from order_waste_streams joined to finalized orders.
  * Avoids client_monthly_materials_summary so grade summary, daily drill-down, and charts share one source of truth.
+ *
+ * @phpstan-type WasteStreamTotalRow array{name: string, value: float, color: string}
+ * @phpstan-type ClassificationSlice array{total: float, percentage: float}
  */
 class OrderWasteStreamReportingService
 {
@@ -204,6 +207,127 @@ class OrderWasteStreamReportingService
             'month' => $month,
             'year' => $year,
             'days_in_month' => $lastDay,
+        ];
+    }
+
+    /**
+     * Waste stream weights for the main dashboard / report pie (same palette as dashboard).
+     *
+     * @param  Collection<int, object{material_id: int, total_weight: float, material: Material}>  $materialSummaries
+     * @return array<int, WasteStreamTotalRow>
+     */
+    public function wasteStreamTotalsFromSummaries(Collection $materialSummaries): array
+    {
+        $totals = [];
+
+        foreach ($materialSummaries as $summary) {
+            if (! $summary->material || ! $summary->material->wasteStream) {
+                continue;
+            }
+
+            $wasteStreamName = trim($summary->material->wasteStream->name);
+            $weight = (float) $summary->total_weight;
+
+            if (! isset($totals[$wasteStreamName])) {
+                $totals[$wasteStreamName] = 0;
+            }
+            $totals[$wasteStreamName] += $weight;
+        }
+
+        $colors = [
+            'Paper' => '#2F80ED',
+            'Plastic' => '#F2994A',
+            'Organic Waste' => '#27AE60',
+            'Waste' => '#1C1C1C',
+            'General Waste' => '#1C1C1C',
+            'Glass' => '#56CCF2',
+            'Metal' => '#4F4F4F',
+            'Aluminium' => '#BDBDBD',
+            'Aluminum' => '#BDBDBD',
+            'Woven Bags' => '#8D6E63',
+            'Wood' => '#A0522D',
+            'Hazardous Waste' => '#EB5757',
+            'Garden Waste' => '#27AE60',
+            'Recycling' => '#6FCF97',
+        ];
+
+        $result = [];
+        foreach ($totals as $name => $weight) {
+            $result[] = [
+                'name' => $name,
+                'value' => round($weight, 2),
+                'color' => $colors[$name] ?? '#828282',
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * Classification donut inputs for dashboard and monthly PDF (diverted = avoidance + recycling + recovery).
+     *
+     * @param  Collection<int, object{material_id: int, total_weight: float, material: Material}>  $materialSummaries
+     * @return array{
+     *     avoidance: ClassificationSlice,
+     *     recycling: ClassificationSlice,
+     *     recovery: ClassificationSlice,
+     *     disposal: ClassificationSlice,
+     *     diverted: ClassificationSlice
+     * }
+     */
+    public function classificationTotalsFromSummaries(Collection $materialSummaries): array
+    {
+        $totals = [
+            'Avoidance' => 0.0,
+            'Recycling' => 0.0,
+            'Recovery' => 0.0,
+            'Disposal' => 0.0,
+        ];
+
+        foreach ($materialSummaries as $summary) {
+            if (! $summary->material || ! $summary->material->classification_id || ! $summary->material->classification) {
+                continue;
+            }
+
+            $classificationName = trim($summary->material->classification->name);
+            $weight = (float) $summary->total_weight;
+            $classificationNameLower = strtolower($classificationName);
+
+            if (in_array($classificationNameLower, ['disposed', 'disposal'], true)) {
+                $totals['Disposal'] += $weight;
+            } elseif (in_array($classificationNameLower, ['recycling', 'recycle'], true)) {
+                $totals['Recycling'] += $weight;
+            } elseif (in_array($classificationNameLower, ['recovered', 'recovery'], true)) {
+                $totals['Recovery'] += $weight;
+            } elseif (in_array($classificationNameLower, ['avoidance', 'avoid'], true)) {
+                $totals['Avoidance'] += $weight;
+            }
+        }
+
+        $totalWeight = array_sum($totals);
+        $divertedTotal = $totals['Avoidance'] + $totals['Recycling'] + $totals['Recovery'];
+
+        return [
+            'avoidance' => [
+                'total' => round($totals['Avoidance'], 2),
+                'percentage' => $totalWeight > 0 ? round(($totals['Avoidance'] / $totalWeight) * 100, 1) : 0,
+            ],
+            'recycling' => [
+                'total' => round($totals['Recycling'], 2),
+                'percentage' => $totalWeight > 0 ? round(($totals['Recycling'] / $totalWeight) * 100, 1) : 0,
+            ],
+            'recovery' => [
+                'total' => round($totals['Recovery'], 2),
+                'percentage' => $totalWeight > 0 ? round(($totals['Recovery'] / $totalWeight) * 100, 1) : 0,
+            ],
+            'disposal' => [
+                'total' => round($totals['Disposal'], 2),
+                'percentage' => $totalWeight > 0 ? round(($totals['Disposal'] / $totalWeight) * 100, 1) : 0,
+            ],
+            'diverted' => [
+                'total' => round($divertedTotal, 2),
+                'percentage' => $totalWeight > 0 ? round(($divertedTotal / $totalWeight) * 100, 1) : 0,
+            ],
         ];
     }
 

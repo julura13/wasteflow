@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Waste Management Report - {{ $company->name }} - {{ $month->format('M-Y') }}</title>
+    <title>Waste Management Report - {{ $company->name }} - {{ $month->format(\App\Support\DisplayDate::CALENDAR) }}</title>
     <style>
         * {
             margin: 0;
@@ -281,7 +281,7 @@
     <div class="header" style="page-break-inside: avoid;">
         <h1>WASTE MANAGEMENT REPORT</h1>
         <div class="company-name">{{ strtoupper($company->name) }}</div>
-        <div class="month">{{ $month->format('M-Y') }}</div>
+        <div class="month">{{ $month->format(\App\Support\DisplayDate::CALENDAR) }}</div>
     </div>
 
     <div class="metrics-grid">
@@ -550,7 +550,7 @@
     <div class="header" style="page-break-inside: avoid;">
         <h1>WASTE MANAGEMENT REPORT</h1>
         <div class="company-name">{{ strtoupper($company->name) }}</div>
-        <div class="month">{{ $month->format('M-Y') }}</div>
+        <div class="month">{{ $month->format(\App\Support\DisplayDate::CALENDAR) }}</div>
     </div>
 
     @if(count($impact['carbon_breakdown']) > 0)
@@ -634,7 +634,7 @@
     <div class="header" style="page-break-inside: avoid;">
         <h1>WASTE MANAGEMENT REPORT</h1>
         <div class="company-name">{{ strtoupper($company->name) }}</div>
-        <div class="month">{{ $month->format('M-Y') }}</div>
+        <div class="month">{{ $month->format(\App\Support\DisplayDate::CALENDAR) }}</div>
     </div>
 
     <div style="text-align: center; margin-top: 40px;">
@@ -679,7 +679,7 @@
     <div class="header" style="page-break-inside: avoid;">
         <h1>WASTE MANAGEMENT REPORT</h1>
         <div class="company-name">{{ strtoupper($company->name) }}</div>
-        <div class="month">{{ $month->format('M-Y') }}</div>
+        <div class="month">{{ $month->format(\App\Support\DisplayDate::CALENDAR) }}</div>
     </div>
 
     <div style="text-align: center; margin-top: 40px;">
@@ -806,7 +806,7 @@
     <div class="header" style="page-break-inside: avoid;">
         <h1>WASTE MANAGEMENT REPORT</h1>
         <div class="company-name">{{ strtoupper($company->name) }}</div>
-        <div class="month">{{ $month->format('M-Y') }}</div>
+        <div class="month">{{ $month->format(\App\Support\DisplayDate::CALENDAR) }}</div>
     </div>
 
     <div style="text-align: center; margin-top: 40px;">
@@ -909,7 +909,7 @@
     <div class="header" style="page-break-inside: avoid;">
         <h1>WASTE MANAGEMENT REPORT</h1>
         <div class="company-name">{{ strtoupper($company->name) }}</div>
-        <div class="month">{{ $month->format('M-Y') }}</div>
+        <div class="month">{{ $month->format(\App\Support\DisplayDate::CALENDAR) }}</div>
     </div>
 
     <div style="text-align: center; margin-top: 40px;">

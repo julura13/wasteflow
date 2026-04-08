@@ -2,6 +2,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import DataTable from '@/Components/Dashboard/DataTable';
 import { formatQuantityLineLabel } from '@/utils/orderQuantityLines';
+import { formatDateYyyyMmDd } from '@/utils/formatDateYyyyMmDd';
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { Plus, Trash2, Eye, Search, Filter, Package, CheckCircle, X, FileDown, FileText, FileSpreadsheet, Pencil, ChevronDown, Loader2, Download } from 'lucide-react';
 import axios from 'axios';
@@ -227,7 +228,7 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
                                 Requested:
                             </span>
                             <span className="text-gray-900 dark:text-gray-100">
-                                {requestedDate ? new Date(requestedDate).toLocaleDateString() : 'N/A'}
+                                {requestedDate ? formatDateYyyyMmDd(requestedDate) : 'N/A'}
                             </span>
                         </div>
                         <div className="flex flex-col mt-1">
@@ -235,7 +236,7 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
                                 Actual:
                             </span>
                             <span className="text-gray-900 dark:text-gray-100">
-                                {actualDate ? new Date(actualDate).toLocaleDateString() : 'N/A'}
+                                {actualDate ? formatDateYyyyMmDd(actualDate) : 'N/A'}
                             </span>
                         </div>
                     </div>

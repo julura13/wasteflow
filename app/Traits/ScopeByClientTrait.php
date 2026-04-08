@@ -2,9 +2,10 @@
 
 namespace App\Traits;
 
-use App\Models\Company;
 use App\Models\Branch;
+use App\Models\Company;
 use App\Models\Site;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 
 /**
@@ -36,16 +37,15 @@ trait ScopeByClientTrait
     }
 
     /**
-     * Enforce company/branch/site to user's scope. Returns [companyId, branchId, siteId].
+     * Enforce company/branch/site to a given user's client scope. Returns [companyId, branchId, siteId].
      */
-    protected function enforceCompanyScope(?int $companyId, ?int $branchId = null, ?int $siteId = null): array
+    protected function enforceCompanyScopeForUser(?User $user, ?int $companyId, ?int $branchId = null, ?int $siteId = null): array
     {
-        $user = Auth::user();
-        if (! $this->isClientScoped() || ! $user->company_id) {
+        if ($user === null || ! $user->company_id || $user->can('view-reports-all')) {
             return [$companyId, $branchId, $siteId];
         }
 
-        $companyId = $user->company_id;
+        $companyId = (int) $user->company_id;
         if ($branchId) {
             $branch = Branch::where('id', $branchId)->where('company_id', $companyId)->first();
             if (! $branch) {
@@ -60,5 +60,13 @@ trait ScopeByClientTrait
         }
 
         return [$companyId, $branchId, $siteId];
+    }
+
+    /**
+     * Enforce company/branch/site to user's scope. Returns [companyId, branchId, siteId].
+     */
+    protected function enforceCompanyScope(?int $companyId, ?int $branchId = null, ?int $siteId = null): array
+    {
+        return $this->enforceCompanyScopeForUser(Auth::user(), $companyId, $branchId, $siteId);
     }
 }

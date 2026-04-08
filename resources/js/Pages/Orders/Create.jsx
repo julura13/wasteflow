@@ -1,5 +1,6 @@
 import { Head, useForm, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
+import { formatDateYyyyMmDd } from '@/utils/formatDateYyyyMmDd';
 import { ArrowLeft, Save, Trash2, Recycle, Package, Plus } from 'lucide-react';
 import { Link } from '@inertiajs/react';
 import { useState, useEffect, useMemo } from 'react';
@@ -592,7 +593,7 @@ export default function Create({
                                                     }
                                                 </ul>
                                                 <li><strong>Total Containers:</strong> {getTotalContainers()}</li>
-                                                <li><strong>Collection Date:</strong> {new Date(data.requested_collection_date).toLocaleDateString()}</li>
+                                                <li><strong>Collection Date:</strong> {formatDateYyyyMmDd(data.requested_collection_date)}</li>
                                             </ul>
                                         </div>
                                     </div>

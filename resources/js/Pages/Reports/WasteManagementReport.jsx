@@ -20,7 +20,7 @@ export default function WasteManagementReport() {
     // Sample data matching the PDF
     const reportData = useMemo(() => ({
         companyName: 'XXXX',
-        reportDate: 'Aug-25',
+        reportDate: 'XXXX/XX/XX',
         environmentalImpact: {
             treesSaved: 20,
             energySaved: 26098,

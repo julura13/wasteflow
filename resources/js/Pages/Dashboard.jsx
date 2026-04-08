@@ -1,5 +1,6 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
+import { formatDateYyyyMmDd } from '@/utils/formatDateYyyyMmDd';
 import { useState, useEffect, useRef } from 'react';
 import {
     PieChart,
@@ -75,7 +76,7 @@ function getOrdersQuickViewDayOptionsAndValues() {
         } else {
             labelPrefix = day.toLocaleDateString('en-GB', { weekday: 'long' });
         }
-        const datePart = day.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+        const datePart = formatDateYyyyMmDd(value);
         opts.push({ value, label: `${labelPrefix} (${datePart})` });
     }
 
@@ -995,7 +996,7 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
                                 ) : (
                                     filtered.map((order) => (
                                         <tr key={order.id} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                            <td className="py-2 px-2 text-gray-600 dark:text-gray-300">{order.collection_date || '–'}</td>
+                                            <td className="py-2 px-2 text-gray-600 dark:text-gray-300">{order.collection_date ? formatDateYyyyMmDd(order.collection_date) : '–'}</td>
                                             <td className="py-2 px-2">
                                                 <span className="inline-flex px-1.5 py-0.5 text-xs font-medium rounded bg-gray-100 dark:bg-gray-600 text-gray-800 dark:text-gray-200 capitalize">
                                                     {order.status?.replace(/_/g, ' ') || '–'}

@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\GenerateWasteManagementPdfJob;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\Site;
+use App\Models\User;
+use App\Models\WasteManagementReportExport;
 use App\Services\CarbonCalculator;
 use App\Services\ChartImageService;
 use App\Services\CustomerOrderFrequencyReportService;
@@ -13,12 +16,14 @@ use App\Services\LifecycleCarbonEquivalency;
 use App\Services\OrderWasteStreamReportingService;
 use App\Services\WasteImpactCalculator;
 use App\Services\WaterCalculator;
+use App\Support\DisplayDate;
 use App\Traits\ScopeByClientTrait;
 use Carbon\Carbon;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class ReportController extends Controller
@@ -101,11 +106,11 @@ class ReportController extends Controller
                 fputcsv($out, [
                     $row['company_name'],
                     $lookbackMonths,
-                    $row['waste']['last_finalized_date'] ?? '',
+                    DisplayDate::formatOrEmpty($row['waste']['last_finalized_date'] ?? null),
                     $row['waste']['days_since_last_finalized'] ?? '',
                     $row['waste']['finalized_orders_in_period'],
                     $row['waste']['average_orders_per_month'],
-                    $row['recycling']['last_finalized_date'] ?? '',
+                    DisplayDate::formatOrEmpty($row['recycling']['last_finalized_date'] ?? null),
                     $row['recycling']['days_since_last_finalized'] ?? '',
                     $row['recycling']['finalized_orders_in_period'],
                     $row['recycling']['average_orders_per_month'],
@@ -166,67 +171,152 @@ class ReportController extends Controller
     }
 
     /**
-     * Display the waste management report (HTML view)
+     * Waste management report filter form (PDF is generated asynchronously).
      */
     public function wasteManagement(Request $request)
     {
-        $companyId = $request->input('company_id');
-        $branchId = $request->input('branch_id');
-        $siteId = $request->input('site_id');
-        $month = $request->input('month', date('m'));
-        $year = $request->input('year', date('Y'));
+        $companies = $this->scopeCompaniesForUser();
 
-        // If no filters provided, show the filter form
-        if (! $companyId && ! $branchId && ! $siteId) {
-            $companies = $this->scopeCompaniesForUser();
+        return Inertia::render('Reports/WasteManagement', [
+            'companies' => $companies,
+            'filters' => [
+                'company_id' => $request->input('company_id') ?? '',
+                'branch_id' => $request->input('branch_id') ?? '',
+                'site_id' => $request->input('site_id') ?? '',
+                'month' => (int) ($request->input('month') ?? date('m')),
+                'year' => (int) ($request->input('year') ?? date('Y')),
+            ],
+        ]);
+    }
 
-            return Inertia::render('Reports/WasteManagement', [
-                'companies' => $companies,
-                'filters' => [
-                    'company_id' => $companyId,
-                    'branch_id' => $branchId,
-                    'site_id' => $siteId,
-                    'month' => $month,
-                    'year' => $year,
-                ],
-            ]);
+    public function requestWasteManagementPdf(Request $request)
+    {
+        $user = $request->user();
+
+        $request->merge([
+            'company_id' => $request->input('company_id') === '' || $request->input('company_id') === null ? null : $request->input('company_id'),
+            'branch_id' => $request->input('branch_id') === '' || $request->input('branch_id') === null ? null : $request->input('branch_id'),
+            'site_id' => $request->input('site_id') === '' || $request->input('site_id') === null ? null : $request->input('site_id'),
+        ]);
+
+        $validated = $request->validate([
+            'company_id' => ['required', 'integer', 'exists:companies,id'],
+            'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
+            'site_id' => ['nullable', 'integer', 'exists:sites,id'],
+            'month' => ['required', 'integer', 'min:1', 'max:12'],
+            'year' => ['required', 'integer', 'min:2000', 'max:2100'],
+        ]);
+
+        $companyId = (int) $validated['company_id'];
+        $branchId = isset($validated['branch_id']) && $validated['branch_id'] !== null ? (int) $validated['branch_id'] : null;
+        $siteId = isset($validated['site_id']) && $validated['site_id'] !== null ? (int) $validated['site_id'] : null;
+
+        [$companyId, $branchId, $siteId] = $this->enforceCompanyScope($companyId, $branchId, $siteId);
+
+        $uuid = (string) Str::uuid();
+        $filename = sprintf(
+            'WasteFlow_Resource_Intelligence_Report_%d-%02d.pdf',
+            (int) $validated['year'],
+            (int) $validated['month'],
+        );
+
+        $export = WasteManagementReportExport::query()->create([
+            'uuid' => $uuid,
+            'user_id' => $user->id,
+            'status' => WasteManagementReportExport::STATUS_PENDING,
+            'disk' => 'local',
+            'filename' => $filename,
+            'filters' => [
+                'company_id' => $companyId,
+                'branch_id' => $branchId,
+                'site_id' => $siteId,
+                'month' => (int) $validated['month'],
+                'year' => (int) $validated['year'],
+            ],
+            'expires_at' => now()->addDay(),
+        ]);
+
+        GenerateWasteManagementPdfJob::dispatch($export->id)->afterResponse();
+
+        return back()->with('success', 'Your PDF report is being prepared. You can download it when it is ready using the button below.')
+            ->with('waste_management_pdf_export_uuid', $uuid);
+    }
+
+    public function wasteManagementPdfStatus(Request $request, string $uuid)
+    {
+        $export = WasteManagementReportExport::query()
+            ->where('uuid', $uuid)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
+        return response()->json([
+            'status' => $export->status,
+            'download_url' => $export->status === WasteManagementReportExport::STATUS_COMPLETED
+                ? route('reports.waste-management-pdf.download', ['uuid' => $uuid])
+                : null,
+            'error_message' => $export->error_message,
+        ]);
+    }
+
+    public function downloadWasteManagementPdf(Request $request, string $uuid)
+    {
+        $export = WasteManagementReportExport::query()
+            ->where('uuid', $uuid)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
+        if ($export->status !== WasteManagementReportExport::STATUS_COMPLETED) {
+            abort(404, 'This report is not ready yet.');
         }
 
-        [$companyId, $branchId, $siteId] = $this->enforceCompanyScope($companyId ? (int) $companyId : null, $branchId ? (int) $branchId : null, $siteId ? (int) $siteId : null);
+        if ($export->expires_at->isPast()) {
+            abort(410, 'This download link has expired.');
+        }
 
-        // Get the company, branch, and site objects
+        if ($export->path === null || ! Storage::disk($export->disk)->exists($export->path)) {
+            abort(404, 'The report file is no longer available.');
+        }
+
+        return Storage::disk($export->disk)->download($export->path, $export->filename);
+    }
+
+    /**
+     * Build and store the PDF for a queued export (invoked from {@see GenerateWasteManagementPdfJob}).
+     */
+    public function completeWasteManagementReportExport(WasteManagementReportExport $export, User $user): void
+    {
+        $filters = $export->filters;
+        $companyId = $filters['company_id'] ?? null;
+        $branchId = $filters['branch_id'] ?? null;
+        $siteId = $filters['site_id'] ?? null;
+        $month = (int) ($filters['month'] ?? date('m'));
+        $year = (int) ($filters['year'] ?? date('Y'));
+
+        [$companyId, $branchId, $siteId] = $this->enforceCompanyScopeForUser($user, $companyId ? (int) $companyId : null, $branchId ? (int) $branchId : null, $siteId ? (int) $siteId : null);
+
         $company = $companyId ? Company::find($companyId) : null;
-        $branch = $branchId ? Branch::find($branchId) : null;
-        $site = $siteId ? Site::find($siteId) : null;
+        $branch = $branchId ? Branch::with('company')->find($branchId) : null;
+        $site = $siteId ? Site::with('branch.company')->find($siteId) : null;
 
-        $reportData = $this->getReportData($company, $branch, $site, (int) $month, (int) $year);
-        $chartPaths = $this->generateCharts($reportData);
+        [$pdfFilename, $binary] = $this->buildWasteManagementPdfBinary($company, $branch, $site, $month, $year);
 
-        return view('reports.waste-management', [
-            'reportData' => $reportData,
-            'chartPaths' => $chartPaths,
+        $relativePath = 'waste-management-reports/'.$export->uuid.'.pdf';
+        Storage::disk($export->disk)->put($relativePath, $binary);
+
+        $export->update([
+            'status' => WasteManagementReportExport::STATUS_COMPLETED,
+            'path' => $relativePath,
+            'filename' => $pdfFilename,
+            'error_message' => null,
         ]);
     }
 
     /**
-     * Generate PDF of waste management report
+     * @return array{0: string, 1: string} Filename and raw PDF bytes
      */
-    public function wasteManagementPdf(Request $request)
+    private function buildWasteManagementPdfBinary(?Company $company, ?Branch $branch, ?Site $site, int $month, int $year): array
     {
-        $companyId = $request->input('company_id') ? (int) $request->input('company_id') : null;
-        $branchId = $request->input('branch_id') ? (int) $request->input('branch_id') : null;
-        $siteId = $request->input('site_id') ? (int) $request->input('site_id') : null;
-        $month = $request->input('month', date('m'));
-        $year = $request->input('year', date('Y'));
-
-        [$companyId, $branchId, $siteId] = $this->enforceCompanyScope($companyId, $branchId, $siteId);
-
-        // Get the company, branch, and site objects
-        $company = $companyId ? Company::find($companyId) : null;
-        $branch = $branchId ? Branch::find($branchId) : null;
-        $site = $siteId ? Site::find($siteId) : null;
-
-        $reportData = $this->getReportData($company, $branch, $site, (int) $month, (int) $year);
+        $reportData = $this->getReportData($company, $branch, $site, $month, $year);
         $chartPaths = $this->generateCharts($reportData);
 
         $options = new Options;
@@ -244,13 +334,9 @@ class ReportController extends Controller
         $dompdf->setPaper('A4', 'portrait');
         $dompdf->render();
 
-        $filename = 'Waste_Management_Report_'.$reportData['reportDate'].'.pdf';
+        $filename = sprintf('WasteFlow_Resource_Intelligence_Report_%04d-%02d.pdf', $year, $month);
 
-        return response()->streamDownload(function () use ($dompdf) {
-            echo $dompdf->output();
-        }, $filename, [
-            'Content-Type' => 'application/pdf',
-        ]);
+        return [$filename, $dompdf->output()];
     }
 
     /**
@@ -456,14 +542,46 @@ class ReportController extends Controller
             $companyName = $company->name;
         }
 
-        // Format report date (e.g., "Aug-25" for August 2025)
-        $reportDate = 'XXXX';
-        if ($month && $year) {
-            $monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-            $monthName = $monthNames[$month - 1] ?? 'XXX';
-            $yearShort = substr($year, -2);
-            $reportDate = $monthName.'-'.$yearShort;
+        $scopeDisplayName = $companyName;
+        if ($site) {
+            $scopeDisplayName = $site->name;
+        } elseif ($branch) {
+            $scopeDisplayName = $branch->name;
         }
+
+        $reportLocationLines = array_values(array_filter([
+            $company ? 'Customer: '.$company->name : null,
+            $branch ? 'Branch: '.$branch->name : null,
+            $site ? 'Site: '.$site->name : null,
+        ], static fn (?string $line): bool => $line !== null && $line !== ''));
+
+        if ($reportLocationLines === []) {
+            $reportLocationLines = [
+                'No customer selected. Open Reports → WasteFlow Resource Intelligence Report, choose a customer and period, then use Download PDF so the link includes your filters.',
+            ];
+        }
+
+        // Report period label and short date tag (yyyy/mm/dd; first day of month for tag)
+        $reportDate = 'XXXX';
+        $reportingPeriodLabel = 'Reporting period';
+        if ($month && $year) {
+            $start = Carbon::createFromDate($year, $month, 1);
+            $lastDay = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+            $end = Carbon::createFromDate($year, $month, $lastDay);
+            $reportDate = $start->format(DisplayDate::CALENDAR);
+            $reportingPeriodLabel = sprintf(
+                'Reporting period (%s to %s)',
+                $start->format(DisplayDate::CALENDAR),
+                $end->format(DisplayDate::CALENDAR)
+            );
+        }
+
+        $materialSummaries = ((! $company && ! $branch && ! $site) || ! $month || ! $year)
+            ? collect()
+            : $this->getMaterialSummaries($company, $branch, $site, $month, $year);
+
+        $wasteStreamTotals = $this->orderWasteStreamReporting->wasteStreamTotalsFromSummaries($materialSummaries);
+        $classificationTotals = $this->orderWasteStreamReporting->classificationTotalsFromSummaries($materialSummaries);
 
         // Get material weights from finalized orders
         $materialWeights = $this->getMaterialWeights($company, $branch, $site, $month, $year);
@@ -515,7 +633,12 @@ class ReportController extends Controller
 
         return [
             'companyName' => $companyName,
+            'scopeDisplayName' => $scopeDisplayName,
+            'reportLocationLines' => $reportLocationLines,
             'reportDate' => $reportDate,
+            'reportingPeriodLabel' => $reportingPeriodLabel,
+            'wasteStreamTotals' => $wasteStreamTotals,
+            'classificationTotals' => $classificationTotals,
             'environmentalImpact' => $environmentalImpact,
             'grades' => $grades,
             'recyclingCommodities' => $recyclingCommodities,
@@ -946,15 +1069,13 @@ class ReportController extends Controller
      */
     private function calculateCumulativeImpact(array $environmentalImpact, array $materialsCO2eTotals): array
     {
-        $waterSaved = $environmentalImpact['waterSaved'] ?? 0;
-        $energySaved = $environmentalImpact['energySaved'] ?? 0;
-        $lifecycleSaving = $materialsCO2eTotals['lifecycleSaving'] ?? 0;
+        $waterSaved = (float) ($environmentalImpact['waterSaved'] ?? 0);
+        $electricityKwh = (float) ($environmentalImpact['electricityEquivalentKwhSaGrid'] ?? 0);
+        $lifecycleSaving = (float) ($materialsCO2eTotals['lifecycleSaving'] ?? 0);
 
-        // TODO: Confirm if these should be percentages or actual values
-        // For now, returning as percentages (may need adjustment)
         return [
-            ['name' => 'Water Saved', 'value' => round($waterSaved, 2), 'color' => '#3b82f6'],
-            ['name' => 'Energy Saved', 'value' => round($energySaved, 2), 'color' => '#a3e635'],
+            ['name' => 'Water Saved (kL)', 'value' => round($waterSaved, 2), 'color' => '#3b82f6'],
+            ['name' => 'Electricity Equivalent (kWh – SA Grid)', 'value' => round($electricityKwh, 2), 'color' => '#eab308'],
             ['name' => 'Total Lifecycle Carbon Avoided (kg CO₂e)', 'value' => round($lifecycleSaving, 2), 'color' => '#6b7280'],
         ];
     }
@@ -1068,150 +1189,152 @@ class ReportController extends Controller
         $timestamp = now()->format('YmdHis');
         $chartPaths = [];
 
-        // Ensure storage link exists
-        if (! \Storage::disk('public')->exists('charts')) {
-            \Storage::disk('public')->makeDirectory('charts');
+        if (! Storage::disk('public')->exists('charts')) {
+            Storage::disk('public')->makeDirectory('charts');
         }
 
-        // Page 1: Pie chart (Waste Distribution)
-        $pieData = [
-            ['name' => 'General Waste', 'value' => $reportData['grades']['generalWaste'], 'color' => '#1e3a5f'],
-            ['name' => 'Non Compactable Waste', 'value' => max(1, $reportData['grades']['nonCompactableWaste']), 'color' => '#5ba3c0'],
-            ['name' => 'Hazardous Waste', 'value' => max(1, $reportData['grades']['hazardousWaste']), 'color' => '#dc2626'],
-            ['name' => 'Organics Recovered', 'value' => max(1, $reportData['grades']['organicsRecovered']), 'color' => '#a3e635'],
-            ['name' => 'Recycling Recovered', 'value' => $reportData['summary']['recyclingRecovered'], 'color' => '#3b82f6'],
-        ];
+        $wasteStreamRows = array_values(array_filter(
+            $reportData['wasteStreamTotals'] ?? [],
+            static fn (array $row): bool => ($row['value'] ?? 0) > 0
+        ));
 
-        $chartPaths['page1_pie'] = $this->chartService->generatePieChart([
+        if ($wasteStreamRows === []) {
+            $wasteStreamRows = [
+                ['name' => 'No data', 'value' => 1.0, 'color' => '#e5e7eb'],
+            ];
+        }
+
+        // Doughnut with no cutout renders as a pie; QuickChart pie charts may still draw a top legend.
+        $chartPaths['page1_waste_stream_pie'] = $this->chartService->generateDoughnutChart([
             'title' => '',
-            'labels' => array_column($pieData, 'name'),
-            'data' => array_column($pieData, 'value'),
-            'colors' => array_column($pieData, 'color'),
-            'legendPosition' => 'bottom',
-            'width' => 900,
-            'height' => 600,
+            'data' => array_column($wasteStreamRows, 'value'),
+            'colors' => array_column($wasteStreamRows, 'color'),
+            'cutout' => '0%',
+            'width' => 400,
+            'height' => 260,
             'options' => [
+                'layout' => [
+                    'padding' => 4,
+                ],
                 'plugins' => [
                     'legend' => [
-                        'display' => true,
-                        'position' => 'bottom',
-                        'align' => 'center',
-                        'labels' => [
-                            'boxWidth' => 12,
-                            'boxHeight' => 12,
-                            'padding' => 12,
-                            'font' => [
-                                'size' => 11,
-                            ],
-                        ],
+                        'display' => false,
+                    ],
+                    'title' => [
+                        'display' => false,
                     ],
                 ],
             ],
-        ], "page1_pie_{$timestamp}.png");
+        ], "page1_waste_stream_pie_{$timestamp}.png");
 
-        // Page 3: Stacked Bar Chart (Horizontal)
-        $materialsCO2eTotals = $reportData['materialsCO2eTotals'] ?? [];
-        $stackedBarData = [
-            'scope3EF' => $materialsCO2eTotals['scope3EF'] ?? 0,
-            'landfillAvoidanceEF' => $materialsCO2eTotals['landfillAvoidanceEF'] ?? 0,
+        $classification = $reportData['classificationTotals'] ?? [];
+        $donutDefs = [
+            'page1_donut_avoidance' => ['label' => 'AVOIDANCE', 'pct' => (float) ($classification['avoidance']['percentage'] ?? 0), 'color' => '#BDBDBD'],
+            'page1_donut_recycling' => ['label' => 'RECYCLING', 'pct' => (float) ($classification['recycling']['percentage'] ?? 0), 'color' => '#6FCF97'],
+            'page1_donut_recovery' => ['label' => 'RECOVERY', 'pct' => (float) ($classification['recovery']['percentage'] ?? 0), 'color' => '#2D9CDB'],
+            'page1_donut_disposal' => ['label' => 'DISPOSAL', 'pct' => (float) ($classification['disposal']['percentage'] ?? 0), 'color' => '#1C1C1C'],
+            'page1_donut_diverted' => ['label' => 'DIVERTED', 'pct' => (float) ($classification['diverted']['percentage'] ?? 0), 'color' => '#C69200'],
         ];
+
+        foreach ($donutDefs as $key => $def) {
+            $p = min(100.0, max(0.0, $def['pct']));
+            $rest = $p >= 100.0 ? 0.0 : max(0.01, 100.0 - $p);
+            $chartPaths[$key] = $this->chartService->generateDoughnutChart([
+                'title' => '',
+                'labels' => ['', ''],
+                'data' => $p <= 0 && $rest >= 100 ? [0.0, 100.0] : [$p, $rest],
+                'colors' => [$def['color'], '#e5e7eb'],
+                'legendPosition' => 'bottom',
+                'cutout' => '68%',
+                'width' => 180,
+                'height' => 180,
+                'options' => [
+                    'plugins' => [
+                        'legend' => ['display' => false],
+                        'title' => ['display' => false],
+                    ],
+                ],
+            ], "{$key}_{$timestamp}.png");
+        }
+
+        $divPct = (float) ($reportData['summary']['divertedFromLandfill'] ?? 0);
+        $divRest = $divPct >= 100 ? 0.0 : max(0.01, 100.0 - $divPct);
+        $chartPaths['page1_diversion_donut'] = $this->chartService->generateDoughnutChart([
+            'title' => '',
+            'labels' => ['', ''],
+            'data' => $divPct <= 0 && $divRest >= 100 ? [0.0, 100.0] : [$divPct, $divRest],
+            'colors' => ['#3b82f6', '#e5e7eb'],
+            'legendPosition' => 'bottom',
+            'cutout' => '62%',
+            'width' => 200,
+            'height' => 200,
+            'options' => [
+                'plugins' => [
+                    'legend' => ['display' => false],
+                    'title' => ['display' => false],
+                ],
+            ],
+        ], "page1_diversion_donut_{$timestamp}.png");
+
+        $materialsCO2eTotals = $reportData['materialsCO2eTotals'] ?? [];
+        $scope3 = (float) ($materialsCO2eTotals['scope3EF'] ?? 0);
+        $landfill = (float) ($materialsCO2eTotals['landfillAvoidanceEF'] ?? 0);
+        $stackedTotal = $scope3 + $landfill;
+        $maxX = $stackedTotal <= 0 ? 1.0 : max(100.0, ceil($stackedTotal * 1.12));
+        $step = $stackedTotal <= 0 ? 0.2 : max(50.0, round($maxX / 8, -1));
 
         $chartPaths['page3_stacked'] = $this->chartService->generateStackedBarChart([
             'title' => '(kg CO₂e)',
             'labels' => ['Total'],
-            'horizontal' => true, // Horizontal bar chart
+            'horizontal' => true,
             'datasets' => [
                 [
                     'label' => 'Upstream (Scope 3) Emissions Avoided (kg CO₂e)',
-                    'data' => [$stackedBarData['scope3EF']],
+                    'data' => [$scope3],
                     'backgroundColor' => '#60a5fa',
                 ],
                 [
                     'label' => 'Landfill Emissions Avoided (kg CO₂e)',
-                    'data' => [$stackedBarData['landfillAvoidanceEF']],
+                    'data' => [$landfill],
                     'backgroundColor' => '#9ca3af',
                 ],
             ],
             'options' => [
                 'scales' => [
                     'x' => [
-                        'max' => 3000,
+                        'min' => 0,
+                        'max' => $maxX,
                         'ticks' => [
-                            'stepSize' => 500,
+                            'stepSize' => $step,
                         ],
                     ],
                 ],
             ],
-            'width' => 900,
-            'height' => 400,
+            'width' => 780,
+            'height' => 260,
         ], "page3_stacked_{$timestamp}.png");
 
-        // Page 3: Single Bar Chart
-        $carbonEmissionsAvoided = $reportData['carbonEmissionsAvoided'] ?? 0;
-        $maxCarbonValue = max($carbonEmissionsAvoided * 1.1, 18000); // Add 10% padding, minimum 18000
-
-        $chartPaths['page3_single'] = $this->chartService->generateBarChart([
-            'title' => 'Total Carbon Emissions Avoided in KM',
-            'labels' => ['1'],
-            'datasets' => [[
-                'label' => 'Carbon Emissions Avoided',
-                'data' => [$carbonEmissionsAvoided],
-                'backgroundColor' => '#60a5fa',
-            ]],
-            'options' => [
-                'scales' => [
-                    'y' => [
-                        'beginAtZero' => true,
-                        'max' => $maxCarbonValue,
-                        'ticks' => [
-                            'stepSize' => round($maxCarbonValue / 9, 0),
-                        ],
-                    ],
-                ],
-            ],
-            'width' => 900,
-            'height' => 300,
-        ], "page3_single_{$timestamp}.png");
-
-        // Page 4: Cumulative Impact Doughnut
-        $chartPaths['page4_cumulative'] = $this->chartService->generateDoughnutChart([
+        $chartPaths['page3_cumulative'] = $this->chartService->generateDoughnutChart([
             'title' => 'CUMULATIVE IMPACT DASHBOARD',
             'labels' => array_column($reportData['cumulativeImpact'], 'name'),
             'data' => array_column($reportData['cumulativeImpact'], 'value'),
             'colors' => array_column($reportData['cumulativeImpact'], 'color'),
             'legendPosition' => 'top',
             'cutout' => '60%',
-            'width' => 900,
-            'height' => 400,
-        ], "page4_cumulative_{$timestamp}.png");
+            'width' => 720,
+            'height' => 320,
+        ], "page3_cumulative_{$timestamp}.png");
 
-        // Page 4: Recycling Breakdown Doughnut
-        $chartPaths['page4_recycling'] = $this->chartService->generateDoughnutChart([
+        $chartPaths['page3_recycling'] = $this->chartService->generateDoughnutChart([
             'title' => 'RECYCLING BREAKDOWN',
             'labels' => array_column($reportData['recyclingBreakdown'], 'name'),
             'data' => array_column($reportData['recyclingBreakdown'], 'value'),
             'colors' => array_column($reportData['recyclingBreakdown'], 'color'),
             'legendPosition' => 'bottom',
             'cutout' => '60%',
-            'width' => 900,
-            'height' => 400,
-        ], "page4_recycling_{$timestamp}.png");
-
-        // Page 5: Waste vs Recovery Pie
-        $wasteVsRecovery = [
-            ['name' => 'Waste', 'value' => 15, 'color' => '#1e3a5f'],
-            ['name' => 'Recovery', 'value' => 85, 'color' => '#3b82f6'],
-        ];
-
-        $chartPaths['page5_waste_recovery'] = $this->chartService->generatePieChart([
-            'title' => 'WASTE vs RECOVERY',
-            'labels' => array_column($wasteVsRecovery, 'name'),
-            'data' => array_column($wasteVsRecovery, 'value'),
-            'colors' => array_column($wasteVsRecovery, 'color'),
-            'legendPosition' => 'bottom',
-            'width' => 900,
-            'height' => 400,
-        ], "page5_waste_recovery_{$timestamp}.png");
+            'width' => 720,
+            'height' => 320,
+        ], "page3_recycling_{$timestamp}.png");
 
         return $chartPaths;
     }

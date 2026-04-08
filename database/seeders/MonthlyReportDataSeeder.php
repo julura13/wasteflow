@@ -13,6 +13,7 @@ use App\Models\OrderWasteStream;
 use App\Models\ServiceProvider;
 use App\Models\User;
 use App\Models\WasteStream;
+use App\Support\DisplayDate;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 
@@ -223,7 +224,7 @@ class MonthlyReportDataSeeder extends Seeder
         }
 
         if ($this->command) {
-            $this->command->info('Sample monthly report data created for ABC Company for '.$month->format('M-Y'));
+            $this->command->info('Sample monthly report data created for ABC Company for '.$month->format(DisplayDate::CALENDAR));
             $this->command->info('Created '.count($orders).' finalized orders with waste streams.');
         }
     }
