@@ -17,6 +17,7 @@ const MATERIALS = [
     { key: 'batteries', label: 'Batteries' },
     { key: 'electronics', label: 'Electronics (E-waste)' },
     { key: 'tetrapak', label: 'Tetrapak variants' },
+    { key: 'wood', label: 'Wood (Timber / Pallets)' },
 ];
 
 const initialWeights = Object.fromEntries(MATERIALS.map((m) => [m.key, '']));

@@ -400,6 +400,7 @@ class ReportController extends Controller
             'weights.batteries' => ['nullable', 'numeric', 'min:0'],
             'weights.electronics' => ['nullable', 'numeric', 'min:0'],
             'weights.tetrapak' => ['nullable', 'numeric', 'min:0'],
+            'weights.wood' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $weights = array_map(fn ($v) => (float) ($v ?? 0), $validated['weights'] ?? []);
@@ -913,6 +914,7 @@ class ReportController extends Controller
             'batteries' => 0,
             'electronics' => 0,
             'tetrapak' => 0,
+            'wood' => 0,
         ];
 
         foreach ($summaries as $summary) {
@@ -977,6 +979,10 @@ class ReportController extends Controller
             elseif (in_array($wasteStreamName, ['Electronics', 'E-waste', 'Electronics (E-waste)'])) {
                 $weights['electronics'] += $weight;
             }
+            // Wood (Timber / Pallets): waste stream = "Wood"
+            elseif ($wasteStreamName === 'Wood') {
+                $weights['wood'] += $weight;
+            }
         }
 
         $carbonData = $this->carbonCalculator->calculateMaterialsCO2e($weights);
@@ -1004,7 +1010,8 @@ class ReportController extends Controller
             ['material' => 'Garden Waste', 'weight' => 0, 'scope3EF' => 0, 'landfillAvoidanceEF' => 0, 'lifecycleSaving' => 0],
             ['material' => 'Batteries', 'weight' => 0, 'scope3EF' => 0, 'landfillAvoidanceEF' => 0, 'lifecycleSaving' => 0],
             ['material' => 'Electronics (E-waste)', 'weight' => 0, 'scope3EF' => 0, 'landfillAvoidanceEF' => 0, 'lifecycleSaving' => 0],
-            ['material' => 'Tetrapak', 'weight' => 0, 'scope3EF' => 0, 'landfillAvoidanceEF' => 0, 'lifecycleSaving' => 0],
+            ['material' => 'Tetrapak variants', 'weight' => 0, 'scope3EF' => 0, 'landfillAvoidanceEF' => 0, 'lifecycleSaving' => 0],
+            ['material' => 'Wood (Timber / Pallets)', 'weight' => 0, 'scope3EF' => 0, 'landfillAvoidanceEF' => 0, 'lifecycleSaving' => 0],
         ];
 
         return [
@@ -1094,6 +1101,7 @@ class ReportController extends Controller
                 ['name' => 'Tetrapak', 'value' => 0, 'color' => '#fde047'],
                 ['name' => 'Steel', 'value' => 0, 'color' => '#e5e7eb'],
                 ['name' => 'Glass', 'value' => 0, 'color' => '#3b82f6'],
+                ['name' => 'Wood', 'value' => 0, 'color' => '#A0522D'],
             ];
         }
 
@@ -1109,6 +1117,7 @@ class ReportController extends Controller
             'tetrapak' => 0,
             'steel' => 0,
             'glass' => 0,
+            'wood' => 0,
         ];
 
         foreach ($summaries as $summary) {
@@ -1149,6 +1158,10 @@ class ReportController extends Controller
             elseif ($wasteStreamName === 'Glass') {
                 $categoryWeights['glass'] += $weight;
             }
+            // Wood: waste stream = "Wood"
+            elseif ($wasteStreamName === 'Wood') {
+                $categoryWeights['wood'] += $weight;
+            }
         }
 
         // Calculate total for percentage calculation
@@ -1165,6 +1178,7 @@ class ReportController extends Controller
                 ['name' => 'Tetrapak', 'value' => round(($categoryWeights['tetrapak'] / $totalWeight) * 100, 2), 'color' => '#fde047'],
                 ['name' => 'Steel', 'value' => round(($categoryWeights['steel'] / $totalWeight) * 100, 2), 'color' => '#e5e7eb'],
                 ['name' => 'Glass', 'value' => round(($categoryWeights['glass'] / $totalWeight) * 100, 2), 'color' => '#3b82f6'],
+                ['name' => 'Wood', 'value' => round(($categoryWeights['wood'] / $totalWeight) * 100, 2), 'color' => '#A0522D'],
             ];
         } else {
             $breakdown = [
@@ -1175,6 +1189,7 @@ class ReportController extends Controller
                 ['name' => 'Tetrapak', 'value' => 0, 'color' => '#fde047'],
                 ['name' => 'Steel', 'value' => 0, 'color' => '#e5e7eb'],
                 ['name' => 'Glass', 'value' => 0, 'color' => '#3b82f6'],
+                ['name' => 'Wood', 'value' => 0, 'color' => '#A0522D'],
             ];
         }
 

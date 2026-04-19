@@ -4,6 +4,18 @@ use App\Services\CarbonCalculator;
 use App\Services\EnvironmentalImpactService;
 use App\Services\WasteImpactCalculator;
 
+test('CarbonCalculator wood row matches workbook (100 kg example)', function () {
+    $calculator = new CarbonCalculator;
+
+    $result = $calculator->calculateMaterialsCO2e(['wood' => 100]);
+
+    $woodRow = collect($result['materials'])->firstWhere('material', 'Wood (Timber / Pallets)');
+    expect($woodRow['scope3EF'])->toBe(50.0)
+        ->and($woodRow['landfillAvoidanceEF'])->toBe(120.0)
+        ->and($woodRow['lifecycleSaving'])->toBe(170.0)
+        ->and($woodRow['recyclingSubstitutionFactor'])->toBe(0.8);
+});
+
 test('CarbonCalculator matches spreadsheet lifecycle formula', function () {
     $calculator = new CarbonCalculator;
 
@@ -20,6 +32,7 @@ test('CarbonCalculator matches spreadsheet lifecycle formula', function () {
         'batteries' => 5,
         'electronics' => 9,
         'tetrapak' => 10,
+        'wood' => 0,
     ];
 
     $result = $calculator->calculateMaterialsCO2e($weightsByMaterialKey);
@@ -31,6 +44,8 @@ test('CarbonCalculator matches spreadsheet lifecycle formula', function () {
     expect($result['materials'][0]['recyclingSubstitutionFactor'])->toBe(1.3);
     expect($result['materials'][11]['material'])->toBe('Tetrapak variants');
     expect($result['materials'][11]['recyclingSubstitutionFactor'])->toBe(1.0);
+    expect($result['materials'][12]['material'])->toBe('Wood (Timber / Pallets)');
+    expect($result['materials'][12]['recyclingSubstitutionFactor'])->toBe(0.8);
 });
 
 test('WasteImpactCalculator lifecycle excludes other offsets', function () {
@@ -44,6 +59,7 @@ test('WasteImpactCalculator lifecycle excludes other offsets', function () {
         'glass' => 6,
         'organics' => 8, // mapped to foodWaste in the calculator
         'tetrapak' => 10,
+        'wood' => 0,
     ];
 
     $lifecycle = $calculator->calculateLifecycleCarbonSaved($categoryWeights);

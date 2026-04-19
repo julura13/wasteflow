@@ -47,6 +47,11 @@ class EnvironmentalImpactService
             'landfill_avoidance' => 0.25,
             'other_offsets' => 1.0,
         ],
+        'wood' => [
+            'scope3' => 0.5,
+            'landfill_avoidance' => 1.2,
+            'other_offsets' => 0.8,
+        ],
     ];
 
     public function __construct(
@@ -160,6 +165,9 @@ class EnvironmentalImpactService
         if (str_contains($combined, 'tetrapak')) {
             return 'tetrapak';
         }
+        if (str_contains($combined, 'wood') || str_contains($combined, 'timber') || str_contains($combined, 'pallet')) {
+            return 'wood';
+        }
         if (str_contains($combined, 'hd') || str_contains($combined, 'pp') || str_contains($combined, 'polypropylene')) {
             return 'plastic_pp_hd';
         }
@@ -205,6 +213,7 @@ class EnvironmentalImpactService
             'steel' => 'Steel',
             'glass' => 'Glass',
             'tetrapak' => 'Tetrapak variants',
+            'wood' => 'Wood (Timber / Pallets)',
             default => 'Other',
         };
     }

@@ -23,6 +23,7 @@ class CarbonCalculator
         'batteries' => 4.0,
         'electronics' => 6.0,
         'tetrapak' => 0.7,
+        'wood' => 0.5,
     ];
 
     /**
@@ -43,6 +44,7 @@ class CarbonCalculator
         'batteries' => 1.5,
         'electronics' => 1.0,
         'tetrapak' => 0.25,
+        'wood' => 1.2,
     ];
 
     /**
@@ -64,6 +66,7 @@ class CarbonCalculator
         'batteries' => 5.0,
         'electronics' => 8.0,
         'tetrapak' => 1.0,
+        'wood' => 0.8,
     ];
 
     /**
@@ -91,6 +94,7 @@ class CarbonCalculator
             'Batteries' => 'batteries',
             'Electronics (E-waste)' => 'electronics',
             'Tetrapak variants' => 'tetrapak',
+            'Wood (Timber / Pallets)' => 'wood',
         ];
 
         $materials = [];

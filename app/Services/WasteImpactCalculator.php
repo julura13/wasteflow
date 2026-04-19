@@ -30,6 +30,7 @@ class WasteImpactCalculator
         'tetrapak' => 2,
         'steel' => 15,
         'glass' => 7,
+        'wood' => 8,
     ];
 
     /** Scope 3 emission factors (kg CO₂e per kg) for lifecycle carbon calculation */
@@ -46,6 +47,7 @@ class WasteImpactCalculator
         'batteries' => 4.0,
         'electronics' => 6.0,
         'tetrapak' => 0.7,
+        'wood' => 0.5,
     ];
 
     /** Landfill avoidance emission factors (kg CO₂e per kg) */
@@ -62,6 +64,7 @@ class WasteImpactCalculator
         'batteries' => 1.5,
         'electronics' => 1,
         'tetrapak' => 0.25,
+        'wood' => 1.2,
     ];
 
     /** Other offsets factors (divided by 25 in calculation) */
@@ -78,6 +81,7 @@ class WasteImpactCalculator
         'batteries' => 30,
         'electronics' => 25,
         'tetrapak' => 5,
+        'wood' => 0.8,
     ];
 
     /**
@@ -95,6 +99,7 @@ class WasteImpactCalculator
             'tetrapak' => 0,
             'steel' => 0,
             'glass' => 0,
+            'wood' => 0,
         ];
     }
 
@@ -137,6 +142,8 @@ class WasteImpactCalculator
                 $categoryWeights['steel'] += $weight;
             } elseif ($wasteStreamName === 'Glass') {
                 $categoryWeights['glass'] += $weight;
+            } elseif ($wasteStreamName === 'Wood') {
+                $categoryWeights['wood'] += $weight;
             }
         }
 
@@ -176,6 +183,8 @@ class WasteImpactCalculator
                 $categoryWeights['steel'] += $weight;
             } elseif ($wasteStreamName === 'Glass') {
                 $categoryWeights['glass'] += $weight;
+            } elseif ($wasteStreamName === 'Wood') {
+                $categoryWeights['wood'] += $weight;
             }
         }
 
@@ -187,7 +196,7 @@ class WasteImpactCalculator
      * Returns trees saved, energy saved (same unit as factors), water saved (kL), lifecycle carbon saved (kg CO₂e),
      * and SA carbon equivalency metrics from that lifecycle total.
      *
-     * @param  array<string, float>  $categoryWeights  Keys: paper, plastics, aluminium, organics, tetrapak, steel, glass
+     * @param  array<string, float>  $categoryWeights  Keys: paper, plastics, aluminium, organics, tetrapak, steel, glass, wood
      * @return array{
      *     treesSaved: float,
      *     energySaved: float,
@@ -253,6 +262,7 @@ class WasteImpactCalculator
             'batteries' => 0,
             'electronics' => 0,
             'tetrapak' => $categoryWeights['tetrapak'] ?? 0,
+            'wood' => $categoryWeights['wood'] ?? 0,
         ];
 
         $totalCO2 = 0;

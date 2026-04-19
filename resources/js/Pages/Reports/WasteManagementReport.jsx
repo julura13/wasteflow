@@ -99,7 +99,8 @@ export default function WasteManagementReport() {
             { material: 'Garden Waste', weight: 0, scope3EF: 0, landfillAvoidanceEF: 0, lifecycleSaving: 0 },
             { material: 'Batteries', weight: 0, scope3EF: 0, landfillAvoidanceEF: 0, lifecycleSaving: 0 },
             { material: 'Electronics (E-waste)', weight: 0, scope3EF: 0, landfillAvoidanceEF: 0, lifecycleSaving: 0 },
-            { material: 'Tetrapak', weight: 74, scope3EF: 51.8, landfillAvoidanceEF: 18.5, lifecycleSaving: 70.3 },
+            { material: 'Tetrapak variants', weight: 74, scope3EF: 51.8, landfillAvoidanceEF: 18.5, lifecycleSaving: 70.3 },
+            { material: 'Wood (Timber / Pallets)', weight: 0, scope3EF: 0, landfillAvoidanceEF: 0, lifecycleSaving: 0 },
         ],
         // Page 3: Chart data
         stackedBarData: [
@@ -124,6 +125,7 @@ export default function WasteManagementReport() {
             { name: 'Tetrapak', value: 8, color: '#2F80ED' },
             { name: 'Steel', value: 7, color: '#4F4F4F' },
             { name: 'Glass', value: 15, color: '#56CCF2' },
+            { name: 'Wood', value: 0, color: '#A0522D' },
         ],
         // Page 5: Gauge and pie data
         wasteVsRecovery: [
