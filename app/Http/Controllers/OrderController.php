@@ -53,15 +53,14 @@ class OrderController extends Controller
 
     public function index(Request $request)
     {
-        // Get status from request or session, prioritize request
-        $status = $request->input('status');
-
-        // If status is provided in request, save it to session
-        if ($request->has('status')) {
-            if ($status) {
-                session(['orders_status_filter' => $status]);
-            } else {
+        // Status: query string wins; empty `?status=` means "all" and clears the remembered filter.
+        if ($request->query->has('status')) {
+            $status = $request->query('status');
+            if ($status === null || $status === '') {
                 session()->forget('orders_status_filter');
+                $status = null;
+            } else {
+                session(['orders_status_filter' => $status]);
             }
         } else {
             $status = session('orders_status_filter', null);

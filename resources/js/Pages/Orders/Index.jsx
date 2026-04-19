@@ -33,11 +33,6 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
     }, [flash]);
 
     useEffect(() => {
-        setRequestedCollectionFrom(filters.requested_collection_from || '');
-        setRequestedCollectionTo(filters.requested_collection_to || '');
-    }, [filters.requested_collection_from, filters.requested_collection_to]);
-
-    useEffect(() => {
         if (flash?.order_export_uuid) {
             setOrderExportUuid(flash.order_export_uuid);
             setOrderExportFormat(flash.order_export_format ?? null);
@@ -99,7 +94,7 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
         }
     }, [consolidatedDate, showConsolidatedForm]);
     const [search, setSearch] = useState(filters.search || '');
-    const [statusFilter, setStatusFilter] = useState(filters.status || '');
+    const [statusFilter, setStatusFilter] = useState(filters.status ?? '');
     const [requestedCollectionFrom, setRequestedCollectionFrom] = useState(
         filters.requested_collection_from || ''
     );
@@ -110,6 +105,15 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
     const [orderTypeRecycling, setOrderTypeRecycling] = useState(
         () => !filters.order_types?.length || filters.order_types.includes('recycling')
     );
+
+    useEffect(() => {
+        setRequestedCollectionFrom(filters.requested_collection_from || '');
+        setRequestedCollectionTo(filters.requested_collection_to || '');
+    }, [filters.requested_collection_from, filters.requested_collection_to]);
+
+    useEffect(() => {
+        setStatusFilter(filters.status ?? '');
+    }, [filters.status]);
 
     const columns = useMemo(() => [
         {
@@ -389,7 +393,7 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
     const buildFilterParams = (orderTypesOverride) => {
         const params = {
             search: search || undefined,
-            status: statusFilter || undefined,
+            status: statusFilter,
             requested_collection_from: requestedCollectionFrom || undefined,
             requested_collection_to: requestedCollectionTo || undefined,
         };
@@ -410,9 +414,21 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
         });
     };
 
-    const handleStatusFilter = (status) => {
-        setStatusFilter(status);
-        router.get('/orders', { ...buildFilterParams(), status: status !== '' ? status : undefined }, {
+    const handleStatusFilter = (newStatus) => {
+        setStatusFilter(newStatus);
+        const types = getOrderTypesParam();
+        const params = {
+            search: search || undefined,
+            status: newStatus,
+            requested_collection_from: requestedCollectionFrom || undefined,
+            requested_collection_to: requestedCollectionTo || undefined,
+        };
+        if (types.length === 1) {
+            params.order_types = types;
+        } else if (types.length === 2) {
+            params.order_types = ['waste', 'recycling'];
+        }
+        router.get('/orders', params, {
             preserveState: true,
             replace: true,
         });
@@ -433,7 +449,7 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
             if (search) {
                 data.search = search;
             }
-            if (statusFilter) {
+            if (statusFilter !== '') {
                 data.status = statusFilter;
             }
             if (requestedCollectionFrom) {
