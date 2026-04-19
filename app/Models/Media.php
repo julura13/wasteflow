@@ -16,10 +16,22 @@ class Media extends Model
         'mime_type',
         'disk',
         'path',
+        'local_disk',
+        'local_path',
+        'local_cached_at',
+        'local_deleted_at',
         'file_size',
         'collection',
         'description',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'local_cached_at' => 'datetime',
+            'local_deleted_at' => 'datetime',
+        ];
+    }
 
     /**
      * Get the parent mediable model (Order, Material, etc.).
@@ -34,12 +46,12 @@ class Media extends Model
      */
     public function getUrlAttribute(): ?string
     {
-        if (!$this->path) {
+        if (! $this->path) {
             return null;
         }
 
         $disk = Storage::disk($this->disk);
-        
+
         if ($this->disk === 'public') {
             return $disk->url($this->path);
         }
@@ -56,7 +68,7 @@ class Media extends Model
      */
     public function getHumanReadableSizeAttribute(): string
     {
-        if (!$this->file_size) {
+        if (! $this->file_size) {
             return '0 B';
         }
 
@@ -69,7 +81,7 @@ class Media extends Model
             $unit++;
         }
 
-        return round($size, 2) . ' ' . $units[$unit];
+        return round($size, 2).' '.$units[$unit];
     }
 
     /**

@@ -6,8 +6,10 @@ use App\Models\ActivityLog;
 use App\Models\Media;
 use App\Models\Order;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Throwable;
 
 class MediaController extends Controller
 {
@@ -30,20 +32,43 @@ class MediaController extends Controller
 
         $order = Order::findOrFail($validated['mediable_id']);
 
+        /** @var UploadedFile $file */
         $file = $request->file('file');
         $originalName = $file->getClientOriginalName();
         $mimeType = $file->getMimeType();
         $fileSize = $file->getSize();
 
+        $collection = $validated['collection'] ?? 'default';
+        $relativeDirectory = 'orders/'.$order->id.'/'.$collection;
         $fileName = Str::uuid().'.'.$file->getClientOriginalExtension();
 
-        $disk = config('filesystems.default');
+        $shouldDualStore = $collection === 'supporting_documents'
+            && in_array($order->status, ['documents_required', 'finalized'], true);
 
-        $path = $file->storeAs(
-            'orders/'.$order->id.'/'.($validated['collection'] ?? 'default'),
-            $fileName,
-            $disk
-        );
+        $disk = $shouldDualStore ? 'wasabi' : config('filesystems.default');
+
+        $path = null;
+        $localDisk = null;
+        $localPath = null;
+
+        try {
+            if ($shouldDualStore) {
+                $localDisk = 'local';
+                $localPath = $file->storeAs($relativeDirectory, $fileName, $localDisk);
+            }
+
+            $path = $file->storeAs($relativeDirectory, $fileName, $disk);
+
+            if (! is_string($path) || $path === '') {
+                throw new \RuntimeException("Failed to store upload to disk [{$disk}].");
+            }
+        } catch (Throwable $e) {
+            if ($localDisk && $localPath && Storage::disk($localDisk)->exists($localPath)) {
+                Storage::disk($localDisk)->delete($localPath);
+            }
+
+            throw $e;
+        }
 
         $media = Media::create([
             'mediable_type' => $validated['mediable_type'],
@@ -53,8 +78,11 @@ class MediaController extends Controller
             'mime_type' => $mimeType,
             'disk' => $disk,
             'path' => $path,
+            'local_disk' => $localDisk,
+            'local_path' => $localPath,
+            'local_cached_at' => $localPath ? now() : null,
             'file_size' => $fileSize,
-            'collection' => $validated['collection'] ?? 'default',
+            'collection' => $collection,
             'description' => $validated['description'] ?? null,
         ]);
 
@@ -92,8 +120,15 @@ class MediaController extends Controller
 
         $disk = Storage::disk($media->disk);
 
-        if ($disk->exists($media->path)) {
+        try {
             $disk->delete($media->path);
+        } catch (Throwable) {
+            // If cloud storage is misconfigured, still allow DB record cleanup.
+        }
+
+        if ($media->local_disk && $media->local_path) {
+            $localDisk = Storage::disk($media->local_disk);
+            $localDisk->delete($media->local_path);
         }
 
         ActivityLog::log('media_deleted', "Document \"{$originalName}\" deleted".($order ? " from order {$order->tracking_number}" : ''), $order ?? $media, [
