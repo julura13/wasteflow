@@ -156,6 +156,7 @@ Route::middleware(['auth', 'verified', 'permission:manage-users'])->prefix('user
     Route::post('/', [App\Http\Controllers\UserController::class, 'store'])->name('store');
     Route::get('/{user}/edit', [App\Http\Controllers\UserController::class, 'edit'])->name('edit');
     Route::put('/{user}', [App\Http\Controllers\UserController::class, 'update'])->name('update');
+    Route::delete('/{user}', [App\Http\Controllers\UserController::class, 'destroy'])->name('destroy');
 });
 
 Route::middleware(['auth', 'verified', 'permission:manage-settings'])->prefix('settings')->name('settings.')->group(function () {

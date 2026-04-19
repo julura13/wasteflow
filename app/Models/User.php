@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
@@ -14,7 +15,7 @@ use Spatie\Permission\Traits\HasRoles;
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, HasRoles;
+    use HasFactory, HasRoles, Notifiable, SoftDeletes;
 
     /**
      * The attributes that are mass assignable.
@@ -104,8 +105,8 @@ class User extends Authenticatable
      */
     public function getAvatarUrlAttribute(): string
     {
-        if ($this->avatar && Storage::disk('public')->exists('avatars/' . $this->avatar)) {
-            return '/storage/avatars/' . $this->avatar;
+        if ($this->avatar && Storage::disk('public')->exists('avatars/'.$this->avatar)) {
+            return '/storage/avatars/'.$this->avatar;
         }
 
         return $this->getDefaultAvatarUrl();
@@ -117,7 +118,8 @@ class User extends Authenticatable
     public function getDefaultAvatarUrl(): string
     {
         $initials = strtoupper(substr($this->name, 0, 1));
-        return "https://ui-avatars.com/api/?name=" . urlencode($this->name) . "&background=6366f1&color=fff&size=128";
+
+        return 'https://ui-avatars.com/api/?name='.urlencode($this->name).'&background=6366f1&color=fff&size=128';
     }
 
     /**
@@ -158,6 +160,7 @@ class User extends Authenticatable
     public function getRoleForCompany(int $companyId): ?string
     {
         $pivot = $this->companies()->where('companies.id', $companyId)->first()?->pivot;
+
         return $pivot?->role;
     }
 
@@ -188,7 +191,7 @@ class User extends Authenticatable
             ->wherePivot('role', 'manager')
             ->exists();
 
-        return !$hasManagerRole && $this->isCompanyUser();
+        return ! $hasManagerRole && $this->isCompanyUser();
     }
 
     /**
@@ -225,6 +228,7 @@ class User extends Authenticatable
         }
 
         $role = $this->getRoleForCompany($companyId);
+
         return $role === 'manager';
     }
 }

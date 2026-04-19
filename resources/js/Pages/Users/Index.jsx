@@ -1,8 +1,9 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import DataTable from '@/Components/Dashboard/DataTable';
+import Modal from '@/Components/Modal';
 import { useMemo, useState, useEffect } from 'react';
-import { Plus, Edit, Search, Filter, CheckCircle, X, UserCog } from 'lucide-react';
+import { Plus, Edit, Search, Filter, CheckCircle, X, Trash2, AlertTriangle } from 'lucide-react';
 
 function formatRoleName(name) {
     return name
@@ -12,8 +13,11 @@ function formatRoleName(name) {
 }
 
 export default function UsersIndex({ users, filters }) {
-    const { flash } = usePage().props;
+    const { flash, auth } = usePage().props;
     const [showSuccess, setShowSuccess] = useState(false);
+    const [showErrorFlash, setShowErrorFlash] = useState(false);
+    const [deleteTarget, setDeleteTarget] = useState(null);
+    const [deleting, setDeleting] = useState(false);
 
     useEffect(() => {
         if (flash?.success) {
@@ -23,10 +27,35 @@ export default function UsersIndex({ users, filters }) {
         }
     }, [flash]);
 
+    useEffect(() => {
+        if (flash?.error) {
+            setShowErrorFlash(true);
+            const timer = setTimeout(() => setShowErrorFlash(false), 8000);
+            return () => clearTimeout(timer);
+        }
+    }, [flash]);
+
     const [search, setSearch] = useState(filters?.search || '');
     const [activeFilter, setActiveFilter] = useState(
         filters?.active !== undefined && filters?.active !== '' ? String(filters.active) : ''
     );
+
+    const canDeleteUser = (u) =>
+        auth?.user?.is_admin === true && auth?.user?.id !== u.id;
+
+    const confirmDelete = () => {
+        if (!deleteTarget) {
+            return;
+        }
+        setDeleting(true);
+        router.delete(`/users/${deleteTarget.id}`, {
+            preserveScroll: true,
+            onFinish: () => {
+                setDeleting(false);
+                setDeleteTarget(null);
+            },
+        });
+    };
 
     const columns = useMemo(
         () => [
@@ -114,7 +143,10 @@ export default function UsersIndex({ users, filters }) {
                 cell: ({ row }) => {
                     const u = row.original;
                     return (
-                        <div onClick={(e) => e.stopPropagation()} className="inline-flex">
+                        <div
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-3"
+                        >
                             <Link
                                 href={`/users/${u.id}/edit`}
                                 className="inline-flex items-center text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-300"
@@ -123,12 +155,25 @@ export default function UsersIndex({ users, filters }) {
                             >
                                 <Edit className="h-4 w-4" />
                             </Link>
+                            {canDeleteUser(u) && (
+                                <button
+                                    type="button"
+                                    title="Remove user"
+                                    className="inline-flex items-center text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setDeleteTarget(u);
+                                    }}
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </button>
+                            )}
                         </div>
                     );
                 },
             },
         ],
-        []
+        [auth?.user?.id, auth?.user?.is_admin]
     );
 
     const handleSearch = (e) => {
@@ -156,6 +201,26 @@ export default function UsersIndex({ users, filters }) {
                             type="button"
                             onClick={() => setShowSuccess(false)}
                             className="text-primary-600 hover:text-primary-800 dark:text-primary-400"
+                        >
+                            <X className="h-5 w-5" />
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {showErrorFlash && flash?.error && (
+                <div className="mb-6 rounded-lg bg-red-50 border border-red-200 p-4 dark:bg-red-900/20 dark:border-red-800 animate-fade-in">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                            <AlertTriangle className="h-5 w-5 text-red-600 mr-3 dark:text-red-400" />
+                            <p className="text-sm font-medium text-red-800 dark:text-red-200">
+                                {flash.error}
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setShowErrorFlash(false)}
+                            className="text-red-600 hover:text-red-800 dark:text-red-400"
                         >
                             <X className="h-5 w-5" />
                         </button>
@@ -260,6 +325,45 @@ export default function UsersIndex({ users, filters }) {
                     </div>
                 </div>
             )}
+
+            <Modal show={!!deleteTarget} onClose={() => !deleting && setDeleteTarget(null)} maxWidth="md">
+                <div className="p-6">
+                    <div className="flex items-center mb-4">
+                        <AlertTriangle className="h-6 w-6 text-red-600 mr-3 shrink-0" />
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+                            Remove user
+                        </h3>
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                        This will remove{' '}
+                        <span className="font-semibold text-gray-900 dark:text-gray-100">
+                            {deleteTarget?.name}
+                        </span>{' '}
+                        ({deleteTarget?.email}) from the system. They will no longer be able to sign in.
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                        The account is archived (soft-deleted) and can be restored by a developer if needed.
+                    </p>
+                    <div className="flex justify-end space-x-3">
+                        <button
+                            type="button"
+                            disabled={deleting}
+                            onClick={() => setDeleteTarget(null)}
+                            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600 disabled:opacity-50"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            disabled={deleting}
+                            onClick={confirmDelete}
+                            className="px-4 py-2 text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
+                        >
+                            {deleting ? 'Removing…' : 'Remove user'}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </DashboardLayout>
     );
 }

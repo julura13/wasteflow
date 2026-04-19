@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
@@ -57,7 +58,13 @@ class UserController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email',
+            'email' => [
+                'required',
+                'string',
+                'email',
+                'max:255',
+                Rule::unique('users', 'email')->whereNull('deleted_at'),
+            ],
             'password' => ['required', 'confirmed', Password::defaults()],
             'roles' => 'array',
             'roles.*' => 'string|exists:roles,name',
@@ -108,7 +115,13 @@ class UserController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,'.$user->id,
+            'email' => [
+                'required',
+                'string',
+                'email',
+                'max:255',
+                Rule::unique('users', 'email')->ignore($user->id)->whereNull('deleted_at'),
+            ],
             'password' => ['nullable', 'confirmed', Password::defaults()],
             'roles' => 'array',
             'roles.*' => 'string|exists:roles,name',
@@ -137,5 +150,26 @@ class UserController extends Controller
 
         return redirect()->route('users.index')
             ->with('success', 'User updated successfully.');
+    }
+
+    /**
+     * Soft-delete the specified user (not available for your own account).
+     */
+    public function destroy(Request $request, User $user)
+    {
+        if ($user->id === $request->user()->id) {
+            return redirect()->route('users.index')
+                ->with('error', 'You cannot delete your own account.');
+        }
+
+        $this->authorize('delete', $user);
+
+        $email = $user->email;
+        $user->delete();
+
+        ActivityLog::log('user_deleted', "User {$email} deleted", null, ['email' => $email]);
+
+        return redirect()->route('users.index')
+            ->with('success', 'User removed successfully.');
     }
 }
