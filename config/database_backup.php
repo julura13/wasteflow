@@ -117,6 +117,11 @@ return [
     |--------------------------------------------------------------------------
     | Optional schedule (routes/console.php)
     |--------------------------------------------------------------------------
+    |
+    | When enabled, Laravel schedules DatabaseBackupJob once per day. On Forge,
+    | enable the server Scheduler and run a queue worker unless QUEUE_CONNECTION
+    | is "sync".
+    |
     */
 
     'schedule_enabled' => filter_var(env('DATABASE_BACKUP_SCHEDULE_ENABLED', false), FILTER_VALIDATE_BOOL),
