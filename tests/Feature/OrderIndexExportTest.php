@@ -369,3 +369,44 @@ it('sorts queued CSV export rows by service provider name then newest order firs
     expect($posAlphaNew)->toBeLessThan($posAlphaOld);
     expect($posAlphaOld)->toBeLessThan($posZebra);
 });
+
+it('omits the service provider column from CSV when hide_service_provider is true', function () {
+    $user = User::factory()->create();
+    $user->assignRole('admin');
+
+    $company = Company::create(['name' => 'Export Co', 'is_active' => true]);
+    $branch = Branch::create(['company_id' => $company->id, 'name' => 'B', 'is_active' => true]);
+    $site = Site::create(['branch_id' => $branch->id, 'name' => 'S', 'is_active' => true]);
+    $provider = ServiceProvider::create(['name' => 'Hidden Provider', 'is_active' => true]);
+
+    Order::create([
+        'tracking_number' => 'WO-HIDE-SP-1',
+        'company_id' => $company->id,
+        'branch_id' => $branch->id,
+        'site_id' => $site->id,
+        'service_provider_id' => $provider->id,
+        'created_by' => $user->id,
+        'order_type' => 'waste',
+        'status' => 'pending',
+        'requested_collection_date' => Carbon::parse('2025-12-15'),
+    ]);
+
+    $this->actingAs($user)->post(route('orders.export.request'), [
+        'format' => 'csv',
+        'hide_service_provider' => true,
+    ])->assertRedirect();
+
+    $export = OrderIndexExport::query()->firstOrFail();
+    expect($export->filters['hide_service_provider'] ?? false)->toBeTrue();
+
+    GenerateOrderIndexExportJob::dispatchSync($export->id);
+    $export->refresh();
+    expect($export->status)->toBe(OrderIndexExport::STATUS_COMPLETED);
+
+    $download = $this->actingAs($user)->get(route('orders.export.download', $export->uuid));
+    $download->assertOk();
+    $csv = $download->streamedContent();
+    expect($csv)->not->toContain('Service Provider');
+    expect($csv)->toContain('WO-HIDE-SP-1');
+    expect($csv)->not->toContain('Hidden Provider');
+});

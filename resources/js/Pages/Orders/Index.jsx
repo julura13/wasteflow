@@ -20,6 +20,7 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
     const [deleteReason, setDeleteReason] = useState('');
     const [deleteReasonDetails, setDeleteReasonDetails] = useState('');
     const [exportOpen, setExportOpen] = useState(false);
+    const [exportHideServiceProvider, setExportHideServiceProvider] = useState(false);
     const [orderExportUuid, setOrderExportUuid] = useState(null);
     const [orderExportFormat, setOrderExportFormat] = useState(null);
     const [orderExportStatus, setOrderExportStatus] = useState(null);
@@ -470,9 +471,20 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
             } else if (types.length === 2) {
                 data.order_types = ['waste', 'recycling'];
             }
+            if (exportHideServiceProvider) {
+                data.hide_service_provider = true;
+            }
             return data;
         },
-        [search, statusFilter, requestedCollectionFrom, requestedCollectionTo, orderTypeWaste, orderTypeRecycling],
+        [
+            search,
+            statusFilter,
+            requestedCollectionFrom,
+            requestedCollectionTo,
+            orderTypeWaste,
+            orderTypeRecycling,
+            exportHideServiceProvider,
+        ],
     );
 
     const requestOrderExport = useCallback(
@@ -907,7 +919,20 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
                             {exportOpen && (
                                 <>
                                     <div className="fixed inset-0 z-10" onClick={() => setExportOpen(false)} aria-hidden="true" />
-                                    <div className="absolute right-0 mt-1 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 z-20">
+                                    <div className="absolute right-0 mt-1 w-56 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 z-20">
+                                        <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-600">
+                                            <label className="flex items-start gap-2 cursor-pointer text-left">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={exportHideServiceProvider}
+                                                    onChange={(e) => setExportHideServiceProvider(e.target.checked)}
+                                                    className="mt-0.5 rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700"
+                                                />
+                                                <span className="text-xs text-gray-700 dark:text-gray-200 leading-snug">
+                                                    Hide service provider column
+                                                </span>
+                                            </label>
+                                        </div>
                                         <div className="py-1">
                                             <button
                                                 type="button"

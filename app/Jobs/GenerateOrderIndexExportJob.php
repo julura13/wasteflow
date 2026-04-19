@@ -70,6 +70,8 @@ class GenerateOrderIndexExportJob implements ShouldQueue
 
             $orders = $query->get();
 
+            $hideServiceProvider = (bool) ($filters['hide_service_provider'] ?? false);
+
             $relativePath = match ($export->format) {
                 OrderIndexExport::FORMAT_CSV => 'order-index-exports/'.$export->uuid.'.csv',
                 OrderIndexExport::FORMAT_PDF => 'order-index-exports/'.$export->uuid.'.pdf',
@@ -81,29 +83,37 @@ class GenerateOrderIndexExportJob implements ShouldQueue
                 if ($stream === false) {
                     throw new \RuntimeException('Could not open buffer for CSV export.');
                 }
-                fputcsv($stream, [
+                $header = [
                     'Tracking Number',
                     'Company / Branch / Site',
-                    'Service Provider',
                     'Order Type',
                     'Status',
                     'Requested Date',
                     'Actual Date',
                     'Slip Number',
                     'Collection quantities',
-                ]);
+                ];
+                if (! $hideServiceProvider) {
+                    array_splice($header, 2, 0, ['Service Provider']);
+                }
+                fputcsv($stream, $header);
                 foreach ($orders as $order) {
-                    fputcsv($stream, [
+                    $row = [
                         $order->tracking_number,
                         OrderExportFormatting::companyBranchSite($order),
-                        $order->serviceProvider?->name ?? (is_string($order->service_provider) ? $order->service_provider : ''),
                         $order->order_type === 'waste' ? 'Waste Order' : 'Recycling Order',
                         $order->status,
                         $order->requested_collection_date?->format(DisplayDate::CALENDAR) ?? '',
                         $order->actual_collection_date?->format(DisplayDate::CALENDAR) ?? '',
                         $order->slip_number ?? '',
                         OrderExportFormatting::collectionQuantities($order),
-                    ]);
+                    ];
+                    if (! $hideServiceProvider) {
+                        array_splice($row, 2, 0, [
+                            $order->serviceProvider?->name ?? (is_string($order->service_provider) ? $order->service_provider : ''),
+                        ]);
+                    }
+                    fputcsv($stream, $row);
                 }
                 rewind($stream);
                 Storage::disk($export->disk)->put($relativePath, stream_get_contents($stream) ?: '');
@@ -115,7 +125,10 @@ class GenerateOrderIndexExportJob implements ShouldQueue
                 $options->set('defaultFont', 'DejaVu Sans');
 
                 $dompdf = new Dompdf($options);
-                $html = view('orders.export-pdf', ['orders' => $orders])->render();
+                $html = view('orders.export-pdf', [
+                    'orders' => $orders,
+                    'hideServiceProvider' => $hideServiceProvider,
+                ])->render();
                 $dompdf->loadHtml($html);
                 $dompdf->setPaper('A4', 'landscape');
                 $dompdf->render();

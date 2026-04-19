@@ -41,7 +41,9 @@
                 <tr>
                     <th>Tracking #</th>
                     <th>Company / Branch / Site</th>
-                    <th>Service Provider</th>
+                    @unless($hideServiceProvider ?? false)
+                        <th>Service Provider</th>
+                    @endunless
                     <th>Type</th>
                     <th>Status</th>
                     <th>Requested</th>
@@ -60,7 +62,9 @@
                     <tr>
                         <td>{{ $order->tracking_number }}</td>
                         <td>{{ $location !== '' ? $location : '—' }}</td>
-                        <td>{{ $order->serviceProvider?->name ?? (is_string($order->service_provider) ? $order->service_provider : '—') }}</td>
+                        @unless($hideServiceProvider ?? false)
+                            <td>{{ $order->serviceProvider?->name ?? (is_string($order->service_provider) ? $order->service_provider : '—') }}</td>
+                        @endunless
                         <td>{{ $order->order_type === 'waste' ? 'Waste' : 'Recycling' }}</td>
                         <td>{{ $order->status }}</td>
                         <td>{{ $order->requested_collection_date ? $order->requested_collection_date->format(\App\Support\DisplayDate::CALENDAR) : '—' }}</td>

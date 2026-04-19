@@ -825,6 +825,7 @@ class OrderController extends Controller
             'order_types.*' => ['string', Rule::in(['waste', 'recycling'])],
             'requested_collection_from' => ['nullable', 'string'],
             'requested_collection_to' => ['nullable', 'string'],
+            'hide_service_provider' => ['sometimes', 'boolean'],
         ]);
 
         $orderTypes = $validated['order_types'] ?? [];
@@ -852,6 +853,7 @@ class OrderController extends Controller
                 'order_types' => $orderTypes,
                 'requested_collection_from' => $requestedCollectionFrom,
                 'requested_collection_to' => $requestedCollectionTo,
+                'hide_service_provider' => $request->boolean('hide_service_provider'),
             ],
             'expires_at' => now()->addDay(),
         ]);
