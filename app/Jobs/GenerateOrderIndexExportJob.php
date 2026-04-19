@@ -6,6 +6,7 @@ use App\Models\OrderIndexExport;
 use App\Models\User;
 use App\Services\OrdersIndexQueryService;
 use App\Support\DisplayDate;
+use App\Support\OrderExportFormatting;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -80,22 +81,28 @@ class GenerateOrderIndexExportJob implements ShouldQueue
                 if ($stream === false) {
                     throw new \RuntimeException('Could not open buffer for CSV export.');
                 }
-                fputcsv($stream, ['Tracking Number', 'Company', 'Branch', 'Site', 'Service Provider', 'Order Type', 'Status', 'Requested Date', 'Actual Date', 'Slip Number']);
+                fputcsv($stream, [
+                    'Tracking Number',
+                    'Company / Branch / Site',
+                    'Service Provider',
+                    'Order Type',
+                    'Status',
+                    'Requested Date',
+                    'Actual Date',
+                    'Slip Number',
+                    'Collection quantities',
+                ]);
                 foreach ($orders as $order) {
-                    $site = $order->site;
-                    $branch = $site?->branch ?? $order->branch;
-                    $company = $branch?->company ?? $order->company;
                     fputcsv($stream, [
                         $order->tracking_number,
-                        $company?->name ?? '',
-                        $branch?->name ?? '',
-                        $site?->name ?? '',
+                        OrderExportFormatting::companyBranchSite($order),
                         $order->serviceProvider?->name ?? (is_string($order->service_provider) ? $order->service_provider : ''),
                         $order->order_type === 'waste' ? 'Waste Order' : 'Recycling Order',
                         $order->status,
                         $order->requested_collection_date?->format(DisplayDate::CALENDAR) ?? '',
                         $order->actual_collection_date?->format(DisplayDate::CALENDAR) ?? '',
                         $order->slip_number ?? '',
+                        OrderExportFormatting::collectionQuantities($order),
                     ]);
                 }
                 rewind($stream);

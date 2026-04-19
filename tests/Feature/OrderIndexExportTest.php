@@ -276,6 +276,10 @@ it('queues orders CSV export and allows download when ready', function () {
         'order_type' => 'recycling',
         'status' => 'pending',
         'requested_collection_date' => Carbon::parse('2025-12-15'),
+        'quantity_lines' => [
+            ['container_option_id' => 1, 'container_option_name' => '240l Wheelie Bin', 'quantity' => 3, 'description' => 'General Waste'],
+        ],
+        'estimated_quantity' => 3,
     ]);
 
     $this->actingAs($user)->post(route('orders.export.request'), [
@@ -292,8 +296,12 @@ it('queues orders CSV export and allows download when ready', function () {
     expect($download->headers->get('content-type'))->toContain('csv');
     $csv = $download->streamedContent();
     expect($csv)->toContain('Tracking Number');
+    expect($csv)->toContain('Company / Branch / Site');
+    expect($csv)->toContain('Collection quantities');
     expect($csv)->toContain('WO-2501-30099');
+    expect($csv)->toContain('Export Co / B / S');
     expect($csv)->toContain('Recycling Order');
+    expect($csv)->toContain('3× 240l Wheelie Bin (General Waste)');
 });
 
 it('sorts queued CSV export rows by service provider name then newest order first', function () {
