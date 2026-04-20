@@ -526,3 +526,69 @@ it('allows client users with direct company assignment to access rebate tracker'
         ->where('rebateData.0.company_name', 'Direct Company')
     );
 });
+
+it('shows only assigned company in rebate tracker company dropdown for company users', function () {
+    $companyUser = User::factory()->create();
+    $companyUser->assignRole('company_user');
+
+    $assignedCompany = Company::create(['name' => 'Assigned Co', 'is_active' => true]);
+    $otherCompany = Company::create(['name' => 'Other Co', 'is_active' => true]);
+    $companyUser->companies()->attach($assignedCompany->id, ['role' => 'viewer']);
+
+    // Ensure there is data available for the assigned company.
+    $branch = Branch::create(['company_id' => $assignedCompany->id, 'name' => 'Main', 'is_active' => true]);
+    $site = Site::create(['branch_id' => $branch->id, 'name' => 'Site 1', 'is_active' => true]);
+    $serviceProvider = \App\Models\ServiceProvider::create(['name' => 'SP Dropdown', 'is_active' => true]);
+    $facility = \App\Models\Facility::firstOrCreate(
+        ['name' => 'Facility Dropdown'],
+        ['facility_type' => 'recycling', 'is_active' => true]
+    );
+    $classification = \App\Models\Classification::firstOrCreate(['name' => 'Recycling'], ['is_active' => true]);
+    $wasteStream = \App\Models\WasteStream::firstOrCreate(['name' => 'Paper Dropdown'], ['is_active' => true]);
+    $grade = \App\Models\Grade::firstOrCreate(['name' => 'HL-DD'], ['is_active' => true]);
+    $material = Material::create([
+        'waste_stream_id' => $wasteStream->id,
+        'grade_id' => $grade->id,
+        'classification_id' => $classification->id,
+        'facility_id' => $facility->id,
+        'is_active' => true,
+        'rebate_offered' => true,
+        'rebate_rate' => 1.0,
+        'client_rebate_share' => 100,
+    ]);
+    $collectionDate = Carbon::parse('2026-04-20');
+    $order = Order::create([
+        'company_id' => $assignedCompany->id,
+        'branch_id' => $branch->id,
+        'site_id' => $site->id,
+        'service_provider_id' => $serviceProvider->id,
+        'created_by' => $companyUser->id,
+        'order_type' => 'recycling',
+        'status' => 'finalized',
+        'tracking_number' => 'RO-2604-DROP01',
+        'requested_collection_date' => $collectionDate,
+        'actual_collection_date' => $collectionDate,
+    ]);
+    OrderWasteStream::create([
+        'order_id' => $order->id,
+        'material_id' => $material->id,
+        'gross_weight' => 10,
+        'nett_weight' => 10,
+        'rebate_rate' => 1.0,
+    ]);
+
+    $response = $this->actingAs($companyUser)->get(route('reports.rebate-tracker', [
+        'start_date' => '2026-04-01',
+        'end_date' => '2026-04-30',
+    ]));
+
+    $response->assertOk();
+    $response->assertInertia(fn (Assert $page) => $page
+        ->component('Reports/RebateTracker')
+        ->has('companies', 1)
+        ->where('companies.0.name', 'Assigned Co')
+        ->where('companies.0.id', $assignedCompany->id)
+    );
+
+    expect($otherCompany->id)->not->toBe($assignedCompany->id);
+});

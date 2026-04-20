@@ -17,11 +17,11 @@ trait ScopeByClientTrait
     protected function isClientScoped(): bool
     {
         $user = Auth::user();
-        if (! $user || ! $user->company_id) {
+        if (! $user || $user->can('view-reports-all')) {
             return false;
         }
 
-        return ! $user->can('view-reports-all');
+        return ! empty($this->scopedCompanyIdsForUser($user));
     }
 
     protected function scopeCompaniesForUser()
@@ -30,7 +30,9 @@ trait ScopeByClientTrait
             return Company::where('is_active', true)->orderBy('name')->get();
         }
 
-        return Company::where('id', Auth::user()->company_id)
+        $companyIds = $this->scopedCompanyIdsForUser(Auth::user());
+
+        return Company::whereIn('id', $companyIds)
             ->where('is_active', true)
             ->orderBy('name')
             ->get();
@@ -41,13 +43,29 @@ trait ScopeByClientTrait
      */
     protected function enforceCompanyScopeForUser(?User $user, ?int $companyId, ?int $branchId = null, ?int $siteId = null): array
     {
-        if ($user === null || ! $user->company_id || $user->can('view-reports-all')) {
+        if ($user === null || $user->can('view-reports-all')) {
             return [$companyId, $branchId, $siteId];
         }
 
-        $companyId = (int) $user->company_id;
+        $scopedCompanyIds = $this->scopedCompanyIdsForUser($user);
+        if (empty($scopedCompanyIds)) {
+            return [$companyId, $branchId, $siteId];
+        }
+
+        if ($companyId !== null && ! in_array($companyId, $scopedCompanyIds, true)) {
+            $companyId = null;
+            $branchId = null;
+            $siteId = null;
+        }
+
         if ($branchId) {
-            $branch = Branch::where('id', $branchId)->where('company_id', $companyId)->first();
+            $branchQuery = Branch::where('id', $branchId);
+            if ($companyId !== null) {
+                $branchQuery->where('company_id', $companyId);
+            } else {
+                $branchQuery->whereIn('company_id', $scopedCompanyIds);
+            }
+            $branch = $branchQuery->first();
             if (! $branch) {
                 $branchId = null;
                 $siteId = null;
@@ -60,6 +78,21 @@ trait ScopeByClientTrait
         }
 
         return [$companyId, $branchId, $siteId];
+    }
+
+    protected function scopedCompanyIdsForUser(?User $user): array
+    {
+        if (! $user) {
+            return [];
+        }
+
+        $companyIds = $user->companies()->pluck('companies.id')->map(fn ($id) => (int) $id)->all();
+
+        if ($user->company_id) {
+            $companyIds[] = (int) $user->company_id;
+        }
+
+        return array_values(array_unique($companyIds));
     }
 
     /**
