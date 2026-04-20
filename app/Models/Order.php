@@ -39,8 +39,8 @@ class Order extends Model
     protected function casts(): array
     {
         return [
-            'requested_collection_date' => 'date',
-            'actual_collection_date' => 'date',
+            'requested_collection_date' => 'date:Y-m-d',
+            'actual_collection_date' => 'date:Y-m-d',
             'quantity_lines' => 'array',
             'company_rebate_percentage' => 'decimal:2',
         ];

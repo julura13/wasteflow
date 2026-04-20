@@ -112,6 +112,36 @@ it('includes quantity lines on the orders index payload for list display', funct
         ->where('orders.data.0.quantity_lines.1.quantity', 1));
 });
 
+it('serializes collection dates on the orders index payload as calendar dates', function () {
+    $user = User::factory()->create();
+    $user->assignRole('admin');
+
+    $company = Company::create(['name' => 'Date Payload Co', 'is_active' => true]);
+    $branch = Branch::create(['company_id' => $company->id, 'name' => 'B', 'is_active' => true]);
+    $site = Site::create(['branch_id' => $branch->id, 'name' => 'S', 'is_active' => true]);
+    $provider = ServiceProvider::create(['name' => 'P', 'is_active' => true]);
+
+    Order::create([
+        'tracking_number' => 'WO-DATE-30001',
+        'company_id' => $company->id,
+        'branch_id' => $branch->id,
+        'site_id' => $site->id,
+        'service_provider_id' => $provider->id,
+        'created_by' => $user->id,
+        'order_type' => 'waste',
+        'status' => 'finalized',
+        'requested_collection_date' => Carbon::parse('2026-04-21'),
+        'actual_collection_date' => Carbon::parse('2026-04-22'),
+    ]);
+
+    $response = $this->actingAs($user)->get(route('orders.index'));
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page->component('Orders/Index')
+        ->where('orders.data.0.tracking_number', 'WO-DATE-30001')
+        ->where('orders.data.0.requested_collection_date', '2026-04-21')
+        ->where('orders.data.0.actual_collection_date', '2026-04-22'));
+});
+
 it('filters orders by order type when one type is selected', function () {
     $user = User::factory()->create();
     $user->assignRole('admin');
