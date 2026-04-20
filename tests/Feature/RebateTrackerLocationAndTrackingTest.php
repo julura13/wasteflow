@@ -462,3 +462,67 @@ it('shows company users configured rebate share values in rebate tracker', funct
         ->where('rebateData.0.total', fn ($value) => abs((float) $value - 18.0) < 0.0001)
     );
 });
+
+it('allows client users with direct company assignment to access rebate tracker', function () {
+    $client = User::factory()->create();
+    $client->assignRole('client');
+
+    $company = Company::create(['name' => 'Direct Company', 'is_active' => true]);
+    $client->update(['company_id' => $company->id]);
+
+    $branch = Branch::create(['company_id' => $company->id, 'name' => 'Main', 'is_active' => true]);
+    $site = Site::create(['branch_id' => $branch->id, 'name' => 'Site 1', 'is_active' => true]);
+    $serviceProvider = \App\Models\ServiceProvider::create(['name' => 'SP Direct', 'is_active' => true]);
+
+    $facility = \App\Models\Facility::firstOrCreate(
+        ['name' => 'Facility Direct Company'],
+        ['facility_type' => 'recycling', 'is_active' => true]
+    );
+    $classification = \App\Models\Classification::firstOrCreate(['name' => 'Recycling'], ['is_active' => true]);
+    $wasteStream = \App\Models\WasteStream::firstOrCreate(['name' => 'Paper Direct'], ['is_active' => true]);
+    $grade = \App\Models\Grade::firstOrCreate(['name' => 'HL-D'], ['is_active' => true]);
+    $material = Material::create([
+        'waste_stream_id' => $wasteStream->id,
+        'grade_id' => $grade->id,
+        'classification_id' => $classification->id,
+        'facility_id' => $facility->id,
+        'is_active' => true,
+        'rebate_offered' => true,
+        'rebate_rate' => 1.2,
+        'client_rebate_share' => 100,
+    ]);
+
+    $collectionDate = Carbon::parse('2026-04-15');
+    $order = Order::create([
+        'company_id' => $company->id,
+        'branch_id' => $branch->id,
+        'site_id' => $site->id,
+        'service_provider_id' => $serviceProvider->id,
+        'created_by' => $client->id,
+        'order_type' => 'recycling',
+        'status' => 'finalized',
+        'tracking_number' => 'RO-2604-DIRECT1',
+        'requested_collection_date' => $collectionDate,
+        'actual_collection_date' => $collectionDate,
+    ]);
+
+    OrderWasteStream::create([
+        'order_id' => $order->id,
+        'material_id' => $material->id,
+        'gross_weight' => 10,
+        'nett_weight' => 10,
+        'rebate_rate' => 1.2,
+    ]);
+
+    $response = $this->actingAs($client)->get(route('reports.rebate-tracker', [
+        'start_date' => '2026-04-01',
+        'end_date' => '2026-04-30',
+    ]));
+
+    $response->assertOk();
+    $response->assertInertia(fn (Assert $page) => $page
+        ->component('Reports/RebateTracker')
+        ->has('rebateData', 1)
+        ->where('rebateData.0.company_name', 'Direct Company')
+    );
+});

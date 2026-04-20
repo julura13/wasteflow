@@ -24,6 +24,7 @@ export default function Index() {
             icon: Users,
             color: 'bg-indigo-600',
             details: 'Finalized orders only; actual collection date (or update date) drives dates; same filters as on-screen report',
+            requiredPermission: 'view-reports-all',
         },
         {
             title: 'Carbon Calculator',

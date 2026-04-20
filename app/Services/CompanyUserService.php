@@ -21,14 +21,14 @@ class CompanyUserService
     public function assignUserToCompany(User $user, Company $company, string $role = 'viewer'): void
     {
         $wasAlreadyAssigned = $this->companyUserRepository->userBelongsToCompany($user, $company);
-        
+
         $this->companyUserRepository->attachUserToCompany($user, $company, $role);
 
-        if (!$user->isAdmin() && !$user->hasRole('company_user')) {
+        if (! $user->isAdmin() && ! $user->hasRole('company_user')) {
             $user->assignRole('company_user');
         }
-        
-        if ($user->is_active && !$wasAlreadyAssigned) {
+
+        if ($user->is_active && ! $wasAlreadyAssigned) {
             $user->notify(new UserAssignedToCompanyNotification($company, $role));
         }
     }
@@ -86,7 +86,13 @@ class CompanyUserService
      */
     public function getCompanyIdsForUser(User $user): array
     {
-        return $user->company_ids;
+        $companyIds = $user->company_ids;
+
+        if ($user->company_id) {
+            $companyIds[] = (int) $user->company_id;
+        }
+
+        return array_values(array_unique(array_map('intval', $companyIds)));
     }
 
     /**
@@ -101,4 +107,3 @@ class CompanyUserService
         return $this->userBelongsToCompany($user, $company);
     }
 }
-

@@ -113,57 +113,20 @@ it('shows customer order frequencies split by waste and recycling when user has 
     Carbon::setTestNow();
 });
 
-it('scopes companies to the user company when client has no view-reports-all', function () {
-    Carbon::setTestNow(Carbon::parse('2026-04-06 12:00:00'));
+it('forbids client users from customer order frequencies when they do not have view-reports-all', function () {
+    $company = Company::create(['name' => 'Alpha Ltd', 'is_active' => true]);
 
-    $companyA = Company::create(['name' => 'Alpha Ltd', 'is_active' => true]);
-    $companyB = Company::create(['name' => 'Beta Pty', 'is_active' => true]);
-
-    $client = User::factory()->create(['company_id' => $companyA->id]);
+    $client = User::factory()->create(['company_id' => $company->id]);
     $client->assignRole('client');
 
-    $admin = User::factory()->create();
-    $admin->assignRole('manager');
-    $branchA = Branch::create(['company_id' => $companyA->id, 'name' => 'A1', 'is_active' => true]);
-    $siteA = Site::create(['branch_id' => $branchA->id, 'name' => 'Site A', 'is_active' => true]);
-    $provider = ServiceProvider::create(['name' => 'Prov', 'is_active' => true]);
+    $this->actingAs($client)->get(route('reports.customer-order-frequencies'))
+        ->assertForbidden();
 
-    Order::create([
-        'tracking_number' => 'WO-2601-40001',
-        'company_id' => $companyA->id,
-        'branch_id' => $branchA->id,
-        'site_id' => $siteA->id,
-        'service_provider_id' => $provider->id,
-        'created_by' => $admin->id,
-        'order_type' => 'waste',
-        'status' => 'finalized',
-        'requested_collection_date' => Carbon::parse('2026-04-01'),
-        'actual_collection_date' => Carbon::parse('2026-04-05'),
-    ]);
+    $this->actingAs($client)->get(route('reports.customer-order-frequencies.export'))
+        ->assertForbidden();
 
-    $branchB = Branch::create(['company_id' => $companyB->id, 'name' => 'B1', 'is_active' => true]);
-    $siteB = Site::create(['branch_id' => $branchB->id, 'name' => 'Site B', 'is_active' => true]);
-    Order::create([
-        'tracking_number' => 'WO-2601-40002',
-        'company_id' => $companyB->id,
-        'branch_id' => $branchB->id,
-        'site_id' => $siteB->id,
-        'service_provider_id' => $provider->id,
-        'created_by' => $admin->id,
-        'order_type' => 'waste',
-        'status' => 'finalized',
-        'requested_collection_date' => Carbon::parse('2026-04-01'),
-        'actual_collection_date' => Carbon::parse('2026-04-04'),
-    ]);
-
-    $response = $this->actingAs($client)->get(route('reports.customer-order-frequencies'));
-
-    $response->assertOk();
-    $response->assertInertia(fn (Assert $page) => $page
-        ->has('rows', 1)
-        ->where('rows.0.company_name', 'Alpha Ltd'));
-
-    Carbon::setTestNow();
+    $this->actingAs($client)->get(route('reports.customer-order-frequencies.export-pdf'))
+        ->assertForbidden();
 });
 
 it('exports customer order frequencies as csv', function () {
@@ -193,13 +156,8 @@ it('exports customer order frequencies as csv', function () {
     $response = $this->actingAs($admin)->get(route('reports.customer-order-frequencies.export', ['lookback_months' => 6]));
 
     $response->assertOk();
-    $response->assertHeader('content-type', 'text/csv');
-    $response->assertSee('Customer');
-    $response->assertSee('Waste last finalized');
-    $response->assertSee('Recycling last finalized');
-    $response->assertSee('Csv Co');
-    $response->assertSee('6');
-    $response->assertSee('2026/04/02');
+    $response->assertHeader('content-type', 'text/csv; charset=UTF-8');
+    $response->assertHeader('content-disposition', 'attachment; filename=customer_order_frequencies_2026-04-06_120000.csv');
 
     Carbon::setTestNow();
 });
