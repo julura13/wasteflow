@@ -63,8 +63,14 @@ class RebateTrackerReportService
                     $q->where('site_id', $siteId);
                 }
                 if (! $user->isAdmin()) {
-                    $q->whereHas('site.branch.company', function ($q) use ($companyIds) {
-                        $q->whereIn('companies.id', $companyIds);
+                    $q->where(function ($scoped) use ($companyIds) {
+                        $scoped->whereIn('company_id', $companyIds)
+                            ->orWhereHas('branch.company', function ($branchCompany) use ($companyIds) {
+                                $branchCompany->whereIn('companies.id', $companyIds);
+                            })
+                            ->orWhereHas('site.branch.company', function ($siteCompany) use ($companyIds) {
+                                $siteCompany->whereIn('companies.id', $companyIds);
+                            });
                     });
                 }
             })
