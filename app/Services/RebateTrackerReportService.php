@@ -81,12 +81,16 @@ class RebateTrackerReportService
                     });
             });
 
-        return $query->get()->map(function ($stream) {
+        return $query->get()->map(function ($stream) use ($user) {
             $order = $stream->order;
             $collectionDate = $order->actual_collection_date ?? $order->requested_collection_date;
             $site = $order->site;
             $branch = $site?->branch ?? $order->branch;
             $company = $site?->branch?->company ?? $order->company ?? $branch?->company;
+            $baseRate = (float) ($stream->rebate_rate ?? $stream->material?->rebate_rate ?? 0);
+            $sharePercentage = $user->isAdmin() ? 100.0 : $this->resolveClientSharePercentage($stream);
+            $effectiveRate = ($baseRate * $sharePercentage) / 100;
+            $effectiveTotal = ((float) $stream->nett_weight) * $effectiveRate;
 
             return [
                 'id' => $stream->id,
@@ -98,8 +102,8 @@ class RebateTrackerReportService
                 'site_name' => $site?->name ?? '—',
                 'grade' => $stream->material->grade->name ?? '—',
                 'weight' => $stream->nett_weight,
-                'rate' => $stream->rebate_rate ?? $stream->material?->rebate_rate ?? 0,
-                'total' => $stream->client_rebate_amount,
+                'rate' => $effectiveRate,
+                'total' => $effectiveTotal,
                 'material_id' => $stream->material_id,
                 'supporting_documents' => $order->supportingDocuments->map(function ($doc) {
                     return [
@@ -135,7 +139,32 @@ class RebateTrackerReportService
                 'total' => $group->sum('total'),
                 'supporting_documents' => $supportingDocuments,
             ];
-        })->values()->sortBy(['company_name', 'branch_name', 'site_name', 'date']);
+        })->values()->sortBy(['company_name', 'branch_name', 'site_name', 'date'])->values();
+    }
+
+    private function resolveClientSharePercentage(OrderWasteStream $stream): float
+    {
+        $order = $stream->order;
+        $companyRebatePercentage = null;
+
+        if ($order->status === 'finalized' && $order->company_rebate_percentage !== null) {
+            $companyRebatePercentage = $order->company_rebate_percentage;
+        } else {
+            $site = $order->site;
+            $branch = $site?->branch ?? $order->branch;
+            $company = $site?->branch?->company ?? $order->company ?? $branch?->company;
+            $companyRebatePercentage = $company?->rebate_percentage;
+        }
+
+        if ($companyRebatePercentage !== null && $companyRebatePercentage !== '' && is_numeric($companyRebatePercentage)) {
+            return (float) $companyRebatePercentage;
+        }
+
+        if ($stream->material?->client_rebate_share !== null && is_numeric($stream->material->client_rebate_share)) {
+            return (float) $stream->material->client_rebate_share;
+        }
+
+        return 100.0;
     }
 
     /**
