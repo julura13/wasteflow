@@ -3,7 +3,7 @@ import DashboardLayout from '@/Layouts/DashboardLayout';
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import SearchableDropdown from '@/Components/SearchableDropdown';
-import { Download, Loader2 } from 'lucide-react';
+import { Download, Loader2, Eye } from 'lucide-react';
 
 export default function WasteManagement({ companies, filters }) {
     const { flash } = usePage().props;
@@ -309,11 +309,30 @@ export default function WasteManagement({ companies, filters }) {
                             </div>
                         </div>
 
-                        <div className="pt-4">
+                        <div className="pt-4 flex gap-3">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (!selectedCompany) return;
+                                    router.get(route('reports.resource-intelligence'), {
+                                        company_id: selectedCompany,
+                                        branch_id: selectedBranch || '',
+                                        site_id: selectedSite || '',
+                                        month,
+                                        year,
+                                    });
+                                }}
+                                disabled={!selectedCompany}
+                                className="flex-1 inline-flex justify-center items-center gap-2 px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+                            >
+                                <Eye className="h-4 w-4" />
+                                View Report
+                            </button>
                             <button
                                 type="submit"
-                                className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                                className="flex-1 inline-flex justify-center items-center gap-2 px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
                             >
+                                <Download className="h-4 w-4" />
                                 Generate PDF
                             </button>
                         </div>

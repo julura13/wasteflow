@@ -14,9 +14,10 @@
             font-size: 9px;
             color: #333;
             line-height: 1.35;
+            padding: 10mm 8mm;
         }
         @page {
-            margin: 10mm;
+            margin: 0;
         }
         .page {
             page-break-after: always;
@@ -26,43 +27,46 @@
             page-break-after: auto;
         }
         .wc-header {
-            background-color: #d1fae5;
-            color: #1e3a8a;
-            padding: 14px 16px;
+            background-color: #9AD993;
+            color: #0d2b1f;
+            padding: 16px 20px;
             text-align: center;
-            border: 1px solid #6ee7b7;
         }
         .wc-header .scope-line {
-            font-size: 11px;
-            font-weight: bold;
-            margin-bottom: 2px;
-            line-height: 1.3;
+            font-size: 9px;
+            font-weight: 600;
+            color: #1a3d2e;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
         }
         .wc-header .title {
-            font-size: 11px;
+            font-size: 17px;
             font-weight: bold;
-            letter-spacing: 0.3px;
-            margin-bottom: 2px;
+            color: #0d2b1f;
+            letter-spacing: 0.2px;
+            margin-bottom: 6px;
+            line-height: 1.25;
         }
         .wc-header .subtitle {
-            font-size: 8px;
-            color: #1e40af;
+            font-size: 9px;
+            color: #1e5c3a;
             margin-bottom: 4px;
         }
         .wc-header .period {
-            font-size: 12px;
-            color: #1d4ed8;
+            font-size: 9px;
+            color: #1a3d2e;
+            font-weight: normal;
         }
         .subheader {
-            background-color: #ecfdf5;
-            color: #1e3a8a;
-            padding: 8px 12px;
+            background-color: #1e3a5f;
+            color: #ffffff;
+            padding: 6px 12px;
             text-align: center;
-            font-size: 9px;
-            font-weight: bold;
-            border-left: 1px solid #6ee7b7;
-            border-right: 1px solid #6ee7b7;
-            border-bottom: 1px solid #6ee7b7;
+            font-size: 8px;
+            font-weight: 600;
+            letter-spacing: 0.2px;
+            margin-top: 1px;
         }
         .section-heading {
             font-size: 8px;
@@ -281,17 +285,23 @@
             border-radius: 4px;
             padding: 8px 6px;
             text-align: center;
-            min-height: 72px;
+            min-height: 90px;
         }
         .kpi-card.blue { background-color: #eff6ff; border-color: #bfdbfe; }
         .kpi-card.cyan { background-color: #ecfeff; border-color: #a5f3fc; }
         .kpi-card.green { background-color: #eff6ff; border-color: #bfdbfe; }
         .kpi-card.amber { background-color: #fffbeb; border-color: #fde68a; }
+        .kpi-card .kpi-icon {
+            display: block;
+            margin: 0 auto 5px;
+            width: 22px;
+            height: 22px;
+        }
         .kpi-card .kpi-label {
             font-size: 7px;
             color: #4b5563;
             margin-bottom: 4px;
-            line-height: 1.2;
+            line-height: 1.3;
         }
         .kpi-card .kpi-value {
             font-size: 11px;
@@ -318,7 +328,15 @@
             padding: 8px 6px;
             text-align: center;
             font-size: 8px;
-            background-color: #f9fafb;
+        }
+        .equiv-card.indigo { background-color: #eef2ff; border-color: #c7d2fe; }
+        .equiv-card.orange { background-color: #fff7ed; border-color: #fed7aa; }
+        .equiv-card.violet { background-color: #f5f3ff; border-color: #ddd6fe; }
+        .equiv-card .equiv-icon {
+            display: block;
+            margin: 0 auto 4px;
+            width: 18px;
+            height: 18px;
         }
         .equiv-card .equiv-label {
             color: #6b7280;
@@ -327,9 +345,11 @@
         }
         .equiv-card .equiv-value {
             font-weight: bold;
-            color: #1f2937;
             font-size: 10px;
         }
+        .equiv-card.indigo .equiv-value { color: #4338ca; }
+        .equiv-card.orange .equiv-value { color: #c2410c; }
+        .equiv-card.violet .equiv-value { color: #7c3aed; }
         .methodology {
             margin-top: 12px;
             font-size: 8px;
@@ -515,13 +535,13 @@
                     </td>
                 @endforeach
                 <td class="donut-cell">
+                    @php
+                        $cubeSvg = '<svg viewBox="0 0 88 96" xmlns="http://www.w3.org/2000/svg" fill="none"><path d="M44 6 78 26v38L44 84 10 64V26L44 6Z" fill="#ccfbf1" stroke="#0f766e" stroke-width="2.25" stroke-linejoin="round"/><path d="M10 26 44 46l34-20" stroke="#0f766e" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"/><path d="M44 46v38" stroke="#0f766e" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+                        $cubeSrc = 'data:image/svg+xml;base64,' . base64_encode($cubeSvg);
+                    @endphp
                     <div class="donut-class-title" style="color:#374151; letter-spacing:0.06em;">LANDFILL SAVED</div>
-                    <div class="landfill-icon-wrap" aria-hidden="true">
-                        <svg viewBox="0 0 88 96" xmlns="http://www.w3.org/2000/svg" fill="none">
-                            <path d="M44 6 78 26v38L44 84 10 64V26L44 6Z" fill="#ccfbf1" stroke="#0f766e" stroke-width="2.25" stroke-linejoin="round"/>
-                            <path d="M10 26 44 46l34-20" stroke="#0f766e" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M44 46v38" stroke="#0f766e" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
+                    <div class="landfill-icon-wrap">
+                        <img src="{{ $cubeSrc }}" width="48" height="52" alt="">
                     </div>
                     <div class="donut-caption-label" style="color:#0f766e;">Landfill space avoided</div>
                     <div class="donut-caption-label" style="margin-top:3px; color:#6b7280; font-size:6px; font-weight:600;">Total landfill space saved</div>
@@ -657,28 +677,42 @@
             </tbody>
         </table>
 
+        @php
+            $iconCloud = 'data:image/svg+xml;base64,' . base64_encode('<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>');
+            $iconDroplet = 'data:image/svg+xml;base64,' . base64_encode('<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0891b2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg>');
+            $iconTree = 'data:image/svg+xml;base64,' . base64_encode('<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m17 14 3 3.3a1 1 0 0 1-.7 1.7H4.7a1 1 0 0 1-.7-1.7L7 14h-.3a1 1 0 0 1-.7-1.7L9 9h-.2A1 1 0 0 1 8 7.3L12 3l4 4.3a1 1 0 0 1-.8 1.7H15l3 3.3a1 1 0 0 1-.7 1.7H17Z"/><path d="M12 22v-3"/></svg>');
+            $iconZap = 'data:image/svg+xml;base64,' . base64_encode('<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg>');
+            $iconTruck = 'data:image/svg+xml;base64,' . base64_encode('<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4338ca" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>');
+            $iconFuel = 'data:image/svg+xml;base64,' . base64_encode('<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c2410c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 4 0v-6.998a2 2 0 0 0-.59-1.42L18 5"/><path d="M14 21V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v16"/><path d="M2 21h13"/><path d="M3 9h11"/></svg>');
+            $iconCar = 'data:image/svg+xml;base64,' . base64_encode('<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 8-2 2-1.5-3.7A2 2 0 0 0 15.646 5H8.4a2 2 0 0 0-1.903 1.257L5 10 3 8"/><path d="M7 14h.01"/><path d="M17 14h.01"/><rect width="18" height="8" x="3" y="10" rx="2"/><path d="M5 18v2"/><path d="M19 18v2"/></svg>');
+        @endphp
+
         <table class="kpi-grid">
             <tr>
                 <td>
                     <div class="kpi-card blue">
+                        <img class="kpi-icon" src="{{ $iconCloud }}" alt="">
                         <div class="kpi-label">Total lifecycle carbon avoided (kg CO₂e)</div>
                         <div class="kpi-value">{{ number_format($reportData['summary']['lifecycleSaving'] ?? 0, 0) }} kg CO₂e</div>
                     </div>
                 </td>
                 <td>
                     <div class="kpi-card cyan">
+                        <img class="kpi-icon" src="{{ $iconDroplet }}" alt="">
                         <div class="kpi-label">Water saved (kL)</div>
                         <div class="kpi-value">{{ number_format($ei['waterSaved'] ?? 0, 2) }} kL</div>
                     </div>
                 </td>
                 <td>
                     <div class="kpi-card green">
+                        <img class="kpi-icon" src="{{ $iconTree }}" alt="">
                         <div class="kpi-label">Trees saved</div>
                         <div class="kpi-value">{{ number_format($ei['treesSaved'] ?? 0, 2) }} trees</div>
                     </div>
                 </td>
                 <td>
                     <div class="kpi-card amber">
+                        <img class="kpi-icon" src="{{ $iconZap }}" alt="">
                         <div class="kpi-label">Electricity equivalent (kWh – SA grid)</div>
                         <div class="kpi-value">{{ number_format($ei['electricityEquivalentKwhSaGrid'] ?? 0, 0) }} kWh</div>
                     </div>
@@ -689,19 +723,22 @@
         <table class="equiv-grid">
             <tr>
                 <td>
-                    <div class="equiv-card">
+                    <div class="equiv-card indigo">
+                        <img class="equiv-icon" src="{{ $iconTruck }}" alt="">
                         <div class="equiv-label">Transport equivalent (km avoided)</div>
                         <div class="equiv-value">{{ number_format($ei['transportEquivalentKm'] ?? 0, 2) }} km</div>
                     </div>
                 </td>
                 <td>
-                    <div class="equiv-card">
+                    <div class="equiv-card orange">
+                        <img class="equiv-icon" src="{{ $iconFuel }}" alt="">
                         <div class="equiv-label">Fuel equivalent (L petrol avoided)</div>
                         <div class="equiv-value">{{ number_format($ei['fuelEquivalentLitresPetrol'] ?? 0, 2) }} L</div>
                     </div>
                 </td>
                 <td>
-                    <div class="equiv-card">
+                    <div class="equiv-card violet">
+                        <img class="equiv-icon" src="{{ $iconCar }}" alt="">
                         <div class="equiv-label">Cars off the road (annual equiv.)</div>
                         <div class="equiv-value">{{ number_format($ei['carsOffRoadAnnualEquivalent'] ?? 0, 2) }}</div>
                     </div>

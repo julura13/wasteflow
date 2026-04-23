@@ -340,6 +340,39 @@ class ReportController extends Controller
     }
 
     /**
+     * Interactive web view of the Resource Intelligence Report.
+     */
+    public function resourceIntelligenceView(Request $request)
+    {
+        $companyId = $request->input('company_id') ? (int) $request->input('company_id') : null;
+        $branchId = $request->input('branch_id') ? (int) $request->input('branch_id') : null;
+        $siteId = $request->input('site_id') ? (int) $request->input('site_id') : null;
+        $month = (int) ($request->input('month', (int) date('m')));
+        $year = (int) ($request->input('year', (int) date('Y')));
+
+        [$companyId, $branchId, $siteId] = $this->enforceCompanyScope($companyId, $branchId, $siteId);
+
+        $company = $companyId ? Company::find($companyId) : null;
+        $branch = $branchId ? Branch::with('company')->find($branchId) : null;
+        $site = $siteId ? Site::with('branch.company')->find($siteId) : null;
+
+        $reportData = $this->getReportData($company, $branch, $site, $month, $year);
+        $companies = $this->scopeCompaniesForUser();
+
+        return Inertia::render('Reports/ResourceIntelligence', [
+            'reportData' => $reportData,
+            'companies' => $companies,
+            'filters' => [
+                'company_id' => $companyId,
+                'branch_id' => $branchId,
+                'site_id' => $siteId,
+                'month' => $month,
+                'year' => $year,
+            ],
+        ]);
+    }
+
+    /**
      * Display report data summary (JSON dump for testing)
      */
     public function wasteManagementSummary(Request $request)
