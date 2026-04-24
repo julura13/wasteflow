@@ -161,7 +161,7 @@
         .methodology p { margin-bottom: 4px; }
         .methodology .foot { border-top: 1px solid #d1d5db; margin-top: 5px; padding-top: 5px; font-weight: 600; color: #374151; }
 
-        .cumulative-hdr { margin-top: 6px; }
+        .cumulative-hdr { margin-top: 6px; margin-bottom: 10px; }
         .cumulative-dash { margin: 0; }
         .cumulative-hrow { width: 100%; border-collapse: collapse; margin: 0 0 4px; }
         .cumulative-hrow .lbl {
