@@ -162,8 +162,29 @@
         .methodology .foot { border-top: 1px solid #d1d5db; margin-top: 5px; padding-top: 5px; font-weight: 600; color: #374151; }
 
         .cumulative-hdr { margin-top: 6px; }
-        .chart-wrap { text-align: center; margin: 6px 0; }
-        .chart-wrap img { max-width: 100%; height: auto; }
+        .cumulative-dash { margin: 0; }
+        .cumulative-hrow { width: 100%; border-collapse: collapse; margin: 0 0 4px; }
+        .cumulative-hrow .lbl {
+            width: 38%;
+            font-size: 6.3px;
+            line-height: 1.2;
+            vertical-align: middle;
+            color: #374151;
+            padding: 0 3px 0 0;
+        }
+        .cumulative-hrow .barcell { vertical-align: middle; }
+        .cumulative-hrow .track { height: 15px; background: #f3f4f6; border-radius: 0 2px 2px 0; }
+        .cumulative-hrow .bar-table { width: 100%; height: 15px; border-collapse: collapse; }
+        .cumulative-hrow .bar-table td { padding: 0; height: 15px; }
+        .cumulative-hrow .valc {
+            width: 16%;
+            text-align: right;
+            font-size: 7px;
+            font-weight: 600;
+            color: #111827;
+            vertical-align: middle;
+        }
+        .methodology-merged { margin-top: 8px; padding-top: 8px; border-top: 4px solid #f3f4f6; }
         .equiv-section-title { font-size: 7.5px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.04em; color: #374151; margin: 8px 0 2px; }
         .equiv-section-note { font-size: 6.5px; color: #6b7280; margin-bottom: 4px; }
     </style>
@@ -246,6 +267,21 @@
         $iconTruck = 'data:image/svg+xml;base64,' . base64_encode('<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4338ca" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>');
         $iconFuel = 'data:image/svg+xml;base64,' . base64_encode('<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c2410c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 4 0v-6.998a2 2 0 0 0-.59-1.42L18 5"/><path d="M14 21V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v16"/><path d="M2 21h13"/><path d="M3 9h11"/></svg>');
         $iconCar = 'data:image/svg+xml;base64,' . base64_encode('<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 8-2 2-1.5-3.7A2 2 0 0 0 15.646 5H8.4a2 2 0 0 0-1.903 1.257L5 10 3 8"/><path d="M7 14h.01"/><path d="M17 14h.01"/><rect width="18" height="8" x="3" y="10" rx="2"/><path d="M5 18v2"/><path d="M19 18v2"/></svg>');
+
+        $cumulativeRows = $reportData['cumulativeImpact'] ?? [];
+        $cumulativeValues = array_map(
+            static fn (array $r): float => (float) ($r['value'] ?? 0),
+            is_array($cumulativeRows) ? $cumulativeRows : []
+        );
+        $cumulativeAxisMax = 1.0;
+        if ($cumulativeValues !== []) {
+            $cumulativeAxisMax = (float) max($cumulativeValues);
+            $cumulativeAxisMax = max(12000.0, ceil($cumulativeAxisMax * 1.1 / 1000) * 1000);
+        }
+        $cumulativeAxisTicks = [];
+        for ($ti = 0; $ti < 5; $ti++) {
+            $cumulativeAxisTicks[] = $ti / 4 * $cumulativeAxisMax;
+        }
     @endphp
 
     {{-- Page 1: waste treatment (matches ResourceIntelligence page 1) --}}
@@ -576,25 +612,63 @@
             </tr>
         </table>
 
-        @if(!empty($reportData['cumulativeImpact']) && !empty($chartDisplay['page3_cumulative']))
-            <div class="cumulative-hdr">
-                <div class="section-title-navy" style="margin-top:4px;">CUMULATIVE IMPACT DASHBOARD</div>
-                <div class="chart-wrap">
-                    <img src="{{ $chartDisplay['page3_cumulative'] }}" alt="Cumulative impact">
+        @if(!empty($cumulativeRows))
+            <div class="cumulative-dash">
+                <div class="cumulative-hdr">
+                    <div class="section-title-navy" style="margin-top:4px;">CUMULATIVE IMPACT DASHBOARD</div>
                 </div>
+                @foreach($cumulativeRows as $cRow)
+                    @php
+                        $cVal = (float) ($cRow['value'] ?? 0);
+                        $cMax = $cumulativeAxisMax > 0 ? $cumulativeAxisMax : 1.0;
+                        $cPct = min(100, max(0, ($cVal / $cMax) * 100));
+                        $cRest = 100 - $cPct;
+                        $cColor = $cRow['color'] ?? '#6b7280';
+                    @endphp
+                    <table class="cumulative-hrow" style="table-layout:fixed;">
+                        <tr>
+                            <td class="lbl" style="width:38%;">{{ $cRow['name'] ?? '' }}</td>
+                            <td class="barcell" style="width:46%;">
+                                <div class="track">
+                                    <table class="bar-table" cellspacing="0" cellpadding="0">
+                                        <tr>
+                                            <td style="width:{{ number_format($cPct, 2, '.', '') }}%; background:{{ $cColor }}; border-radius:0 2px 2px 0;">&#8203;</td>
+                                            <td style="width:{{ number_format($cRest, 2, '.', '') }}%; background:transparent;">&#8203;</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </td>
+                            <td class="valc" style="width:16%;">{{ number_format($cVal, 0) }}</td>
+                        </tr>
+                    </table>
+                @endforeach
+                <table style="width:100%; table-layout:fixed; margin:2px 0 0; font-size:5.5px; color:#6b7280;">
+                    <tr>
+                        <td style="width:38%;">&#8203;</td>
+                        <td style="width:46%;">
+                            <table style="width:100%; table-layout:fixed;">
+                                <tr>
+                                    @foreach($cumulativeAxisTicks as $t)
+                                        <td style="text-align:center;">{{ number_format($t, 0) }}</td>
+                                    @endforeach
+                                </tr>
+                            </table>
+                        </td>
+                        <td style="width:16%;">&#8203;</td>
+                    </tr>
+                </table>
             </div>
         @endif
-    </div>
 
-    {{-- Page 4: methodology --}}
-    <div class="page border-sep methodology">
-        <h3>Methodology &amp; Data Sources</h3>
-        <p>This report has been prepared using verified waste data collected on-site and processed through the WasteFlow Resource Intelligence Portal.</p>
-        <p>Carbon emission factors and environmental impact calculations are aligned with internationally recognised methodologies, including the UK Department for Environment, Food &amp; Rural Affairs (DEFRA) greenhouse gas conversion factors and industry-standard lifecycle datasets.</p>
-        <p>All carbon calculations (CO₂e) are aligned with the Greenhouse Gas (GHG) Protocol, with a focus on Scope 3 emissions avoided through recycling, material recovery, and landfill diversion.</p>
-        <p>Data is supported by operational records, collection data and verified waste streams ensuring a consistent and transparent reporting framework.</p>
-        <div class="foot">
-            All reported environmental metrics have been calculated using DEFRA-aligned emission factors in accordance with GHG Protocol best practice, international standards and applicable South African sustainability and reporting frameworks.
+        <div class="methodology methodology-merged">
+            <h3>Methodology &amp; Data Sources</h3>
+            <p>This report has been prepared using verified waste data collected on-site and processed through the WasteFlow Resource Intelligence Portal.</p>
+            <p>Carbon emission factors and environmental impact calculations are aligned with internationally recognised methodologies, including the UK Department for Environment, Food &amp; Rural Affairs (DEFRA) greenhouse gas conversion factors and industry-standard lifecycle datasets.</p>
+            <p>All carbon calculations (CO₂e) are aligned with the Greenhouse Gas (GHG) Protocol, with a focus on Scope 3 emissions avoided through recycling, material recovery, and landfill diversion.</p>
+            <p>Data is supported by operational records, collection data and verified waste streams ensuring a consistent and transparent reporting framework.</p>
+            <div class="foot">
+                All reported environmental metrics have been calculated using DEFRA-aligned emission factors in accordance with GHG Protocol best practice, international standards and applicable South African sustainability and reporting frameworks.
+            </div>
         </div>
     </div>
 </body>

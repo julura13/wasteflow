@@ -1324,25 +1324,6 @@ class ReportController extends Controller
             ],
         ], "page1_diversion_donut_{$timestamp}.png");
 
-        $cumulative = $reportData['cumulativeImpact'] ?? [];
-        if ($cumulative !== []) {
-            $chartPaths['page3_cumulative'] = $this->chartService->generateHorizontalBarChart([
-                'title' => '',
-                'labels' => array_column($cumulative, 'name'),
-                'data' => array_column($cumulative, 'value'),
-                'colors' => array_column($cumulative, 'color'),
-                'width' => 720,
-                'height' => 240,
-                'options' => [
-                    'plugins' => [
-                        'title' => [
-                            'display' => false,
-                        ],
-                    ],
-                ],
-            ], "page3_cumulative_{$timestamp}.png");
-        }
-
         return $chartPaths;
     }
 }
