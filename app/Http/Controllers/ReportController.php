@@ -1324,65 +1324,24 @@ class ReportController extends Controller
             ],
         ], "page1_diversion_donut_{$timestamp}.png");
 
-        $materialsCO2eTotals = $reportData['materialsCO2eTotals'] ?? [];
-        $scope3 = (float) ($materialsCO2eTotals['scope3EF'] ?? 0);
-        $landfill = (float) ($materialsCO2eTotals['landfillAvoidanceEF'] ?? 0);
-        $stackedTotal = $scope3 + $landfill;
-        $maxX = $stackedTotal <= 0 ? 1.0 : max(100.0, ceil($stackedTotal * 1.12));
-        $step = $stackedTotal <= 0 ? 0.2 : max(50.0, round($maxX / 8, -1));
-
-        $chartPaths['page3_stacked'] = $this->chartService->generateStackedBarChart([
-            'title' => '(kg CO₂e)',
-            'labels' => ['Total'],
-            'horizontal' => true,
-            'datasets' => [
-                [
-                    'label' => 'Upstream (Scope 3) Emissions Avoided (kg CO₂e)',
-                    'data' => [$scope3],
-                    'backgroundColor' => '#60a5fa',
-                ],
-                [
-                    'label' => 'Landfill Emissions Avoided (kg CO₂e)',
-                    'data' => [$landfill],
-                    'backgroundColor' => '#9ca3af',
-                ],
-            ],
-            'options' => [
-                'scales' => [
-                    'x' => [
-                        'min' => 0,
-                        'max' => $maxX,
-                        'ticks' => [
-                            'stepSize' => $step,
+        $cumulative = $reportData['cumulativeImpact'] ?? [];
+        if ($cumulative !== []) {
+            $chartPaths['page3_cumulative'] = $this->chartService->generateHorizontalBarChart([
+                'title' => '',
+                'labels' => array_column($cumulative, 'name'),
+                'data' => array_column($cumulative, 'value'),
+                'colors' => array_column($cumulative, 'color'),
+                'width' => 720,
+                'height' => 240,
+                'options' => [
+                    'plugins' => [
+                        'title' => [
+                            'display' => false,
                         ],
                     ],
                 ],
-            ],
-            'width' => 780,
-            'height' => 260,
-        ], "page3_stacked_{$timestamp}.png");
-
-        $chartPaths['page3_cumulative'] = $this->chartService->generateDoughnutChart([
-            'title' => 'CUMULATIVE IMPACT DASHBOARD',
-            'labels' => array_column($reportData['cumulativeImpact'], 'name'),
-            'data' => array_column($reportData['cumulativeImpact'], 'value'),
-            'colors' => array_column($reportData['cumulativeImpact'], 'color'),
-            'legendPosition' => 'top',
-            'cutout' => '60%',
-            'width' => 720,
-            'height' => 320,
-        ], "page3_cumulative_{$timestamp}.png");
-
-        $chartPaths['page3_recycling'] = $this->chartService->generateDoughnutChart([
-            'title' => 'RECYCLING BREAKDOWN',
-            'labels' => array_column($reportData['recyclingBreakdown'], 'name'),
-            'data' => array_column($reportData['recyclingBreakdown'], 'value'),
-            'colors' => array_column($reportData['recyclingBreakdown'], 'color'),
-            'legendPosition' => 'bottom',
-            'cutout' => '60%',
-            'width' => 720,
-            'height' => 320,
-        ], "page3_recycling_{$timestamp}.png");
+            ], "page3_cumulative_{$timestamp}.png");
+        }
 
         return $chartPaths;
     }
