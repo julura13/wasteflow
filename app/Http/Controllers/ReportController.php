@@ -15,6 +15,7 @@ use App\Services\LandfillSpaceCalculator;
 use App\Services\LifecycleCarbonEquivalency;
 use App\Services\OrderWasteStreamReportingService;
 use App\Services\WasteImpactCalculator;
+use App\Services\WasteManagementReportPdfGenerator;
 use App\Services\WaterCalculator;
 use App\Support\DisplayDate;
 use App\Traits\ScopeByClientTrait;
@@ -46,6 +47,8 @@ class ReportController extends Controller
 
     protected CustomerOrderFrequencyReportService $customerOrderFrequencyReport;
 
+    protected WasteManagementReportPdfGenerator $wasteManagementReportPdfGenerator;
+
     public function __construct(
         ChartImageService $chartService,
         WasteImpactCalculator $wasteImpactCalculator,
@@ -55,6 +58,7 @@ class ReportController extends Controller
         LifecycleCarbonEquivalency $lifecycleCarbonEquivalency,
         OrderWasteStreamReportingService $orderWasteStreamReporting,
         CustomerOrderFrequencyReportService $customerOrderFrequencyReport,
+        WasteManagementReportPdfGenerator $wasteManagementReportPdfGenerator,
     ) {
         $this->chartService = $chartService;
         $this->wasteImpactCalculator = $wasteImpactCalculator;
@@ -64,6 +68,7 @@ class ReportController extends Controller
         $this->lifecycleCarbonEquivalency = $lifecycleCarbonEquivalency;
         $this->orderWasteStreamReporting = $orderWasteStreamReporting;
         $this->customerOrderFrequencyReport = $customerOrderFrequencyReport;
+        $this->wasteManagementReportPdfGenerator = $wasteManagementReportPdfGenerator;
     }
 
     /**
@@ -319,24 +324,22 @@ class ReportController extends Controller
         $reportData = $this->getReportData($company, $branch, $site, $month, $year);
         $chartPaths = $this->generateCharts($reportData);
 
-        $options = new Options;
-        $options->set('isHtml5ParserEnabled', true);
-        $options->set('isRemoteEnabled', true);
-        $options->set('defaultFont', 'DejaVu Sans');
-
-        $dompdf = new Dompdf($options);
+        $montserratReg = public_path('fonts/Montserrat-Regular.ttf');
+        $montserratBold = public_path('fonts/Montserrat-Bold.ttf');
         $html = view('reports.waste-management-pdf', [
             'reportData' => $reportData,
             'chartPaths' => $chartPaths,
+            'pdfFontRegularUrl' => is_file($montserratReg)
+                ? 'file://'.str_replace('\\', '/', $montserratReg)
+                : null,
+            'pdfFontBoldUrl' => is_file($montserratBold)
+                ? 'file://'.str_replace('\\', '/', $montserratBold)
+                : null,
         ])->render();
-
-        $dompdf->loadHtml($html);
-        $dompdf->setPaper('A4', 'portrait');
-        $dompdf->render();
 
         $filename = sprintf('WasteFlow_Resource_Intelligence_Report_%04d-%02d.pdf', $year, $month);
 
-        return [$filename, $dompdf->output()];
+        return [$filename, $this->wasteManagementReportPdfGenerator->generate($html)];
     }
 
     /**
@@ -1258,8 +1261,8 @@ class ReportController extends Controller
             'data' => array_column($wasteStreamRows, 'value'),
             'colors' => array_column($wasteStreamRows, 'color'),
             'cutout' => '0%',
-            'width' => 400,
-            'height' => 260,
+            'width' => 520,
+            'height' => 320,
             'options' => [
                 'layout' => [
                     'padding' => 4,
@@ -1270,6 +1273,9 @@ class ReportController extends Controller
                     ],
                     'title' => [
                         'display' => false,
+                    ],
+                    'tooltip' => [
+                        'enabled' => false,
                     ],
                 ],
             ],
@@ -1293,36 +1299,20 @@ class ReportController extends Controller
                 'data' => $p <= 0 && $rest >= 100 ? [0.0, 100.0] : [$p, $rest],
                 'colors' => [$def['color'], '#e5e7eb'],
                 'legendPosition' => 'bottom',
-                'cutout' => '68%',
-                'width' => 180,
-                'height' => 180,
+                'cutout' => '56%',
+                'width' => 260,
+                'height' => 260,
                 'options' => [
                     'plugins' => [
                         'legend' => ['display' => false],
                         'title' => ['display' => false],
+                        'tooltip' => [
+                            'enabled' => false,
+                        ],
                     ],
                 ],
             ], "{$key}_{$timestamp}.png");
         }
-
-        $divPct = (float) ($reportData['summary']['divertedFromLandfill'] ?? 0);
-        $divRest = $divPct >= 100 ? 0.0 : max(0.01, 100.0 - $divPct);
-        $chartPaths['page1_diversion_donut'] = $this->chartService->generateDoughnutChart([
-            'title' => '',
-            'labels' => ['', ''],
-            'data' => $divPct <= 0 && $divRest >= 100 ? [0.0, 100.0] : [$divPct, $divRest],
-            'colors' => ['#3b82f6', '#e5e7eb'],
-            'legendPosition' => 'bottom',
-            'cutout' => '62%',
-            'width' => 200,
-            'height' => 200,
-            'options' => [
-                'plugins' => [
-                    'legend' => ['display' => false],
-                    'title' => ['display' => false],
-                ],
-            ],
-        ], "page1_diversion_donut_{$timestamp}.png");
 
         return $chartPaths;
     }

@@ -1,4 +1,4 @@
-import { Head, router, usePage } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { useState, useEffect, useCallback } from 'react';
 import {
@@ -6,14 +6,15 @@ import {
     ResponsiveContainer, CartesianGrid,
 } from 'recharts';
 import axios from 'axios';
+import LandfillSpaceAvoidedIcon from '@/Components/LandfillSpaceAvoidedIcon';
 import SearchableDropdown from '@/Components/SearchableDropdown';
 import {
-    Download, Loader2, Cloud, Droplet, TreePine, Zap,
+    Download, Cloud, Droplet, TreePine, Zap,
     Truck, Fuel, CarFront, Eye, ChevronDown, ChevronUp,
 } from 'lucide-react';
 
 const HEADER_BG = '#9AD993';
-const NAVY = '#1e3a5f';
+const NAVY = '#1F3A5F';
 
 const MONTHS = [
     { value: 1, label: 'January' }, { value: 2, label: 'February' }, { value: 3, label: 'March' },
@@ -43,28 +44,16 @@ function fmtOneDecimal(v) {
     return (parseFloat(v) || 0).toFixed(1);
 }
 
-/** Isometric cube – mirrors the dashboard landfill-saved panel. */
-function LandfillAirspaceIcon({ className }) {
-    return (
-        <svg className={className} viewBox="0 0 88 96" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-            <path d="M44 6 78 26v38L44 84 10 64V26L44 6Z"
-                fill="currentColor" fillOpacity={0.15} stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-            <path d="M10 26 44 46l34-20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M44 46v38" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-    );
-}
-
 /** Donut using ResponsiveContainer – matches dashboard pattern exactly. */
 function ClassificationDonut({ title, percentage, fill, totalKg }) {
     const pct = Math.min(100, Math.max(0, parseFloat(percentage) || 0));
     return (
         <div className="text-center">
             <h3 className="text-xs font-semibold text-gray-700">{title}</h3>
-            <div className="relative isolate mx-auto w-full overflow-visible" style={{ height: 158 }}>
-                <div className="absolute inset-0 z-0 [&_.recharts-surface]:outline-none">
+            <div className="relative isolate mx-auto w-full min-h-[158px] shrink-0 overflow-visible" style={{ height: 158 }}>
+                <div className="absolute inset-0 z-0 [&_.recharts-legend-wrapper]:hidden [&_.recharts-surface]:outline-none">
                     <ResponsiveContainer width="100%" height="100%">
-                        <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+                        <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }} accessibilityLayer={false}>
                             <Pie
                                 data={[
                                     { value: pct, fill },
@@ -75,6 +64,8 @@ function ClassificationDonut({ title, percentage, fill, totalKg }) {
                                 dataKey="value"
                                 startAngle={90} endAngle={-270}
                                 isAnimationActive={false}
+                                labelLine={false}
+                                legendType="none"
                             >
                                 <Cell fill={pct > 0 ? fill : '#e5e7eb'} />
                                 <Cell fill="#e5e7eb" />
@@ -96,14 +87,14 @@ function ClassificationDonut({ title, percentage, fill, totalKg }) {
     );
 }
 
-/** Landfill saved panel – cube icon, mirrors dashboard. */
+/** Landfill saved panel – client icon, mirrors dashboard. */
 function LandfillSavedPanel({ m3 }) {
     return (
         <div className="text-center">
             <h3 className="text-xs font-semibold text-gray-700">LANDFILL SAVED</h3>
             <div className="relative isolate mx-auto mt-0.5 flex w-full max-w-[200px] flex-col items-center justify-center rounded-xl border-0 bg-white px-2"
                 style={{ height: 158 }}>
-                <LandfillAirspaceIcon className="h-[5.5rem] w-[5.0625rem] shrink-0 text-teal-600" />
+                <LandfillSpaceAvoidedIcon className="h-[5.5rem] w-auto max-w-[5.5rem] shrink-0 object-contain" />
                 <p className="mt-1.5 text-xs font-medium text-teal-800">Landfill space avoided</p>
             </div>
             <div className="mt-0 text-center p-1.5 bg-gray-50 rounded">
@@ -133,8 +124,6 @@ function ReportHeader({ scopeDisplayName, reportingPeriodLabel }) {
 }
 
 export default function ResourceIntelligence({ reportData, companies, filters }) {
-    const { flash } = usePage().props;
-
     const [filtersOpen, setFiltersOpen] = useState(!filters?.company_id);
     const [selectedCompany, setSelectedCompany] = useState(filters?.company_id || '');
     const [selectedBranch, setSelectedBranch] = useState(filters?.branch_id || '');
@@ -145,34 +134,6 @@ export default function ResourceIntelligence({ reportData, companies, filters })
     const [sites, setSites] = useState([]);
     const [loadingBranches, setLoadingBranches] = useState(false);
     const [loadingSites, setLoadingSites] = useState(false);
-
-    const [pdfExportUuid, setPdfExportUuid] = useState(null);
-    const [pdfStatus, setPdfStatus] = useState(null);
-
-    useEffect(() => {
-        if (flash?.waste_management_pdf_export_uuid) {
-            setPdfExportUuid(flash.waste_management_pdf_export_uuid);
-            setPdfStatus(null);
-        }
-    }, [flash?.waste_management_pdf_export_uuid]);
-
-    useEffect(() => {
-        if (!pdfExportUuid) return undefined;
-        let id;
-        const poll = async () => {
-            try {
-                const { data } = await axios.get(route('reports.waste-management-pdf.status', pdfExportUuid));
-                setPdfStatus(data);
-                if (data.status === 'completed' || data.status === 'failed') clearInterval(id);
-            } catch {
-                clearInterval(id);
-                setPdfStatus({ status: 'failed', error_message: 'Could not check status.' });
-            }
-        };
-        poll();
-        id = setInterval(poll, 2500);
-        return () => clearInterval(id);
-    }, [pdfExportUuid]);
 
     useEffect(() => {
         if (selectedCompany) {
@@ -216,18 +177,6 @@ export default function ResourceIntelligence({ reportData, companies, filters })
         });
     }, [selectedCompany, selectedBranch, selectedSite, month, year]);
 
-    const requestPdf = useCallback(() => {
-        if (!selectedCompany) return;
-        setPdfStatus(null);
-        router.post(route('reports.waste-management-pdf.request'), {
-            company_id: selectedCompany,
-            branch_id: selectedBranch || '',
-            site_id: selectedSite || '',
-            month,
-            year,
-        }, { preserveScroll: true });
-    }, [selectedCompany, selectedBranch, selectedSite, month, year]);
-
     const currentYear = new Date().getFullYear();
     const years = Array.from({ length: 10 }, (_, i) => currentYear - i);
 
@@ -247,17 +196,24 @@ export default function ResourceIntelligence({ reportData, companies, filters })
         ...(rd.recyclingCommodities2 || []),
     ].filter((c) => c.name && parseFloat(c.qty) > 0);
 
-    const pdfProcessing = pdfExportUuid && (!pdfStatus || pdfStatus.status === 'pending' || pdfStatus.status === 'processing');
     const hasData = !!filters?.company_id;
 
     return (
         <DashboardLayout title="Resource Intelligence Report">
             <Head title="WasteFlow Resource Intelligence Report" />
+            <style>{`
+                @media print {
+                    @page { size: A4 portrait; margin: 10mm 8mm; }
+                    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                    .resource-intelligence-report { box-shadow: none !important; border: none !important; border-radius: 0 !important; }
+                    .print-page-break { page-break-before: always; break-before: page; border-top: none !important; }
+                }
+            `}</style>
 
-            <div className="max-w-6xl mx-auto space-y-4">
+            <div className="w-full max-w-[90rem] mx-auto space-y-4 px-3 sm:px-4 print:max-w-none print:px-0 print:mx-0">
 
                 {/* ── FILTER PANEL ──────────────────────────────────── */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 print:hidden">
                     <button type="button" onClick={() => setFiltersOpen((v) => !v)}
                         className="w-full flex items-center justify-between px-5 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-750 rounded-lg">
                         <span>
@@ -305,23 +261,12 @@ export default function ResourceIntelligence({ reportData, companies, filters })
                                     style={{ backgroundColor: NAVY }}>
                                     <Eye size={14} /> Load Report
                                 </button>
-                                <button type="button" disabled={!selectedCompany || pdfProcessing}
-                                    onClick={requestPdf}
+                                <button type="button" disabled={!selectedCompany}
+                                    onClick={() => window.print()}
                                     className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md disabled:opacity-50">
-                                    {pdfProcessing
-                                        ? <><Loader2 size={14} className="animate-spin" /> Generating PDF…</>
-                                        : <><Download size={14} /> Download PDF</>}
+                                    <Download size={14} /> Download PDF
                                 </button>
-                                {pdfStatus?.status === 'completed' && pdfStatus.download_url && (
-                                    <a href={pdfStatus.download_url}
-                                        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md">
-                                        <Download size={14} /> Save PDF
-                                    </a>
-                                )}
                             </div>
-                            {pdfStatus?.status === 'failed' && (
-                                <p className="mt-2 text-xs text-red-600">{pdfStatus.error_message || 'PDF generation failed.'}</p>
-                            )}
                         </form>
                     )}
                 </div>
@@ -331,7 +276,7 @@ export default function ResourceIntelligence({ reportData, companies, filters })
                         Select a company and period above to load the report.
                     </div>
                 ) : (
-                    <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
+                    <div className="resource-intelligence-report bg-white rounded-lg shadow border border-gray-200 print:shadow-none print:border-0 print:rounded-none">
 
                         {/* ── PAGE 1: WASTE TREATMENT SUMMARY ──────────── */}
                         <ReportHeader scopeDisplayName={rd.scopeDisplayName} reportingPeriodLabel={rd.reportingPeriodLabel} />
@@ -341,40 +286,50 @@ export default function ResourceIntelligence({ reportData, companies, filters })
                                 Summary of Waste Treatment Outputs and achievements at a glance (kg per waste category)
                             </div>
 
-                            {/* Pie chart (left) + classification donuts 3×2 (right) */}
-                            <div className="grid grid-cols-2 gap-4">
-                                {/* Left: pie chart + legend */}
-                                <div>
-                                    <div className="flex justify-center">
+                            {/* Main pie (~2/3) + legend (~1/3), full width — matches PDF */}
+                            <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-3 md:items-center md:gap-5">
+                                <div className="min-w-0 md:col-span-2">
+                                    <div className="mx-auto w-full max-w-2xl">
                                         {wasteStreams.length > 0 ? (
-                                            <PieChart width={280} height={240}>
-                                                <Pie data={wasteStreams} cx={140} cy={120}
-                                                    outerRadius={110} dataKey="value"
-                                                    isAnimationActive={false} strokeWidth={1} stroke="#fff">
-                                                    {wasteStreams.map((entry, i) => (
-                                                        <Cell key={i} fill={entry.color || '#9AD993'} />
-                                                    ))}
-                                                </Pie>
-                                                <Tooltip formatter={(v) => `${fmtN(v)} kg`} />
-                                            </PieChart>
+                                            <div className="h-[min(18.75rem,55vw)] w-full min-h-[200px] max-h-[18.75rem] print:h-[280px] [&_.recharts-legend-wrapper]:hidden">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <PieChart margin={{ top: 4, right: 4, bottom: 4, left: 4 }} accessibilityLayer={false}>
+                                                        <Pie data={wasteStreams} cx="50%" cy="50%"
+                                                            outerRadius="88%" dataKey="value"
+                                                            isAnimationActive={false} strokeWidth={1} stroke="#fff"
+                                                            labelLine={false}
+                                                            legendType="none">
+                                                            {wasteStreams.map((entry, i) => (
+                                                                <Cell key={i} fill={entry.color || '#9AD993'} />
+                                                            ))}
+                                                        </Pie>
+                                                        <Tooltip formatter={(v) => `${fmtN(v)} kg`} />
+                                                    </PieChart>
+                                                </ResponsiveContainer>
+                                            </div>
                                         ) : (
-                                            <div className="w-64 h-56 flex items-center justify-center text-gray-400 text-xs">No data</div>
+                                            <div className="flex h-64 w-full max-w-md items-center justify-center text-gray-400 text-xs">No data</div>
                                         )}
                                     </div>
-                                    {/* Legend */}
-                                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 px-2">
+                                </div>
+                                <div className="min-w-0 md:col-span-1">
+                                    <div className="flex h-full min-h-[12rem] flex-col justify-center gap-2.5 border border-gray-100 bg-gray-50/80 px-3 py-3 md:border-0 md:bg-transparent md:px-0 md:py-0">
                                         {wasteStreams.filter((s) => parseFloat(s.value) > 0).map((s, i) => (
-                                            <div key={i} className="flex items-center gap-1.5 text-xs text-gray-700">
-                                                <span className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: s.color }} />
-                                                <span className="font-medium">{s.name}</span>
-                                                <span className="text-gray-500">— {fmtN(s.value)} kg</span>
+                                            <div key={i} className="flex items-start gap-2 text-sm text-gray-800">
+                                                <span className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded-sm" style={{ backgroundColor: s.color }} />
+                                                <span>
+                                                    <span className="font-medium">{s.name}</span>
+                                                    <span className="text-gray-500"> — {fmtN(s.value)} kg</span>
+                                                </span>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
+                            </div>
 
-                                {/* Right: 3×2 donut grid */}
-                                <div className="grid grid-cols-3 gap-2">
+                            {/* Classification doughnuts + landfill (bottom of page 1) — matches PDF */}
+                            <div className="space-y-8 pt-1">
+                                <div className="grid grid-cols-1 items-start gap-2 sm:grid-cols-3 sm:gap-3 sm:items-start">
                                     <ClassificationDonut title="AVOIDANCE"
                                         percentage={ct.avoidance?.percentage ?? 0}
                                         fill={CLASS_COLORS.avoidance}
@@ -387,6 +342,8 @@ export default function ResourceIntelligence({ reportData, companies, filters })
                                         percentage={ct.recovery?.percentage ?? 0}
                                         fill={CLASS_COLORS.recovery}
                                         totalKg={ct.recovery?.total ?? 0} />
+                                </div>
+                                <div className="grid grid-cols-1 items-start gap-2 sm:grid-cols-3 sm:gap-3 sm:items-start">
                                     <ClassificationDonut title="DISPOSAL"
                                         percentage={ct.disposal?.percentage ?? 0}
                                         fill={CLASS_COLORS.disposal}
@@ -398,113 +355,77 @@ export default function ResourceIntelligence({ reportData, companies, filters })
                                     <LandfillSavedPanel m3={summary.landfillSpaceSaved ?? 0} />
                                 </div>
                             </div>
-
-                            {/* Grade table + Total Diversion donut */}
-                            <div className="grid grid-cols-2 gap-4 pt-2">
-                                <table className="w-full text-xs border-collapse">
-                                    <thead>
-                                        <tr style={{ backgroundColor: NAVY, color: 'white' }}>
-                                            <th className="text-left px-3 py-2">Grade</th>
-                                            <th className="text-right px-3 py-2">Weight KGS</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {[
-                                            { label: 'General Waste', val: grades.generalWaste },
-                                            { label: 'Non Compactable Waste', val: grades.nonCompactableWaste },
-                                            { label: 'Hazardous Waste', val: grades.hazardousWaste },
-                                            { label: 'Organics Recovered', val: grades.organicsRecovered },
-                                        ].map((r, i) => (
-                                            <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                                                <td className="px-3 py-1 border border-gray-200">{r.label}</td>
-                                                <td className="px-3 py-1 border border-gray-200 text-right">{fmtN(r.val)}</td>
-                                            </tr>
-                                        ))}
-                                        <tr style={{ backgroundColor: '#c9dde8', fontWeight: 'bold' }}>
-                                            <td className="px-3 py-1 border border-gray-300">TOTAL WASTE</td>
-                                            <td className="px-3 py-1 border border-gray-300 text-right">
-                                                {fmtN(
-                                                    (grades.generalWaste || 0) + (grades.nonCompactableWaste || 0)
-                                                    + (grades.hazardousWaste || 0) + (grades.organicsRecovered || 0)
-                                                )}
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-
-                                {/* Total Diversion from Landfill – larger donut */}
-                                <div className="flex flex-col items-center justify-center gap-2">
-                                    <div className="font-bold text-sm text-gray-700">Total Diversion from Landfill</div>
-                                    <div className="relative" style={{ width: 150, height: 150 }}>
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
-                                                <Pie
-                                                    data={[
-                                                        { value: Math.max(0.001, summary.divertedFromLandfill || 0) },
-                                                        { value: Math.max(0.001, 100 - (summary.divertedFromLandfill || 0)) },
-                                                    ]}
-                                                    cx="50%" cy="50%"
-                                                    innerRadius="56%" outerRadius="76%"
-                                                    startAngle={90} endAngle={-270}
-                                                    dataKey="value" isAnimationActive={false}
-                                                >
-                                                    <Cell fill="#3b82f6" />
-                                                    <Cell fill="#e5e7eb" />
-                                                </Pie>
-                                            </PieChart>
-                                        </ResponsiveContainer>
-                                        <div className="absolute inset-0 flex items-center justify-center font-bold text-gray-900 text-base">
-                                            {fmtOneDecimal(summary.divertedFromLandfill || 0)}%
-                                        </div>
-                                    </div>
-                                    <div className="text-center">
-                                        <div className="text-xs text-gray-500">Total Diverted</div>
-                                        <div className="font-bold text-sm text-gray-800">
-                                            {fmtN(summary.recyclingRecovered)} kg
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Recycling commodities – non-zero only */}
-                            <div>
-                                <SectionHeader>RECYCLING RECOVERED</SectionHeader>
-                                {allCommodities.length === 0 ? (
-                                    <p className="text-xs text-gray-400 py-4 text-center border border-gray-200 rounded-b">
-                                        No recycling data for this period.
-                                    </p>
-                                ) : (
-                                    <div className="grid grid-cols-2 gap-0 border border-gray-200 rounded-b overflow-hidden">
-                                        {[
-                                            allCommodities.slice(0, Math.ceil(allCommodities.length / 2)),
-                                            allCommodities.slice(Math.ceil(allCommodities.length / 2)),
-                                        ].map((col, ci) => (
-                                            <table key={ci} className="w-full text-xs border-collapse">
-                                                <thead>
-                                                    <tr style={{ backgroundColor: '#4a7c9b', color: 'white' }}>
-                                                        <th className="text-left px-3 py-2">Commodity</th>
-                                                        <th className="text-right px-3 py-2">QTY (kg)</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {col.map((c, i) => (
-                                                        <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                                                            <td className="px-3 py-1 border-b border-gray-100">{c.name}</td>
-                                                            <td className="px-3 py-1 border-b border-gray-100 text-right font-semibold tabular-nums">{fmtN(c.qty)}</td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
                         </div>
 
-                        {/* ── PAGE 2: CARBON ACCOUNTING ─────────────────── */}
-                        <div className="border-t-4 border-gray-100">
+                        {/* ── PAGE 2: GRADE (full width), RECYCLING RECOVERED, CARBON (matches PDF) ── */}
+                        <div className="border-t-4 border-gray-100 print-page-break">
                             <ReportHeader scopeDisplayName={rd.scopeDisplayName} reportingPeriodLabel={rd.reportingPeriodLabel} />
                             <div className="p-4 space-y-4">
+                                <div className="w-full">
+                                    <table className="w-full text-xs border-collapse">
+                                        <thead>
+                                            <tr style={{ backgroundColor: NAVY, color: 'white' }}>
+                                                <th className="text-left px-3 py-2">Grade</th>
+                                                <th className="text-right px-3 py-2">Weight KGS</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {[
+                                                { label: 'General Waste', val: grades.generalWaste },
+                                                { label: 'Non Compactable Waste', val: grades.nonCompactableWaste },
+                                                { label: 'Hazardous Waste', val: grades.hazardousWaste },
+                                                { label: 'Organics Recovered', val: grades.organicsRecovered },
+                                            ].map((r, i) => (
+                                                <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                                    <td className="px-3 py-1 border border-gray-200">{r.label}</td>
+                                                    <td className="px-3 py-1 border border-gray-200 text-right">{fmtN(r.val)}</td>
+                                                </tr>
+                                            ))}
+                                            <tr style={{ backgroundColor: '#c9dde8', fontWeight: 'bold' }}>
+                                                <td className="px-3 py-1 border border-gray-300">TOTAL WASTE</td>
+                                                <td className="px-3 py-1 border border-gray-300 text-right">
+                                                    {fmtN(
+                                                        (grades.generalWaste || 0) + (grades.nonCompactableWaste || 0)
+                                                        + (grades.hazardousWaste || 0) + (grades.organicsRecovered || 0)
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div>
+                                    <SectionHeader>RECYCLING RECOVERED</SectionHeader>
+                                    {allCommodities.length === 0 ? (
+                                        <p className="text-xs text-gray-400 py-4 text-center border border-t-0 border-gray-200 rounded-b">
+                                            No recycling data for this period.
+                                        </p>
+                                    ) : (
+                                        <div className="grid grid-cols-1 gap-0 overflow-hidden border border-t-0 border-gray-200 rounded-b sm:grid-cols-2">
+                                            {[
+                                                allCommodities.slice(0, Math.ceil(allCommodities.length / 2)),
+                                                allCommodities.slice(Math.ceil(allCommodities.length / 2)),
+                                            ].map((col, ci) => (
+                                                <table key={ci} className={`w-full text-xs border-collapse ${ci === 0 ? 'sm:border-r sm:border-gray-200' : ''}`}>
+                                                    <thead>
+                                                        <tr style={{ backgroundColor: '#4a7c9b', color: 'white' }}>
+                                                            <th className="px-3 py-2 text-left">Commodity</th>
+                                                            <th className="px-3 py-2 text-right">QTY (kg)</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {col.map((c, i) => (
+                                                            <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                                                <td className="border-b border-gray-100 px-3 py-1">{c.name}</td>
+                                                                <td className="border-b border-gray-100 px-3 py-1 text-right font-semibold tabular-nums">{fmtN(c.qty)}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
                                 <div className="text-sm font-bold text-center py-1" style={{ color: NAVY }}>Carbon Accounting Report</div>
 
                                 <table className="w-full text-xs border-collapse">
@@ -559,7 +480,7 @@ export default function ResourceIntelligence({ reportData, companies, filters })
                         </div>
 
                         {/* ── PAGE 3: ENVIRONMENTAL IMPACT ─────────────── */}
-                        <div className="border-t-4 border-gray-100">
+                        <div className="border-t-4 border-gray-100 print-page-break">
                             <div className="text-center py-4 px-6" style={{ backgroundColor: HEADER_BG }}>
                                 <div className="text-xl font-bold text-gray-900">WasteFlow Resource Intelligence Report</div>
                                 <div className="text-base font-semibold text-gray-800">Environmental Impact &amp; Resource Saving</div>
@@ -672,17 +593,24 @@ export default function ResourceIntelligence({ reportData, companies, filters })
                             </div>
                         </div>
 
-                        {/* ── PAGE 4: METHODOLOGY ──────────────────────── */}
-                        <div className="border-t-4 border-gray-100 p-4 bg-gray-50">
-                            <div className="font-bold text-sm mb-2" style={{ color: NAVY }}>Methodology &amp; Data Sources</div>
-                            <div className="space-y-2 text-xs text-gray-600 leading-relaxed">
+                        {/* ── PAGE 4: METHODOLOGY — client: keep content; add logo at end; readable copy ── */}
+                        <div className="border-t-4 border-gray-100 p-4 sm:p-5 bg-gray-50 print-page-break">
+                            <div className="font-bold text-sm mb-3" style={{ color: NAVY }}>Methodology &amp; Data Sources</div>
+                            <div className="space-y-2.5 text-sm text-gray-600 leading-relaxed max-w-4xl">
                                 <p>This report has been prepared using verified waste data collected on-site and processed through the WasteFlow Resource Intelligence Portal.</p>
                                 <p>Carbon emission factors and environmental impact calculations are aligned with internationally recognised methodologies, including the UK Department for Environment, Food &amp; Rural Affairs (DEFRA) greenhouse gas conversion factors and industry-standard lifecycle datasets.</p>
                                 <p>All carbon calculations (CO₂e) are aligned with the Greenhouse Gas (GHG) Protocol, with a focus on Scope 3 emissions avoided through recycling, material recovery, and landfill diversion.</p>
                                 <p>Data is supported by operational records, collection data and verified waste streams ensuring a consistent and transparent reporting framework.</p>
-                                <div className="border-t border-gray-300 pt-2 font-medium text-gray-700">
+                                <div className="border-t border-gray-300 pt-3 font-medium text-gray-800 leading-relaxed">
                                     All reported environmental metrics have been calculated using DEFRA-aligned emission factors in accordance with GHG Protocol best practice, international standards and applicable South African sustainability and reporting frameworks.
                                 </div>
+                            </div>
+                            <div className="mt-8 flex flex-col items-center justify-center border-t border-gray-200 pt-8">
+                                <img
+                                    src="/images/logo.png"
+                                    alt="WasteFlow"
+                                    className="h-10 w-auto object-contain sm:h-12"
+                                />
                             </div>
                         </div>
 

@@ -115,7 +115,7 @@ export default function DashboardLayout({ children }) {
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
             {/* Mobile sidebar */}
-            <div className={`fixed inset-0 z-50 lg:hidden ${sidebarOpen ? 'block' : 'hidden'}`}>
+            <div className={`fixed inset-0 z-50 lg:hidden print:hidden ${sidebarOpen ? 'block' : 'hidden'}`}>
                 <div className="fixed inset-0 bg-gray-900/70" onClick={() => setSidebarOpen(false)} />
                 <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-white dark:bg-gray-800 shadow-xl">
                     <div className="flex h-16 items-center justify-between px-4">
@@ -158,7 +158,7 @@ export default function DashboardLayout({ children }) {
 
             {/* Desktop sidebar */}
             <div
-                className={`hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col transition-[width] duration-200 ease-in-out ${
+                className={`hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col transition-[width] duration-200 ease-in-out print:hidden ${
                     sidebarCollapsed ? 'lg:w-20' : 'lg:w-64'
                 }`}
             >
@@ -224,9 +224,9 @@ export default function DashboardLayout({ children }) {
             </div>
 
             {/* Main content */}
-            <div className={`transition-[padding] duration-200 ${sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'}`}>
+            <div className={`transition-[padding] duration-200 print:pl-0 ${sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'}`}>
                 {/* Top navigation */}
-                <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8 dark:border-gray-700 dark:bg-gray-800">
+                <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8 dark:border-gray-700 dark:bg-gray-800 print:hidden">
                     <button
                         type="button"
                         className="-m-2.5 p-2.5 text-gray-700 lg:hidden dark:text-gray-300"

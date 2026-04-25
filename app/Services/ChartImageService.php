@@ -10,6 +10,14 @@ class ChartImageService
 {
     private const QUICKCHART_API_URL = 'https://quickchart.io/chart';
 
+    /**
+     * QuickChart defaults to Chart.js 2.9.4, which uses options.legend (not options.plugins.legend).
+     * v3+ configs were ignored, leaving legends visible in PNGs. Use 4+ for our plugin-based options.
+     *
+     * @see https://quickchart.io/documentation/usage/parameters/
+     */
+    private const QUICKCHART_CHARTJS_VERSION = '4';
+
     private const DEFAULT_WIDTH = 900;
 
     private const DEFAULT_HEIGHT = 450;
@@ -201,11 +209,19 @@ class ChartImageService
                 'datasets' => [[
                     'data' => $config['data'] ?? [],
                     'backgroundColor' => $config['colors'] ?? $this->getDefaultColors(count($config['data'] ?? [])),
-                    'borderColor' => '#ffffff',
-                    'borderWidth' => 2,
+                    'borderColor' => $config['borderColor'] ?? '#ffffff',
+                    'borderWidth' => $config['borderWidth'] ?? 1,
                 ]],
             ],
             'options' => $this->mergeChartOptions([
+                'layout' => [
+                    'padding' => 0,
+                ],
+                'elements' => [
+                    'arc' => [
+                        'borderWidth' => 1,
+                    ],
+                ],
                 'plugins' => [
                     'title' => [
                         'display' => ! empty($config['title']),
@@ -213,11 +229,11 @@ class ChartImageService
                         'font' => ['size' => 18, 'weight' => 'bold'],
                     ],
                     'legend' => [
-                        'display' => true,
+                        'display' => false,
                         'position' => $config['legendPosition'] ?? 'bottom',
                     ],
                     'tooltip' => [
-                        'enabled' => true,
+                        'enabled' => false,
                     ],
                     'datalabels' => [
                         'display' => false,
@@ -263,6 +279,7 @@ class ChartImageService
                 'height' => $height,
                 'backgroundColor' => 'white',
                 'format' => 'png',
+                'version' => self::QUICKCHART_CHARTJS_VERSION,
             ]);
 
             if ($response->successful()) {

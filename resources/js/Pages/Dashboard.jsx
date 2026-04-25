@@ -22,6 +22,7 @@ import {
     Zap,
 } from 'lucide-react';
 import axios from 'axios';
+import LandfillSpaceAvoidedIcon from '@/Components/LandfillSpaceAvoidedIcon';
 import SearchableDropdown from '@/Components/SearchableDropdown';
 import { formatImpactOneDecimal, formatImpactWhole } from '@/utils/environmentalImpactDisplay';
 import { formatQuantityLineLabel } from '@/utils/orderQuantityLines';
@@ -81,42 +82,6 @@ function getOrdersQuickViewDayOptionsAndValues() {
     }
 
     return { options: opts, valueSet: values };
-}
-
-/** Isometric cube suggesting airspace volume (m³); used on the dashboard landfill-saved panel. */
-function LandfillAirspaceIcon({ className }) {
-    return (
-        <svg
-            className={className}
-            viewBox="0 0 88 96"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            aria-hidden
-        >
-            <path
-                d="M44 6 78 26v38L44 84 10 64V26L44 6Z"
-                fill="currentColor"
-                fillOpacity={0.15}
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinejoin="round"
-            />
-            <path
-                d="M10 26 44 46l34-20"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-            />
-            <path
-                d="M44 46v38"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-            />
-        </svg>
-    );
 }
 
 export default function Dashboard({ companies = [], dashboardData = null, gradeSummaryByYear = [], ordersNearDates = [], filters = {} }) {
@@ -372,7 +337,7 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
                 role="img"
                 aria-label={`Landfill space avoided ${formatNumber(landfillSpaceSaved.total_m3)} cubic metres`}
             >
-                <LandfillAirspaceIcon className="h-[5.5rem] w-[5.0625rem] shrink-0 text-teal-600 dark:text-teal-400" />
+                <LandfillSpaceAvoidedIcon className="h-[5.5rem] w-auto max-w-[5.5rem] shrink-0 object-contain" />
                 <p className="mt-1.5 text-xs font-medium text-teal-800 dark:text-teal-300">
                     Landfill space avoided
                 </p>
