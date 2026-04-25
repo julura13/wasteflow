@@ -34,6 +34,45 @@ class WasteManagementReportPdfGenerator
         return $this->generateWithDompdf($html);
     }
 
+    /**
+     * Render the live React page at $url to PDF via Browsershot.
+     * emulateMedia('print') activates the print CSS that hides nav/sidebar/filter panel.
+     */
+    public function generateFromUrl(string $url): string
+    {
+        $cfg = config('waste_report_pdf.browsershot', []);
+
+        $browsershot = Browsershot::url($url)
+            ->format('A4')
+            ->landscape(false)
+            ->showBackground()
+            ->margins(0, 0, 0, 0, 'mm')
+            ->windowSize(1400, 900)
+            ->timeout((int) ($cfg['timeout_seconds'] ?? 120))
+            ->delay((int) ($cfg['url_delay_ms'] ?? 4000))
+            ->emulateMedia('print')
+            ->setNodeModulePath(base_path('node_modules'))
+            ->newHeadless();
+
+        if (! empty($cfg['no_sandbox'])) {
+            $browsershot->noSandbox();
+        }
+
+        if (! empty($cfg['node_binary'])) {
+            $browsershot->setNodeBinary((string) $cfg['node_binary']);
+        }
+
+        if (! empty($cfg['npm_binary'])) {
+            $browsershot->setNpmBinary((string) $cfg['npm_binary']);
+        }
+
+        if (! empty($cfg['chrome_path'])) {
+            $browsershot->setChromePath((string) $cfg['chrome_path']);
+        }
+
+        return $browsershot->pdf();
+    }
+
     public function generateWithBrowsershot(string $html): string
     {
         $cfg = config('waste_report_pdf.browsershot', []);

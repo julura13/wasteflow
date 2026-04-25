@@ -123,7 +123,7 @@ function ReportHeader({ scopeDisplayName, reportingPeriodLabel }) {
     );
 }
 
-export default function ResourceIntelligence({ reportData, companies, filters }) {
+export default function ResourceIntelligence({ reportData, companies, filters, isPrint = false }) {
     const { flash } = usePage().props;
 
     const [filtersOpen, setFiltersOpen] = useState(!filters?.company_id);
@@ -256,7 +256,7 @@ export default function ResourceIntelligence({ reportData, companies, filters })
             <div className="w-full max-w-[90rem] mx-auto space-y-4 px-3 sm:px-4 print:max-w-none print:px-0 print:mx-0">
 
                 {/* ── FILTER PANEL ──────────────────────────────────── */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 print:hidden">
+                {!isPrint && <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 print:hidden">
                     <button type="button" onClick={() => setFiltersOpen((v) => !v)}
                         className="w-full flex items-center justify-between px-5 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-750 rounded-lg">
                         <span>
@@ -323,9 +323,9 @@ export default function ResourceIntelligence({ reportData, companies, filters })
                             )}
                         </form>
                     )}
-                </div>
+                </div>}
 
-                {!hasData ? (
+                {!hasData && !isPrint ? (
                     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-12 text-center text-gray-500">
                         Select a company and period above to load the report.
                     </div>

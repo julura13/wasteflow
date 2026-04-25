@@ -99,6 +99,10 @@ Route::middleware(['auth', 'verified', "permission:{$ordersPermission}"])->prefi
     Route::delete('/{media}', [App\Http\Controllers\MediaController::class, 'destroy'])->name('destroy');
 });
 
+// Unauthenticated print-preview used by Browsershot — auth via short-lived cache token
+Route::get('/reports/resource-intelligence/print/{token}', [App\Http\Controllers\ReportController::class, 'resourceIntelligencePrintPreview'])
+    ->name('reports.resource-intelligence.print-preview');
+
 Route::middleware(['auth', 'verified', 'permission:view-reports'])->prefix('reports')->name('reports.')->group(function () {
     Route::get('/', function () {
         return Inertia::render('Reports/Index');

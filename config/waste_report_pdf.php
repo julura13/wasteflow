@@ -30,6 +30,8 @@ return [
 
         'delay_ms' => (int) env('BROWSERSHOT_PDF_DELAY_MS', 500),
 
+        'url_delay_ms' => (int) env('BROWSERSHOT_PDF_URL_DELAY_MS', 4000),
+
         'timeout_seconds' => (int) env('BROWSERSHOT_PDF_TIMEOUT', 120),
 
         'window_width' => (int) env('BROWSERSHOT_PDF_WINDOW_WIDTH', 1200),

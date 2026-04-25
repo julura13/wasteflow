@@ -303,7 +303,7 @@ class ReportController extends Controller
         $branch = $branchId ? Branch::with('company')->find($branchId) : null;
         $site = $siteId ? Site::with('branch.company')->find($siteId) : null;
 
-        [$pdfFilename, $binary] = $this->buildWasteManagementPdfBinary($company, $branch, $site, $month, $year);
+        [$pdfFilename, $binary] = $this->buildWasteManagementPdfBinary($company, $branch, $site, $month, $year, $user);
 
         $relativePath = 'waste-management-reports/'.$export->uuid.'.pdf';
         Storage::disk($export->disk)->put($relativePath, $binary);
@@ -317,29 +317,56 @@ class ReportController extends Controller
     }
 
     /**
+     * One-time print-preview page visited by Browsershot (no auth middleware — token is the credential).
+     */
+    public function resourceIntelligencePrintPreview(string $token): \Inertia\Response
+    {
+        $payload = cache()->get('ri_pdf_print_'.$token);
+        abort_if(! $payload, 404);
+
+        $user = User::find($payload['user_id']);
+        abort_if(! $user, 404);
+
+        auth()->login($user);
+        cache()->forget('ri_pdf_print_'.$token);
+
+        $filters  = $payload['filters'];
+        $company  = $filters['company_id'] ? Company::find($filters['company_id']) : null;
+        $branch   = $filters['branch_id']  ? Branch::with('company')->find($filters['branch_id']) : null;
+        $site     = $filters['site_id']    ? Site::with('branch.company')->find($filters['site_id']) : null;
+
+        $reportData = $this->getReportData($company, $branch, $site, (int) $filters['month'], (int) $filters['year']);
+
+        return Inertia::render('Reports/ResourceIntelligence', [
+            'reportData' => $reportData,
+            'companies'  => [],
+            'filters'    => $filters,
+            'isPrint'    => true,
+        ]);
+    }
+
+    /**
      * @return array{0: string, 1: string} Filename and raw PDF bytes
      */
-    private function buildWasteManagementPdfBinary(?Company $company, ?Branch $branch, ?Site $site, int $month, int $year): array
+    private function buildWasteManagementPdfBinary(?Company $company, ?Branch $branch, ?Site $site, int $month, int $year, User $user): array
     {
-        $reportData = $this->getReportData($company, $branch, $site, $month, $year);
-        $chartPaths = $this->generateCharts($reportData);
+        $token = (string) Str::uuid();
+        cache()->put('ri_pdf_print_'.$token, [
+            'user_id' => $user->id,
+            'filters' => [
+                'company_id' => $company?->id,
+                'branch_id'  => $branch?->id,
+                'site_id'    => $site?->id,
+                'month'      => $month,
+                'year'       => $year,
+            ],
+        ], now()->addMinutes(10));
 
-        $montserratReg = public_path('fonts/Montserrat-Regular.ttf');
-        $montserratBold = public_path('fonts/Montserrat-Bold.ttf');
-        $html = view('reports.waste-management-pdf', [
-            'reportData' => $reportData,
-            'chartPaths' => $chartPaths,
-            'pdfFontRegularUrl' => is_file($montserratReg)
-                ? 'file://'.str_replace('\\', '/', $montserratReg)
-                : null,
-            'pdfFontBoldUrl' => is_file($montserratBold)
-                ? 'file://'.str_replace('\\', '/', $montserratBold)
-                : null,
-        ])->render();
+        $previewUrl = route('reports.resource-intelligence.print-preview', ['token' => $token]);
 
         $filename = sprintf('WasteFlow_Resource_Intelligence_Report_%04d-%02d.pdf', $year, $month);
 
-        return [$filename, $this->wasteManagementReportPdfGenerator->generate($html)];
+        return [$filename, $this->wasteManagementReportPdfGenerator->generateFromUrl($previewUrl)];
     }
 
     /**
