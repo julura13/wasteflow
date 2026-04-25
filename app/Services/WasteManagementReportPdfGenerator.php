@@ -70,6 +70,13 @@ class WasteManagementReportPdfGenerator
             $browsershot->setChromePath((string) $cfg['chrome_path']);
         }
 
+        $appHost = parse_url(config('app.url'), PHP_URL_HOST);
+        $chromeArgs = ['--ignore-certificate-errors'];
+        if ($appHost) {
+            $chromeArgs[] = '--host-resolver-rules=MAP '.$appHost.' 127.0.0.1';
+        }
+        $browsershot->addChromiumArguments($chromeArgs);
+
         return $browsershot->pdf();
     }
 
