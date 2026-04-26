@@ -312,12 +312,6 @@ export default function RebateTracker({ rebateData, companies, filters, totalReb
                                 R {Number(totalRebate).toFixed(2)}
                             </p>
                         </div>
-                        <div>
-                            <span className="text-xs uppercase tracking-wide text-green-700 dark:text-green-300">Average Rate</span>
-                            <p className="text-lg font-semibold text-green-900 dark:text-green-100">
-                                R {totalWeight > 0 ? Number(totalRebate / totalWeight).toFixed(2) : '0.00'} / kg
-                            </p>
-                        </div>
                     </div>
                 </div>
             )}
