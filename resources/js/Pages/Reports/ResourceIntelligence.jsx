@@ -9,7 +9,7 @@ import axios from 'axios';
 import LandfillSpaceAvoidedIcon from '@/Components/LandfillSpaceAvoidedIcon';
 import SearchableDropdown from '@/Components/SearchableDropdown';
 import {
-    Download, Loader2, Cloud, Droplet, TreePine, Zap,
+    Cloud, Droplet, TreePine, Zap,
     Truck, Fuel, CarFront, Eye, ChevronDown, ChevronUp,
 } from 'lucide-react';
 
@@ -162,34 +162,6 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
     const [loadingBranches, setLoadingBranches] = useState(false);
     const [loadingSites, setLoadingSites] = useState(false);
 
-    const [pdfExportUuid, setPdfExportUuid] = useState(null);
-    const [pdfStatus, setPdfStatus] = useState(null);
-
-    useEffect(() => {
-        if (flash?.waste_management_pdf_export_uuid) {
-            setPdfExportUuid(flash.waste_management_pdf_export_uuid);
-            setPdfStatus(null);
-        }
-    }, [flash?.waste_management_pdf_export_uuid]);
-
-    useEffect(() => {
-        if (!pdfExportUuid) return undefined;
-        let id;
-        const poll = async () => {
-            try {
-                const { data } = await axios.get(route('reports.waste-management-pdf.status', pdfExportUuid));
-                setPdfStatus(data);
-                if (data.status === 'completed' || data.status === 'failed') clearInterval(id);
-            } catch {
-                clearInterval(id);
-                setPdfStatus({ status: 'failed', error_message: 'Could not check status.' });
-            }
-        };
-        poll();
-        id = setInterval(poll, 2500);
-        return () => clearInterval(id);
-    }, [pdfExportUuid]);
-
     useEffect(() => {
         if (selectedCompany) {
             setLoadingBranches(true);
@@ -232,18 +204,6 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
         });
     }, [selectedCompany, selectedBranch, selectedSite, month, year]);
 
-    const requestPdf = useCallback(() => {
-        if (!selectedCompany) return;
-        setPdfStatus(null);
-        router.post(route('reports.waste-management-pdf.request'), {
-            company_id: selectedCompany,
-            branch_id: selectedBranch || '',
-            site_id: selectedSite || '',
-            month,
-            year,
-        }, { preserveScroll: true });
-    }, [selectedCompany, selectedBranch, selectedSite, month, year]);
-
     const currentYear = new Date().getFullYear();
     const years = Array.from({ length: 10 }, (_, i) => currentYear - i);
 
@@ -263,7 +223,6 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
         ...(rd.recyclingCommodities2 || []),
     ].filter((c) => c.name && parseFloat(c.qty) > 0);
 
-    const pdfProcessing = pdfExportUuid && (!pdfStatus || pdfStatus.status === 'pending' || pdfStatus.status === 'processing');
     const hasData = !!filters?.company_id;
     const printMedia = useIsPrintMedia();
     const printMode = isPrint || printMedia;
@@ -331,23 +290,7 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                     style={{ backgroundColor: NAVY }}>
                                     <Eye size={14} /> Load Report
                                 </button>
-                                <button type="button" disabled={!selectedCompany || pdfProcessing}
-                                    onClick={requestPdf}
-                                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md disabled:opacity-50">
-                                    {pdfProcessing
-                                        ? <><Loader2 size={14} className="animate-spin" /> Generating PDF…</>
-                                        : <><Download size={14} /> Download PDF</>}
-                                </button>
-                                {pdfStatus?.status === 'completed' && pdfStatus.download_url && (
-                                    <a href={pdfStatus.download_url}
-                                        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md">
-                                        <Download size={14} /> Save PDF
-                                    </a>
-                                )}
                             </div>
-                            {pdfStatus?.status === 'failed' && (
-                                <p className="mt-2 text-xs text-red-600">{pdfStatus.error_message || 'PDF generation failed.'}</p>
-                            )}
                         </form>
                     )}
                 </div>}
