@@ -79,7 +79,7 @@ function ClassificationDonut({ title, percentage, fill, totalKg, printMode = fal
         <div className="text-center">
             <h3 className="text-xs font-semibold text-gray-700">{title}</h3>
             <div className="relative isolate mx-auto w-full min-h-[158px] shrink-0 overflow-visible" style={{ height: 158 }}>
-                <div className="absolute inset-0 z-0 [&_.recharts-legend-wrapper]:hidden [&_.recharts-surface]:outline-none">
+                <div className="absolute inset-0 z-0 flex items-center justify-center [&_.recharts-legend-wrapper]:hidden [&_.recharts-surface]:outline-none">
                     {printMode ? (
                         <PieChart width={158} height={158} margin={{ top: 0, right: 0, bottom: 0, left: 0 }} accessibilityLayer={false}>
                             <Pie data={pieData} {...pieProps}>
