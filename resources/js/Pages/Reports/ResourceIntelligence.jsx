@@ -10,7 +10,7 @@ import LandfillSpaceAvoidedIcon from '@/Components/LandfillSpaceAvoidedIcon';
 import SearchableDropdown from '@/Components/SearchableDropdown';
 import {
     Cloud, Droplet, TreePine, Zap,
-    Truck, Fuel, CarFront, Eye, ChevronDown, ChevronUp,
+    Truck, Fuel, CarFront, Eye, ChevronDown, ChevronUp, Printer,
 } from 'lucide-react';
 
 const HEADER_BG = '#9AD993';
@@ -204,6 +204,10 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
         });
     }, [selectedCompany, selectedBranch, selectedSite, month, year]);
 
+    const openPrintDialog = useCallback(() => {
+        window.print();
+    }, []);
+
     const currentYear = new Date().getFullYear();
     const years = Array.from({ length: 10 }, (_, i) => currentYear - i);
 
@@ -289,6 +293,13 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                     className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-md disabled:opacity-50"
                                     style={{ backgroundColor: NAVY }}>
                                     <Eye size={14} /> Load Report
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={openPrintDialog}
+                                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-md bg-slate-600 hover:bg-slate-700"
+                                >
+                                    <Printer size={14} /> Print / Save PDF
                                 </button>
                             </div>
                         </form>
@@ -678,7 +689,7 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                 <img
                                     src="/images/logo.png"
                                     alt="WasteFlow"
-                                    className="h-10 w-auto object-contain sm:h-12"
+                                    className="h-14 w-auto object-contain sm:h-16"
                                 />
                             </div>
                         </div>
