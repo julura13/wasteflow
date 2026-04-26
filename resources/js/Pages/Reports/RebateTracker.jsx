@@ -296,26 +296,9 @@ export default function RebateTracker({ rebateData, companies, filters, totalReb
                 </div>
             </div>
 
-            <div className="mb-4 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 p-4">
-                <h3 className="text-sm font-medium text-blue-900 dark:text-blue-200 mb-2">Filter Information</h3>
-                <ul className="text-xs text-blue-800 dark:text-blue-300 space-y-1">
-                    <li>• <strong>Company only:</strong> Rebates across all branches and sites of that company</li>
-                    <li>• <strong>Company + Branch:</strong> Rebates across all sites of that branch</li>
-                    <li>• <strong>Company + Branch + Site:</strong> Rebates for that specific site only</li>
-                    <li>
-                        • <strong>Date column:</strong> Collection date — actual collection date when recorded, otherwise
-                        the requested collection date (finalized orders only).
-                    </li>
-                    <li>
-                        • <strong>Multiple tracking numbers:</strong> Same-day rows for the same grade and location
-                        combine weight and rebate from every matching finalized order; each distinct order number is
-                        listed so you can trace all collections behind that total.
-                    </li>
-                </ul>
-            </div>
-
             {totalRebate > 0 && (
-                <div className="bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-700 rounded-lg mb-6 p-4">
+                <div className="bg-green-50 dark:bg-green-900 border-2 border-green-600 dark:border-green-500 rounded-lg mb-6 p-4">
+                    <h3 className="text-sm font-bold text-green-700 dark:text-green-300 mb-3">Summary</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <span className="text-xs uppercase tracking-wide text-green-700 dark:text-green-300">Total Weight</span>
@@ -338,6 +321,24 @@ export default function RebateTracker({ rebateData, companies, filters, totalReb
                     </div>
                 </div>
             )}
+
+            <div className="mb-4 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 p-4">
+                <h3 className="text-sm font-medium text-blue-900 dark:text-blue-200 mb-2">Filter Information</h3>
+                <ul className="text-xs text-blue-800 dark:text-blue-300 space-y-1">
+                    <li>• <strong>Company only:</strong> Rebates across all branches and sites of that company</li>
+                    <li>• <strong>Company + Branch:</strong> Rebates across all sites of that branch</li>
+                    <li>• <strong>Company + Branch + Site:</strong> Rebates for that specific site only</li>
+                    <li>
+                        • <strong>Date column:</strong> Collection date — actual collection date when recorded, otherwise
+                        the requested collection date (finalized orders only).
+                    </li>
+                    <li>
+                        • <strong>Multiple tracking numbers:</strong> Same-day rows for the same grade and location
+                        combine weight and rebate from every matching finalized order; each distinct order number is
+                        listed so you can trace all collections behind that total.
+                    </li>
+                </ul>
+            </div>
 
             <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
                 <div className="px-4 py-5 sm:p-6">
@@ -446,6 +447,14 @@ export default function RebateTracker({ rebateData, companies, filters, totalReb
                         </div>
                     )}
                 </div>
+            </div>
+
+            <div className="mt-8 flex flex-col items-center justify-center border-t border-gray-200 dark:border-gray-600 pt-8">
+                <img
+                    src="/images/logo.png"
+                    alt="WasteFlow"
+                    className="h-9 w-auto object-contain sm:h-10"
+                />
             </div>
             </div>
         </DashboardLayout>

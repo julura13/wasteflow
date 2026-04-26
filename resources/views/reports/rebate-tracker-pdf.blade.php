@@ -82,11 +82,21 @@
             width: 1%;
         }
         .summary-box {
-            margin-top: 15px;
+            margin-bottom: 15px;
             padding: 12px;
             background-color: #ecfdf5;
             border: 2px solid #2563eb;
             border-radius: 4px;
+        }
+        .client-logo {
+            text-align: center;
+            margin-top: 15px;
+            padding-top: 6px;
+        }
+        .client-logo img {
+            height: 36px;
+            width: auto;
+            max-width: 200px;
         }
         .summary-box h3 {
             font-size: 12px;
@@ -119,11 +129,34 @@
     </style>
 </head>
 <body>
+    @php
+        $reportLogoSrc = null;
+        $logoPath = public_path('images/logo.png');
+        if (is_file($logoPath)) {
+            $reportLogoSrc = 'data:'.mime_content_type($logoPath).';base64,'.base64_encode((string) file_get_contents($logoPath));
+        }
+    @endphp
     <div class="page-shell">
     <div class="header">
         <h1>WASTE COLLECTION &amp; RECYCLING REPORT</h1>
         <div class="filters">
             Period: {{ \Carbon\Carbon::parse($filters['start_date'])->format(\App\Support\DisplayDate::CALENDAR) }} – {{ \Carbon\Carbon::parse($filters['end_date'])->format(\App\Support\DisplayDate::CALENDAR) }}
+        </div>
+    </div>
+
+    <div class="summary-box">
+        <h3>Summary</h3>
+        <div class="summary-row">
+            <span class="summary-label">Total Weight:</span>
+            <span class="summary-value">{{ number_format($totalWeight ?? 0, 2) }} kg</span>
+        </div>
+        <div class="summary-row">
+            <span class="summary-label">Total Rebate:</span>
+            <span class="summary-value">R {{ number_format($totalRebate ?? 0, 2) }}</span>
+        </div>
+        <div class="summary-row">
+            <span class="summary-label">Average Rate:</span>
+            <span class="summary-value">R {{ ($totalWeight ?? 0) > 0 ? number_format(($totalRebate ?? 0) / $totalWeight, 2) : '0.00' }} / kg</span>
         </div>
     </div>
 
@@ -162,21 +195,11 @@
         </tbody>
     </table>
 
-    <div class="summary-box">
-        <h3>Summary</h3>
-        <div class="summary-row">
-            <span class="summary-label">Total Weight:</span>
-            <span class="summary-value">{{ number_format($totalWeight ?? 0, 2) }} kg</span>
+    @if(!empty($reportLogoSrc))
+        <div class="client-logo">
+            <img src="{{ $reportLogoSrc }}" alt="WasteFlow" />
         </div>
-        <div class="summary-row">
-            <span class="summary-label">Total Rebate:</span>
-            <span class="summary-value">R {{ number_format($totalRebate ?? 0, 2) }}</span>
-        </div>
-        <div class="summary-row">
-            <span class="summary-label">Average Rate:</span>
-            <span class="summary-value">R {{ ($totalWeight ?? 0) > 0 ? number_format(($totalRebate ?? 0) / $totalWeight, 2) : '0.00' }} / kg</span>
-        </div>
-    </div>
+    @endif
 
     <div class="footer">
         <strong>WASTEFLOW</strong> – Sustainable Waste Management

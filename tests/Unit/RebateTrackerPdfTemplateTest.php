@@ -2,7 +2,7 @@
 
 uses(Tests\TestCase::class);
 
-it('renders rebate tracker pdf with south african d/m/y dates', function () {
+it('renders rebate tracker pdf with calendar dates and summary before the table', function () {
     $html = view('reports.rebate-tracker-pdf', [
         'filters' => [
             'start_date' => '2026-01-05',
@@ -25,7 +25,11 @@ it('renders rebate tracker pdf with south african d/m/y dates', function () {
         'totalRebate' => 21,
     ])->render();
 
-    expect($html)->toContain('05/01/2026');
-    expect($html)->toContain('10/02/2026');
-    expect($html)->toContain('15/03/2026');
+    expect($html)->toContain('2026/01/05');
+    expect($html)->toContain('2026/02/10');
+    expect($html)->toContain('2026/03/15');
+
+    $summaryPos = strpos($html, 'summary-box');
+    $tablePos = strpos($html, '<table');
+    expect($summaryPos !== false && $tablePos !== false && $summaryPos < $tablePos)->toBeTrue();
 });
