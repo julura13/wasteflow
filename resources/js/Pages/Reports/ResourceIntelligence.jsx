@@ -311,11 +311,11 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                             </div>
 
                             {/* Main pie 2/3 + legend 1/3 — matches PDF */}
-                            <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-5 md:items-center md:gap-1 border border-blue-500">
-                                <div className="min-w-0 md:col-span-3 border border-green-500">
-                                    <div className="mx-auto w-full max-w-2xl border border-red-500">
+                            <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-5 md:items-center md:gap-1">
+                                <div className="min-w-0 md:col-span-3">
+                                    <div className="w-full max-w-2xl">
                                         {wasteStreams.length > 0 ? (
-                                            <div className="h-[min(18.75rem,55vw)] w-full min-h-[200px] max-h-[18.75rem] print:h-[280px] [&_.recharts-legend-wrapper]:hidden border border-blue-500">
+                                            <div className="h-[min(18.75rem,55vw)] w-full min-h-[200px] max-h-[18.75rem] print:h-[280px] [&_.recharts-legend-wrapper]:hidden">
                                                 {printMode ? (
                                                     <PieChart width={500} height={280} margin={{ top: 4, right: 4, bottom: 4, left: 4 }} accessibilityLayer={false}>
                                                         <Pie data={wasteStreams} cx="50%" cy="50%"
