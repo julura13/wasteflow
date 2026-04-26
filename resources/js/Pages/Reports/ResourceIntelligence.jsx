@@ -310,12 +310,12 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                 Summary of Waste Treatment Outputs and achievements at a glance (kg per waste category)
                             </div>
 
-                            {/* Main pie 45% + legend 55% (more room for long grade names) — matches PDF */}
-                            <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-[minmax(0,9fr)_minmax(0,11fr)] md:items-center md:gap-5">
-                                <div className="min-w-0">
-                                    <div className="w-full md:flex md:justify-start">
+                            {/* Main pie 2/3 + legend 1/3 — matches PDF */}
+                            <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-3 md:items-center md:gap-5">
+                                <div className="min-w-0 md:col-span-2">
+                                    <div className="mx-auto w-full max-w-2xl">
                                         {wasteStreams.length > 0 ? (
-                                            <div className="h-[min(18.75rem,55vw)] w-full min-h-[200px] max-h-[18.75rem] md:w-[18.75rem] md:max-w-[18.75rem] print:h-[280px] [&_.recharts-legend-wrapper]:hidden">
+                                            <div className="h-[min(18.75rem,55vw)] w-full min-h-[200px] max-h-[18.75rem] print:h-[280px] [&_.recharts-legend-wrapper]:hidden">
                                                 {printMode ? (
                                                     <PieChart width={500} height={280} margin={{ top: 4, right: 4, bottom: 4, left: 4 }} accessibilityLayer={false}>
                                                         <Pie data={wasteStreams} cx="50%" cy="50%"
@@ -350,11 +350,11 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                         )}
                                     </div>
                                 </div>
-                                <div className="min-w-0">
-                                    <div className="flex h-full min-h-[12rem] flex-col justify-center gap-2.5 border border-gray-100 bg-gray-50/80 px-3 py-3 md:border-0 md:bg-transparent md:px-0 md:py-0">
+                                <div className="min-w-0 md:col-span-1">
+                                    <div className="flex h-full min-h-[12rem] flex-col justify-center gap-1 border border-gray-100 bg-gray-50/80 px-3 py-3 text-xs leading-snug text-gray-800 md:border-0 md:bg-transparent md:px-0 md:py-0">
                                         {wasteStreams.filter((s) => parseFloat(s.value) > 0).map((s, i) => (
-                                            <div key={i} className="flex items-start gap-2 text-sm text-gray-800">
-                                                <span className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded-sm" style={{ backgroundColor: s.color }} />
+                                            <div key={i} className="flex items-start gap-1.5">
+                                                <span className="mt-0.5 h-3 w-3 shrink-0 rounded-sm" style={{ backgroundColor: s.color }} />
                                                 <span>
                                                     <span className="font-medium">{s.name}</span>
                                                     <span className="text-gray-500"> — {fmtN(s.value)} kg</span>

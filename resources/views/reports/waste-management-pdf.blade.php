@@ -106,13 +106,13 @@
         table.data tbody tr.total-row { background: #c9dde8; font-weight: bold; }
         table.data.subhead-commodity thead th { background: #4a7c9b; border-color: #3d6a86; }
 
-        .pie-legend { font-size: 9px; line-height: 1.55; }
-        .pie-legend--beside { vertical-align: middle; text-align: left; padding: 0 0 0 4px; }
-        .pie-legend .row { margin-bottom: 5px; }
+        .pie-legend { font-size: 8.3px; line-height: 1.25; }
+        .pie-legend--beside { vertical-align: middle; text-align: left; padding: 0 0 0 2px; }
+        .pie-legend .row { margin-bottom: 2px; }
         .swatch { display: inline-block; width: 11px; height: 11px; border-radius: 1px; vertical-align: middle; margin-right: 5px; }
         .pie-with-legend { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 9px; }
-        .pie-with-legend .pie-cell { width: 45%; vertical-align: middle; text-align: left; padding: 0; }
-        .pie-with-legend .pie-legend-td { width: 55%; }
+        .pie-with-legend .pie-cell { width: 66.67%; vertical-align: middle; text-align: center; padding: 0; }
+        .pie-with-legend .pie-legend-td { width: 33.33%; }
         .donut-block-bottom { width: 100%; border-collapse: collapse; border-spacing: 0; table-layout: fixed; margin-top: 6.5mm; }
         .donut-block-bottom tr.donut-row-2 .donut-cell { padding-top: 4mm; }
         .donut-block-bottom .donut-cell { padding: 0 2px 2px; }
@@ -349,7 +349,7 @@
             <tr>
                 <td class="pie-cell">
                     @if(!empty($chartDisplay['page1_waste_stream_pie']))
-                        <img src="{{ $chartDisplay['page1_waste_stream_pie'] }}" alt="Waste streams" style="display:block; max-width:100%; max-height:430px; margin-left:0; margin-right:auto;">
+                        <img src="{{ $chartDisplay['page1_waste_stream_pie'] }}" alt="Waste streams" style="max-width:100%; max-height:430px;">
                     @endif
                 </td>
                 <td class="pie-legend pie-legend--beside pie-legend-td">
