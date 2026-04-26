@@ -154,10 +154,6 @@
             <span class="summary-label">Total Rebate:</span>
             <span class="summary-value">R {{ number_format($totalRebate ?? 0, 2) }}</span>
         </div>
-        <div class="summary-row">
-            <span class="summary-label">Average Rate:</span>
-            <span class="summary-value">R {{ ($totalWeight ?? 0) > 0 ? number_format(($totalRebate ?? 0) / $totalWeight, 2) : '0.00' }} / kg</span>
-        </div>
     </div>
 
     <table>
