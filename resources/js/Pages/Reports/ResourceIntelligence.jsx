@@ -469,40 +469,52 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                     )}
                                 </div>
 
+                            </div>
+                        </div>
+
+                        {/* ── PAGE 3: CARBON ACCOUNTING (print: own page to avoid table split) ── */}
+                        <div className={`border-t-4 border-gray-100 ${printMode ? 'print-page-break' : ''}`}>
+                            {printMode && (
+                                <ReportHeader
+                                    scopeDisplayName={rd.scopeDisplayName}
+                                    reportingPeriodLabel={rd.reportingPeriodLabel}
+                                />
+                            )}
+                            <div className="p-4 space-y-4">
                                 <div className="text-sm font-bold text-center py-1" style={{ color: NAVY }}>Carbon Accounting Report</div>
 
-                                <table className="w-full text-xs border-collapse">
+                                <table className={`w-full border-collapse ${printMode ? 'text-[11px]' : 'text-xs'}`}>
                                     <thead>
                                         <tr style={{ backgroundColor: NAVY, color: 'white' }}>
-                                            <th className="text-left px-3 py-2">Material</th>
-                                            <th className="text-right px-3 py-2">Weight (kg)</th>
-                                            <th className="text-right px-3 py-2">Upstream (Scope 3) Avoided (kg CO₂e)</th>
-                                            <th className="text-right px-3 py-2">Landfill Avoided (kg CO₂e)</th>
-                                            <th className="text-right px-3 py-2">Total Lifecycle Avoided (kg CO₂e)</th>
+                                            <th className={`${printMode ? 'px-2 py-1.5' : 'px-3 py-2'} text-left`}>Material</th>
+                                            <th className={`${printMode ? 'px-2 py-1.5' : 'px-3 py-2'} text-right`}>Weight (kg)</th>
+                                            <th className={`${printMode ? 'px-2 py-1.5' : 'px-3 py-2'} text-right`}>Upstream (Scope 3) Avoided (kg CO₂e)</th>
+                                            <th className={`${printMode ? 'px-2 py-1.5' : 'px-3 py-2'} text-right`}>Landfill Avoided (kg CO₂e)</th>
+                                            <th className={`${printMode ? 'px-2 py-1.5' : 'px-3 py-2'} text-right`}>Total Lifecycle Avoided (kg CO₂e)</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {materialsCO2e.map((row, i) => (
                                             <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                                                <td className="px-3 py-1 border border-gray-200">{row.material}</td>
-                                                <td className="px-3 py-1 border border-gray-200 text-right tabular-nums">{fmtN(row.weight)}</td>
-                                                <td className="px-3 py-1 border border-gray-200 text-right tabular-nums">{fmtN(row.scope3EF)}</td>
-                                                <td className="px-3 py-1 border border-gray-200 text-right tabular-nums">{fmtN(row.landfillAvoidanceEF)}</td>
-                                                <td className="px-3 py-1 border border-gray-200 text-right font-semibold tabular-nums">{fmtN(row.lifecycleSaving)}</td>
+                                                <td className={`${printMode ? 'px-2 py-0.5' : 'px-3 py-1'} border border-gray-200`}>{row.material}</td>
+                                                <td className={`${printMode ? 'px-2 py-0.5' : 'px-3 py-1'} border border-gray-200 text-right tabular-nums`}>{fmtN(row.weight)}</td>
+                                                <td className={`${printMode ? 'px-2 py-0.5' : 'px-3 py-1'} border border-gray-200 text-right tabular-nums`}>{fmtN(row.scope3EF)}</td>
+                                                <td className={`${printMode ? 'px-2 py-0.5' : 'px-3 py-1'} border border-gray-200 text-right tabular-nums`}>{fmtN(row.landfillAvoidanceEF)}</td>
+                                                <td className={`${printMode ? 'px-2 py-0.5' : 'px-3 py-1'} border border-gray-200 text-right font-semibold tabular-nums`}>{fmtN(row.lifecycleSaving)}</td>
                                             </tr>
                                         ))}
                                         <tr style={{ backgroundColor: '#c9dde8', fontWeight: 'bold' }}>
-                                            <td className="px-3 py-1 border border-gray-300">TOTALS</td>
-                                            <td className="px-3 py-1 border border-gray-300 text-right" />
-                                            <td className="px-3 py-1 border border-gray-300 text-right tabular-nums">{fmtN(materialsCO2eTotals.scope3EF)}</td>
-                                            <td className="px-3 py-1 border border-gray-300 text-right tabular-nums">{fmtN(materialsCO2eTotals.landfillAvoidanceEF)}</td>
-                                            <td className="px-3 py-1 border border-gray-300 text-right tabular-nums">{fmtN(materialsCO2eTotals.lifecycleSaving)}</td>
+                                            <td className={`${printMode ? 'px-2 py-0.5' : 'px-3 py-1'} border border-gray-300`}>TOTALS</td>
+                                            <td className={`${printMode ? 'px-2 py-0.5' : 'px-3 py-1'} border border-gray-300 text-right`} />
+                                            <td className={`${printMode ? 'px-2 py-0.5' : 'px-3 py-1'} border border-gray-300 text-right tabular-nums`}>{fmtN(materialsCO2eTotals.scope3EF)}</td>
+                                            <td className={`${printMode ? 'px-2 py-0.5' : 'px-3 py-1'} border border-gray-300 text-right tabular-nums`}>{fmtN(materialsCO2eTotals.landfillAvoidanceEF)}</td>
+                                            <td className={`${printMode ? 'px-2 py-0.5' : 'px-3 py-1'} border border-gray-300 text-right tabular-nums`}>{fmtN(materialsCO2eTotals.lifecycleSaving)}</td>
                                         </tr>
                                     </tbody>
                                 </table>
 
                                 {/* Carbon summary box */}
-                                <div className="border border-green-300 rounded p-4 bg-green-50 space-y-2 text-xs leading-relaxed">
+                                <div className={`border border-green-300 rounded bg-green-50 space-y-2 leading-relaxed ${printMode ? 'p-3 text-[11px]' : 'p-4 text-xs'}`}>
                                     <p>
                                         <strong>Total Upstream (Scope 3) Avoided (kg CO₂e): </strong>
                                         <span className="text-green-700 font-bold">{fmtN(materialsCO2eTotals.scope3EF)}</span>
