@@ -9,7 +9,6 @@ use App\Models\Site;
 use App\Models\User;
 use App\Models\WasteManagementReportExport;
 use App\Services\CarbonCalculator;
-use App\Services\ChartImageService;
 use App\Services\CustomerOrderFrequencyReportService;
 use App\Services\LandfillSpaceCalculator;
 use App\Services\LifecycleCarbonEquivalency;
@@ -31,8 +30,6 @@ class ReportController extends Controller
 {
     use ScopeByClientTrait;
 
-    protected ChartImageService $chartService;
-
     protected WasteImpactCalculator $wasteImpactCalculator;
 
     protected CarbonCalculator $carbonCalculator;
@@ -50,7 +47,6 @@ class ReportController extends Controller
     protected WasteManagementReportPdfGenerator $wasteManagementReportPdfGenerator;
 
     public function __construct(
-        ChartImageService $chartService,
         WasteImpactCalculator $wasteImpactCalculator,
         CarbonCalculator $carbonCalculator,
         LandfillSpaceCalculator $landfillSpaceCalculator,
@@ -60,7 +56,6 @@ class ReportController extends Controller
         CustomerOrderFrequencyReportService $customerOrderFrequencyReport,
         WasteManagementReportPdfGenerator $wasteManagementReportPdfGenerator,
     ) {
-        $this->chartService = $chartService;
         $this->wasteImpactCalculator = $wasteImpactCalculator;
         $this->carbonCalculator = $carbonCalculator;
         $this->landfillSpaceCalculator = $landfillSpaceCalculator;
@@ -330,18 +325,18 @@ class ReportController extends Controller
         auth()->login($user);
         cache()->forget('ri_pdf_print_'.$token);
 
-        $filters  = $payload['filters'];
-        $company  = $filters['company_id'] ? Company::find($filters['company_id']) : null;
-        $branch   = $filters['branch_id']  ? Branch::with('company')->find($filters['branch_id']) : null;
-        $site     = $filters['site_id']    ? Site::with('branch.company')->find($filters['site_id']) : null;
+        $filters = $payload['filters'];
+        $company = $filters['company_id'] ? Company::find($filters['company_id']) : null;
+        $branch = $filters['branch_id'] ? Branch::with('company')->find($filters['branch_id']) : null;
+        $site = $filters['site_id'] ? Site::with('branch.company')->find($filters['site_id']) : null;
 
         $reportData = $this->getReportData($company, $branch, $site, (int) $filters['month'], (int) $filters['year']);
 
         return Inertia::render('Reports/ResourceIntelligence', [
             'reportData' => $reportData,
-            'companies'  => [],
-            'filters'    => $filters,
-            'isPrint'    => true,
+            'companies' => [],
+            'filters' => $filters,
+            'isPrint' => true,
         ]);
     }
 
@@ -355,10 +350,10 @@ class ReportController extends Controller
             'user_id' => $user->id,
             'filters' => [
                 'company_id' => $company?->id,
-                'branch_id'  => $branch?->id,
-                'site_id'    => $site?->id,
-                'month'      => $month,
-                'year'       => $year,
+                'branch_id' => $branch?->id,
+                'site_id' => $site?->id,
+                'month' => $month,
+                'year' => $year,
             ],
         ], now()->addMinutes(10));
 
@@ -1257,90 +1252,5 @@ class ReportController extends Controller
         }
 
         return $breakdown;
-    }
-
-    /**
-     * Generate all charts for the report
-     */
-    private function generateCharts(array $reportData): array
-    {
-        $timestamp = now()->format('YmdHis');
-        $chartPaths = [];
-
-        if (! Storage::disk('public')->exists('charts')) {
-            Storage::disk('public')->makeDirectory('charts');
-        }
-
-        $wasteStreamRows = array_values(array_filter(
-            $reportData['wasteStreamTotals'] ?? [],
-            static fn (array $row): bool => ($row['value'] ?? 0) > 0
-        ));
-
-        if ($wasteStreamRows === []) {
-            $wasteStreamRows = [
-                ['name' => 'No data', 'value' => 1.0, 'color' => '#e5e7eb'],
-            ];
-        }
-
-        // Doughnut with no cutout renders as a pie; QuickChart pie charts may still draw a top legend.
-        $chartPaths['page1_waste_stream_pie'] = $this->chartService->generateDoughnutChart([
-            'title' => '',
-            'data' => array_column($wasteStreamRows, 'value'),
-            'colors' => array_column($wasteStreamRows, 'color'),
-            'cutout' => '0%',
-            'width' => 520,
-            'height' => 320,
-            'options' => [
-                'layout' => [
-                    'padding' => 4,
-                ],
-                'plugins' => [
-                    'legend' => [
-                        'display' => false,
-                    ],
-                    'title' => [
-                        'display' => false,
-                    ],
-                    'tooltip' => [
-                        'enabled' => false,
-                    ],
-                ],
-            ],
-        ], "page1_waste_stream_pie_{$timestamp}.png");
-
-        $classification = $reportData['classificationTotals'] ?? [];
-        $donutDefs = [
-            'page1_donut_avoidance' => ['label' => 'AVOIDANCE', 'pct' => (float) ($classification['avoidance']['percentage'] ?? 0), 'color' => '#BDBDBD'],
-            'page1_donut_recycling' => ['label' => 'RECYCLING', 'pct' => (float) ($classification['recycling']['percentage'] ?? 0), 'color' => '#6FCF97'],
-            'page1_donut_recovery' => ['label' => 'RECOVERY', 'pct' => (float) ($classification['recovery']['percentage'] ?? 0), 'color' => '#2D9CDB'],
-            'page1_donut_disposal' => ['label' => 'DISPOSAL', 'pct' => (float) ($classification['disposal']['percentage'] ?? 0), 'color' => '#1C1C1C'],
-            'page1_donut_diverted' => ['label' => 'DIVERTED', 'pct' => (float) ($classification['diverted']['percentage'] ?? 0), 'color' => '#C69200'],
-        ];
-
-        foreach ($donutDefs as $key => $def) {
-            $p = min(100.0, max(0.0, $def['pct']));
-            $rest = $p >= 100.0 ? 0.0 : max(0.01, 100.0 - $p);
-            $chartPaths[$key] = $this->chartService->generateDoughnutChart([
-                'title' => '',
-                'labels' => ['', ''],
-                'data' => $p <= 0 && $rest >= 100 ? [0.0, 100.0] : [$p, $rest],
-                'colors' => [$def['color'], '#e5e7eb'],
-                'legendPosition' => 'bottom',
-                'cutout' => '56%',
-                'width' => 260,
-                'height' => 260,
-                'options' => [
-                    'plugins' => [
-                        'legend' => ['display' => false],
-                        'title' => ['display' => false],
-                        'tooltip' => [
-                            'enabled' => false,
-                        ],
-                    ],
-                ],
-            ], "{$key}_{$timestamp}.png");
-        }
-
-        return $chartPaths;
     }
 }

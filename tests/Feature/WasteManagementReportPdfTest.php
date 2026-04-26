@@ -4,6 +4,7 @@ use App\Jobs\GenerateWasteManagementPdfJob;
 use App\Models\Company;
 use App\Models\User;
 use App\Models\WasteManagementReportExport;
+use App\Services\WasteManagementReportPdfGenerator;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -15,6 +16,12 @@ beforeEach(function () {
 });
 
 it('produces a valid PDF after the export job runs', function () {
+    $this->mock(WasteManagementReportPdfGenerator::class, function ($mock) {
+        $mock->shouldReceive('generateFromUrl')
+            ->once()
+            ->andReturn("%PDF-1.4\ntest binary");
+    });
+
     $user = User::factory()->create();
     $user->assignRole('manager');
 

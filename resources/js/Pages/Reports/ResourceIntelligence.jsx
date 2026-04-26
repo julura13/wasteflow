@@ -44,34 +44,59 @@ function fmtOneDecimal(v) {
     return (parseFloat(v) || 0).toFixed(1);
 }
 
+function useIsPrintMedia() {
+    const [printing, setPrinting] = useState(false);
+    useEffect(() => {
+        const before = () => setPrinting(true);
+        const after = () => setPrinting(false);
+        window.addEventListener('beforeprint', before);
+        window.addEventListener('afterprint', after);
+        return () => {
+            window.removeEventListener('beforeprint', before);
+            window.removeEventListener('afterprint', after);
+        };
+    }, []);
+    return printing;
+}
+
 /** Donut using ResponsiveContainer – matches dashboard pattern exactly. */
-function ClassificationDonut({ title, percentage, fill, totalKg }) {
+function ClassificationDonut({ title, percentage, fill, totalKg, printMode = false }) {
     const pct = Math.min(100, Math.max(0, parseFloat(percentage) || 0));
+    const pieData = [
+        { value: pct, fill },
+        { value: Math.max(0, 100 - pct), fill: '#e5e7eb' },
+    ];
+    const pieProps = {
+        cx: '50%', cy: '50%',
+        innerRadius: '56%', outerRadius: '76%',
+        dataKey: 'value',
+        startAngle: 90, endAngle: -270,
+        isAnimationActive: false,
+        labelLine: false,
+        legendType: 'none',
+    };
     return (
         <div className="text-center">
             <h3 className="text-xs font-semibold text-gray-700">{title}</h3>
             <div className="relative isolate mx-auto w-full min-h-[158px] shrink-0 overflow-visible" style={{ height: 158 }}>
                 <div className="absolute inset-0 z-0 [&_.recharts-legend-wrapper]:hidden [&_.recharts-surface]:outline-none">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }} accessibilityLayer={false}>
-                            <Pie
-                                data={[
-                                    { value: pct, fill },
-                                    { value: Math.max(0, 100 - pct), fill: '#e5e7eb' },
-                                ]}
-                                cx="50%" cy="50%"
-                                innerRadius="56%" outerRadius="76%"
-                                dataKey="value"
-                                startAngle={90} endAngle={-270}
-                                isAnimationActive={false}
-                                labelLine={false}
-                                legendType="none"
-                            >
+                    {printMode ? (
+                        <PieChart width={158} height={158} margin={{ top: 0, right: 0, bottom: 0, left: 0 }} accessibilityLayer={false}>
+                            <Pie data={pieData} {...pieProps}>
                                 <Cell fill={pct > 0 ? fill : '#e5e7eb'} />
                                 <Cell fill="#e5e7eb" />
                             </Pie>
                         </PieChart>
-                    </ResponsiveContainer>
+                    ) : (
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }} accessibilityLayer={false}>
+                                <Pie data={pieData} {...pieProps}>
+                                    <Cell fill={pct > 0 ? fill : '#e5e7eb'} />
+                                    <Cell fill="#e5e7eb" />
+                                </Pie>
+                            </PieChart>
+                        </ResponsiveContainer>
+                    )}
                 </div>
                 <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
                     <span className="text-sm font-semibold tabular-nums text-gray-900">
@@ -240,6 +265,8 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
 
     const pdfProcessing = pdfExportUuid && (!pdfStatus || pdfStatus.status === 'pending' || pdfStatus.status === 'processing');
     const hasData = !!filters?.company_id;
+    const printMedia = useIsPrintMedia();
+    const printMode = isPrint || printMedia;
 
     return (
         <DashboardLayout title="Resource Intelligence Report">
@@ -346,8 +373,8 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                     <div className="mx-auto w-full max-w-2xl">
                                         {wasteStreams.length > 0 ? (
                                             <div className="h-[min(18.75rem,55vw)] w-full min-h-[200px] max-h-[18.75rem] print:h-[280px] [&_.recharts-legend-wrapper]:hidden">
-                                                <ResponsiveContainer width="100%" height="100%">
-                                                    <PieChart margin={{ top: 4, right: 4, bottom: 4, left: 4 }} accessibilityLayer={false}>
+                                                {printMode ? (
+                                                    <PieChart width={500} height={280} margin={{ top: 4, right: 4, bottom: 4, left: 4 }} accessibilityLayer={false}>
                                                         <Pie data={wasteStreams} cx="50%" cy="50%"
                                                             outerRadius="88%" dataKey="value"
                                                             isAnimationActive={false} strokeWidth={1} stroke="#fff"
@@ -357,9 +384,23 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                                                 <Cell key={i} fill={entry.color || '#9AD993'} />
                                                             ))}
                                                         </Pie>
-                                                        <Tooltip formatter={(v) => `${fmtN(v)} kg`} />
                                                     </PieChart>
-                                                </ResponsiveContainer>
+                                                ) : (
+                                                    <ResponsiveContainer width="100%" height="100%">
+                                                        <PieChart margin={{ top: 4, right: 4, bottom: 4, left: 4 }} accessibilityLayer={false}>
+                                                            <Pie data={wasteStreams} cx="50%" cy="50%"
+                                                                outerRadius="88%" dataKey="value"
+                                                                isAnimationActive={false} strokeWidth={1} stroke="#fff"
+                                                                labelLine={false}
+                                                                legendType="none">
+                                                                {wasteStreams.map((entry, i) => (
+                                                                    <Cell key={i} fill={entry.color || '#9AD993'} />
+                                                                ))}
+                                                            </Pie>
+                                                            <Tooltip formatter={(v) => `${fmtN(v)} kg`} />
+                                                        </PieChart>
+                                                    </ResponsiveContainer>
+                                                )}
                                             </div>
                                         ) : (
                                             <div className="flex h-64 w-full max-w-md items-center justify-center text-gray-400 text-xs">No data</div>
@@ -387,25 +428,30 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                     <ClassificationDonut title="AVOIDANCE"
                                         percentage={ct.avoidance?.percentage ?? 0}
                                         fill={CLASS_COLORS.avoidance}
-                                        totalKg={ct.avoidance?.total ?? 0} />
+                                        totalKg={ct.avoidance?.total ?? 0}
+                                        printMode={printMode} />
                                     <ClassificationDonut title="RECYCLING"
                                         percentage={ct.recycling?.percentage ?? 0}
                                         fill={CLASS_COLORS.recycling}
-                                        totalKg={ct.recycling?.total ?? 0} />
+                                        totalKg={ct.recycling?.total ?? 0}
+                                        printMode={printMode} />
                                     <ClassificationDonut title="RECOVERY"
                                         percentage={ct.recovery?.percentage ?? 0}
                                         fill={CLASS_COLORS.recovery}
-                                        totalKg={ct.recovery?.total ?? 0} />
+                                        totalKg={ct.recovery?.total ?? 0}
+                                        printMode={printMode} />
                                 </div>
                                 <div className="grid grid-cols-1 items-start gap-2 sm:grid-cols-3 sm:gap-3 sm:items-start">
                                     <ClassificationDonut title="DISPOSAL"
                                         percentage={ct.disposal?.percentage ?? 0}
                                         fill={CLASS_COLORS.disposal}
-                                        totalKg={ct.disposal?.total ?? 0} />
+                                        totalKg={ct.disposal?.total ?? 0}
+                                        printMode={printMode} />
                                     <ClassificationDonut title="DIVERTED"
                                         percentage={ct.diverted?.percentage ?? 0}
                                         fill={CLASS_COLORS.diverted}
-                                        totalKg={ct.diverted?.total ?? 0} />
+                                        totalKg={ct.diverted?.total ?? 0}
+                                        printMode={printMode} />
                                     <LandfillSavedPanel m3={summary.landfillSpaceSaved ?? 0} />
                                 </div>
                             </div>
@@ -627,20 +673,34 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                     <div className="mt-4 pt-4 border-t border-gray-100">
                                         <SectionHeader>CUMULATIVE IMPACT DASHBOARD</SectionHeader>
                                         <div className="pt-4">
-                                            <ResponsiveContainer width="100%" height={200}>
-                                                <BarChart data={cumulativeImpact}
+                                            {printMode ? (
+                                                <BarChart width={700} height={200} data={cumulativeImpact}
                                                     layout="vertical" margin={{ left: 20, right: 40, top: 5, bottom: 5 }}>
                                                     <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                                                     <XAxis type="number" tick={{ fontSize: 10 }} />
                                                     <YAxis type="category" dataKey="name" width={240} tick={{ fontSize: 10 }} />
-                                                    <Tooltip formatter={(v) => fmtN(v)} />
                                                     <Bar dataKey="value" isAnimationActive={false}>
                                                         {cumulativeImpact.map((entry, i) => (
                                                             <Cell key={i} fill={entry.color} />
                                                         ))}
                                                     </Bar>
                                                 </BarChart>
-                                            </ResponsiveContainer>
+                                            ) : (
+                                                <ResponsiveContainer width="100%" height={200}>
+                                                    <BarChart data={cumulativeImpact}
+                                                        layout="vertical" margin={{ left: 20, right: 40, top: 5, bottom: 5 }}>
+                                                        <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                                                        <XAxis type="number" tick={{ fontSize: 10 }} />
+                                                        <YAxis type="category" dataKey="name" width={240} tick={{ fontSize: 10 }} />
+                                                        <Tooltip formatter={(v) => fmtN(v)} />
+                                                        <Bar dataKey="value" isAnimationActive={false}>
+                                                            {cumulativeImpact.map((entry, i) => (
+                                                                <Cell key={i} fill={entry.color} />
+                                                            ))}
+                                                        </Bar>
+                                                    </BarChart>
+                                                </ResponsiveContainer>
+                                            )}
                                         </div>
                                     </div>
                                 )}
