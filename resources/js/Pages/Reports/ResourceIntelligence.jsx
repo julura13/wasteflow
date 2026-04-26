@@ -310,9 +310,9 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                 Summary of Waste Treatment Outputs and achievements at a glance (kg per waste category)
                             </div>
 
-                            {/* Main pie (~2/3) + legend (~1/3), full width — matches PDF */}
-                            <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-3 md:items-center md:gap-5">
-                                <div className="min-w-0 md:col-span-2">
+                            {/* Main pie 45% + legend 55% (more room for long grade names) — matches PDF */}
+                            <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-[minmax(0,9fr)_minmax(0,11fr)] md:items-center md:gap-5">
+                                <div className="min-w-0">
                                     <div className="mx-auto w-full max-w-2xl">
                                         {wasteStreams.length > 0 ? (
                                             <div className="h-[min(18.75rem,55vw)] w-full min-h-[200px] max-h-[18.75rem] print:h-[280px] [&_.recharts-legend-wrapper]:hidden">
@@ -350,7 +350,7 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                         )}
                                     </div>
                                 </div>
-                                <div className="min-w-0 md:col-span-1">
+                                <div className="min-w-0">
                                     <div className="flex h-full min-h-[12rem] flex-col justify-center gap-2.5 border border-gray-100 bg-gray-50/80 px-3 py-3 md:border-0 md:bg-transparent md:px-0 md:py-0">
                                         {wasteStreams.filter((s) => parseFloat(s.value) > 0).map((s, i) => (
                                             <div key={i} className="flex items-start gap-2 text-sm text-gray-800">

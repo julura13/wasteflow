@@ -111,8 +111,8 @@
         .pie-legend .row { margin-bottom: 5px; }
         .swatch { display: inline-block; width: 11px; height: 11px; border-radius: 1px; vertical-align: middle; margin-right: 5px; }
         .pie-with-legend { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 9px; }
-        .pie-with-legend .pie-cell { width: 66.67%; vertical-align: middle; text-align: center; padding: 0; }
-        .pie-with-legend .pie-legend-td { width: 33.33%; }
+        .pie-with-legend .pie-cell { width: 45%; vertical-align: middle; text-align: center; padding: 0; }
+        .pie-with-legend .pie-legend-td { width: 55%; }
         .donut-block-bottom { width: 100%; border-collapse: collapse; border-spacing: 0; table-layout: fixed; margin-top: 6.5mm; }
         .donut-block-bottom tr.donut-row-2 .donut-cell { padding-top: 4mm; }
         .donut-block-bottom .donut-cell { padding: 0 2px 2px; }
