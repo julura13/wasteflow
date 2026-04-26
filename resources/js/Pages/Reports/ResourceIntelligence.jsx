@@ -689,7 +689,7 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                 <img
                                     src="/images/logo.png"
                                     alt="WasteFlow"
-                                    className="h-14 w-auto object-contain sm:h-16"
+                                    className="h-[10.5rem] w-auto object-contain sm:h-[12rem]"
                                 />
                             </div>
                         </div>
