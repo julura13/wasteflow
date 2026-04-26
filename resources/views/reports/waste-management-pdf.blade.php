@@ -198,8 +198,31 @@
         .methodology h3 { font-size: 9px; color: #1F3A5F; margin-bottom: 5px; }
         .methodology p { margin-bottom: 4px; }
         .methodology .foot { border-top: 1px solid #d1d5db; margin-top: 5px; padding-top: 5px; font-weight: 600; color: #374151; }
-        .methodology-logo { text-align: center; margin-top: 8px; padding-top: 6px; }
-        .methodology-logo img { height: 36px; width: auto; max-width: 200px; }
+        .brand-closing { text-align: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid #e5e7eb; }
+        .brand-closing .brand-logo img { height: 44px; width: auto; max-width: 220px; display: inline-block; }
+        .brand-closing .brand-name {
+            font-size: 15px;
+            font-weight: 700;
+            color: #111827;
+            margin-top: 5px;
+            letter-spacing: 0.04em;
+        }
+        .brand-closing .brand-line {
+            height: 0;
+            border: 0;
+            border-top: 2px solid #2563eb;
+            width: 72%;
+            max-width: 320px;
+            margin: 8px auto 0;
+        }
+        .brand-closing .brand-tagline {
+            font-size: 12.5px;
+            color: #2563eb;
+            margin-top: 8px;
+            line-height: 1.45;
+            font-weight: 400;
+        }
+        .brand-closing .brand-tagline strong { font-weight: 700; }
 
         .cumulative-hdr { margin-top: 6px; margin-bottom: 10px; }
         .cumulative-dash { margin: 0; }
@@ -702,11 +725,16 @@
             <div class="foot">
                 All reported environmental metrics have been calculated using DEFRA-aligned emission factors in accordance with GHG Protocol best practice, international standards and applicable South African sustainability and reporting frameworks.
             </div>
-            @if(!empty($reportLogoSrc))
-                <div class="methodology-logo">
-                    <img src="{{ $reportLogoSrc }}" alt="WasteFlow" />
-                </div>
-            @endif
+            <div class="brand-closing">
+                @if(!empty($reportLogoSrc))
+                    <div class="brand-logo">
+                        <img src="{{ $reportLogoSrc }}" alt="WasteFlow" />
+                    </div>
+                @endif
+                <div class="brand-name">WASTEFLOW</div>
+                <div class="brand-line"></div>
+                <div class="brand-tagline"><strong>WASTEFLOW</strong> – Sustainable Waste Management</div>
+            </div>
         </div>
     </div>
 </body>

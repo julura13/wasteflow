@@ -15,6 +15,7 @@ import {
 
 const HEADER_BG = '#9AD993';
 const NAVY = '#1F3A5F';
+const BRAND_BLUE = '#2563eb';
 
 const MONTHS = [
     { value: 1, label: 'January' }, { value: 2, label: 'February' }, { value: 3, label: 'March' },
@@ -674,12 +675,27 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                     All reported environmental metrics have been calculated using DEFRA-aligned emission factors in accordance with GHG Protocol best practice, international standards and applicable South African sustainability and reporting frameworks.
                                 </div>
                             </div>
-                            <div className="mt-8 flex flex-col items-center justify-center border-t border-gray-200 pt-8">
+                            <div className="mt-8 flex flex-col items-center border-t border-gray-200 dark:border-gray-600 pt-8">
                                 <img
                                     src="/images/logo.png"
                                     alt="WasteFlow"
-                                    className="h-[10.5rem] w-auto object-contain sm:h-[12rem]"
+                                    className="h-20 w-auto object-contain sm:h-24"
                                 />
+                                <p className="mt-2 text-center text-xl sm:text-2xl font-bold tracking-wide text-gray-900 dark:text-gray-100">
+                                    WASTEFLOW
+                                </p>
+                                <div
+                                    className="mt-4 h-0 w-[85%] max-w-md border-t-2"
+                                    style={{ borderColor: BRAND_BLUE }}
+                                    aria-hidden="true"
+                                />
+                                <p
+                                    className="mt-4 max-w-2xl px-2 text-center text-base sm:text-lg leading-snug"
+                                    style={{ color: BRAND_BLUE }}
+                                >
+                                    <span className="font-bold">WASTEFLOW</span>
+                                    <span className="font-normal"> – Sustainable Waste Management</span>
+                                </p>
                             </div>
                         </div>
 
