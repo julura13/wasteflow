@@ -111,7 +111,7 @@
         .pie-legend .row { margin-bottom: 5px; }
         .swatch { display: inline-block; width: 11px; height: 11px; border-radius: 1px; vertical-align: middle; margin-right: 5px; }
         .pie-with-legend { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 9px; }
-        .pie-with-legend .pie-cell { width: 45%; vertical-align: middle; text-align: center; padding: 0; }
+        .pie-with-legend .pie-cell { width: 45%; vertical-align: middle; text-align: left; padding: 0; }
         .pie-with-legend .pie-legend-td { width: 55%; }
         .donut-block-bottom { width: 100%; border-collapse: collapse; border-spacing: 0; table-layout: fixed; margin-top: 6.5mm; }
         .donut-block-bottom tr.donut-row-2 .donut-cell { padding-top: 4mm; }
@@ -349,7 +349,7 @@
             <tr>
                 <td class="pie-cell">
                     @if(!empty($chartDisplay['page1_waste_stream_pie']))
-                        <img src="{{ $chartDisplay['page1_waste_stream_pie'] }}" alt="Waste streams" style="max-width:100%; max-height:430px;">
+                        <img src="{{ $chartDisplay['page1_waste_stream_pie'] }}" alt="Waste streams" style="display:block; max-width:100%; max-height:430px; margin-left:0; margin-right:auto;">
                     @endif
                 </td>
                 <td class="pie-legend pie-legend--beside pie-legend-td">

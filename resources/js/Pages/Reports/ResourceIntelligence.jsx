@@ -313,9 +313,9 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                             {/* Main pie 45% + legend 55% (more room for long grade names) — matches PDF */}
                             <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-[minmax(0,9fr)_minmax(0,11fr)] md:items-center md:gap-5">
                                 <div className="min-w-0">
-                                    <div className="mx-auto w-full max-w-2xl">
+                                    <div className="w-full md:flex md:justify-start">
                                         {wasteStreams.length > 0 ? (
-                                            <div className="h-[min(18.75rem,55vw)] w-full min-h-[200px] max-h-[18.75rem] print:h-[280px] [&_.recharts-legend-wrapper]:hidden">
+                                            <div className="h-[min(18.75rem,55vw)] w-full min-h-[200px] max-h-[18.75rem] md:w-[18.75rem] md:max-w-[18.75rem] print:h-[280px] [&_.recharts-legend-wrapper]:hidden">
                                                 {printMode ? (
                                                     <PieChart width={500} height={280} margin={{ top: 4, right: 4, bottom: 4, left: 4 }} accessibilityLayer={false}>
                                                         <Pie data={wasteStreams} cx="50%" cy="50%"
