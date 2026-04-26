@@ -94,7 +94,7 @@
             padding-top: 6px;
         }
         .client-logo img {
-            height: 36px;
+            height: 192px;
             width: auto;
             max-width: 200px;
         }
