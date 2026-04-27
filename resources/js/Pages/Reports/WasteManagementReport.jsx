@@ -230,6 +230,10 @@ export default function WasteManagementReport() {
                                     <td className="px-2 py-1 border border-gray-300">Organics Recovered</td>
                                     <td className="px-2 py-1 border border-gray-300 text-right">{reportData.grades.organicsRecovered}</td>
                                 </tr>
+                                <tr>
+                                    <td className="px-2 py-1 border border-gray-300 bg-gray-50">Total Recycling</td>
+                                    <td className="px-2 py-1 border border-gray-300 bg-gray-50 text-right">{reportData.summary.recyclingRecovered}</td>
+                                </tr>
                                 <tr className="font-bold">
                                     <td className="px-2 py-1 border border-gray-300 bg-[#c9dde8]">TOTAL WASTE</td>
                                     <td className="px-2 py-1 border border-gray-300 bg-[#c9dde8] text-right">{totalWaste}</td>

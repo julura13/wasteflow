@@ -481,6 +481,10 @@
                     <td>Organics Recovered</td>
                     <td class="text-right">{{ number_format($grades['organicsRecovered'] ?? 0, 2) }}</td>
                 </tr>
+                <tr>
+                    <td>Total Recycling</td>
+                    <td class="text-right">{{ number_format($ct['recycling']['total'] ?? 0, 2) }}</td>
+                </tr>
                 <tr class="total-row">
                     <td>TOTAL WASTE</td>
                     <td class="text-right">{{ number_format($gradeTotal, 2) }}</td>

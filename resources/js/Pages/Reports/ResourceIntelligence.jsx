@@ -419,6 +419,7 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                                 { label: 'Non Compactable Waste', val: grades.nonCompactableWaste },
                                                 { label: 'Hazardous Waste', val: grades.hazardousWaste },
                                                 { label: 'Organics Recovered', val: grades.organicsRecovered },
+                                                { label: 'Total Recycling', val: ct.recycling?.total ?? 0 },
                                             ].map((r, i) => (
                                                 <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                                                     <td className="px-3 py-1 border border-gray-200">{r.label}</td>
