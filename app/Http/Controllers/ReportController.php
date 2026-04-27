@@ -601,12 +601,13 @@ class ReportController extends Controller
             $companyName = $company->name;
         }
 
-        $scopeDisplayName = $companyName;
-        if ($site) {
-            $scopeDisplayName = $site->name;
-        } elseif ($branch) {
-            $scopeDisplayName = $branch->name;
-        }
+        $scopeDisplayNameParts = array_values(array_filter([
+            $companyName,
+            $branch?->name,
+            $site?->name,
+        ], static fn (?string $part): bool => $part !== null && $part !== ''));
+
+        $scopeDisplayName = implode(' - ', $scopeDisplayNameParts);
 
         $reportLocationLines = array_values(array_filter([
             $company ? 'Customer: '.$company->name : null,

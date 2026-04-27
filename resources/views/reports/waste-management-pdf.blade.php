@@ -200,13 +200,6 @@
         .methodology .foot { border-top: 1px solid #d1d5db; margin-top: 5px; padding-top: 5px; font-weight: 600; color: #374151; }
         .brand-closing { text-align: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid #e5e7eb; }
         .brand-closing .brand-logo img { height: 44px; width: auto; max-width: 220px; display: inline-block; }
-        .brand-closing .brand-name {
-            font-size: 15px;
-            font-weight: 700;
-            color: #111827;
-            margin-top: 5px;
-            letter-spacing: 0.04em;
-        }
         .brand-closing .brand-line {
             height: 0;
             border: 0;
@@ -731,7 +724,6 @@
                         <img src="{{ $reportLogoSrc }}" alt="WasteFlow" />
                     </div>
                 @endif
-                <div class="brand-name">WASTEFLOW</div>
                 <div class="brand-line"></div>
                 <div class="brand-tagline"><strong>WASTEFLOW</strong> – Sustainable Waste Management</div>
             </div>

@@ -681,9 +681,6 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                     alt="WasteFlow"
                                     className="h-20 w-auto object-contain sm:h-24"
                                 />
-                                <p className="mt-2 text-center text-xl sm:text-2xl font-bold tracking-wide text-gray-900 dark:text-gray-100">
-                                    WASTEFLOW
-                                </p>
                                 <div
                                     className="mt-4 h-0 w-[85%] max-w-md border-t-2"
                                     style={{ borderColor: BRAND_BLUE }}
