@@ -2,7 +2,10 @@
 
 namespace App\Jobs;
 
+use App\Models\Branch;
+use App\Models\Company;
 use App\Models\RebateReportExport;
+use App\Models\Site;
 use App\Models\User;
 use App\Services\CompanyUserService;
 use App\Services\RebateTrackerReportService;
@@ -69,6 +72,9 @@ class GenerateRebateTrackerPdfJob implements ShouldQueue
                 'company_id' => $companyId,
                 'branch_id' => $branchId,
                 'site_id' => $siteId,
+                'company_name' => $companyId ? Company::query()->whereKey($companyId)->value('name') : null,
+                'branch_name' => $branchId ? Branch::query()->whereKey($branchId)->value('name') : null,
+                'site_name' => $siteId ? Site::query()->whereKey($siteId)->value('name') : null,
             ];
 
             $binary = $rebateTrackerReportService->renderRebateTrackerPdfBinary($rebateData, $pdfFilters, $totalRebate, $totalWeight);

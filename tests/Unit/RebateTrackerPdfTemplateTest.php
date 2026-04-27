@@ -7,6 +7,9 @@ it('renders rebate tracker pdf with calendar dates and summary before the table'
         'filters' => [
             'start_date' => '2026-01-05',
             'end_date' => '2026-02-10',
+            'company_name' => 'Acme',
+            'branch_name' => 'HQ',
+            'site_name' => 'Site 1',
         ],
         'rebateData' => [
             [
@@ -28,6 +31,8 @@ it('renders rebate tracker pdf with calendar dates and summary before the table'
     expect($html)->toContain('2026/01/05');
     expect($html)->toContain('2026/02/10');
     expect($html)->toContain('2026/03/15');
+    expect($html)->toContain('Acme - HQ - Site 1');
+    expect($html)->toContain('font-size: 12px;');
 
     $summaryPos = strpos($html, 'summary-box');
     $tablePos = strpos($html, '<table');

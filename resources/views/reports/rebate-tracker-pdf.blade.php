@@ -32,11 +32,17 @@
         .header h1 {
             font-size: 18px;
             font-weight: bold;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
+        }
+        .header .scope {
+            font-size: 11px;
+            font-weight: 700;
+            margin-top: 2px;
         }
         .header .filters {
-            font-size: 9px;
-            margin-top: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            margin-top: 8px;
             letter-spacing: -0.02em;
         }
         table {
@@ -135,10 +141,18 @@
         if (is_file($logoPath)) {
             $reportLogoSrc = 'data:'.mime_content_type($logoPath).';base64,'.base64_encode((string) file_get_contents($logoPath));
         }
+
+        $scopeParts = array_values(array_filter([
+            $filters['company_name'] ?? null,
+            $filters['branch_name'] ?? null,
+            $filters['site_name'] ?? null,
+        ], static fn (?string $part): bool => $part !== null && $part !== ''));
+        $scopeDisplayName = $scopeParts !== [] ? implode(' - ', $scopeParts) : 'All Locations';
     @endphp
     <div class="page-shell">
     <div class="header">
         <h1>WASTE COLLECTION &amp; RECYCLING REPORT</h1>
+        <div class="scope">{{ $scopeDisplayName }}</div>
         <div class="filters">
             Period: {{ \Carbon\Carbon::parse($filters['start_date'])->format(\App\Support\DisplayDate::CALENDAR) }} – {{ \Carbon\Carbon::parse($filters['end_date'])->format(\App\Support\DisplayDate::CALENDAR) }}
         </div>
