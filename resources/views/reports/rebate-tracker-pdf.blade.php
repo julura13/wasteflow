@@ -30,19 +30,19 @@
             border-radius: 4px;
         }
         .header h1 {
-            font-size: 18px;
+            font-size: 24px;
             font-weight: bold;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
         }
         .header .scope {
-            font-size: 11px;
-            font-weight: 700;
-            margin-top: 2px;
+            font-size: 18px;
+            font-weight: 400;
+            margin-top: 0;
         }
         .header .filters {
-            font-size: 12px;
-            font-weight: 700;
-            margin-top: 8px;
+            font-size: 14px;
+            font-weight: 400;
+            margin-top: 5px;
             letter-spacing: -0.02em;
         }
         table {
