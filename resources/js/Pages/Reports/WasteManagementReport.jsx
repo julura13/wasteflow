@@ -143,10 +143,11 @@ export default function WasteManagementReport() {
         { name: 'Recycling Recovered', value: reportData.summary.recyclingRecovered, color: '#6FCF97' },
     ], [reportData]);
 
-    const totalWaste = reportData.grades.generalWaste +
+    const totalWasteProcessed = reportData.grades.generalWaste +
         reportData.grades.nonCompactableWaste +
         reportData.grades.hazardousWaste +
-        reportData.grades.organicsRecovered;
+        reportData.grades.organicsRecovered +
+        reportData.summary.recyclingRecovered;
 
     return (
         <DashboardLayout title="Waste Management Report">
@@ -235,8 +236,8 @@ export default function WasteManagementReport() {
                                     <td className="px-2 py-1 border border-gray-300 bg-gray-50 text-right">{reportData.summary.recyclingRecovered}</td>
                                 </tr>
                                 <tr className="font-bold">
-                                    <td className="px-2 py-1 border border-gray-300 bg-[#c9dde8]">TOTAL WASTE</td>
-                                    <td className="px-2 py-1 border border-gray-300 bg-[#c9dde8] text-right">{totalWaste}</td>
+                                    <td className="px-2 py-1 border border-gray-300 bg-[#c9dde8]">TOTAL WASTE PROCESSED</td>
+                                    <td className="px-2 py-1 border border-gray-300 bg-[#c9dde8] text-right">{totalWasteProcessed}</td>
                                 </tr>
                             </tbody>
                         </table>
