@@ -41,6 +41,9 @@ it('reports duplicate company names with ids and related counts', function () {
         'created_by' => $user->id,
         'order_type' => 'waste',
         'status' => 'pending',
+        'site_id' => 10,
+        'estimated_quantity' => 2,
+        'slip_number' => 'SLIP-100',
         'requested_collection_date' => now()->toDateString(),
     ]);
     Order::query()->create([
@@ -49,6 +52,7 @@ it('reports duplicate company names with ids and related counts', function () {
         'created_by' => $user->id,
         'order_type' => 'waste',
         'status' => 'pending',
+        'site_id' => 11,
         'requested_collection_date' => now()->toDateString(),
     ]);
     Order::query()->create([
@@ -57,12 +61,16 @@ it('reports duplicate company names with ids and related counts', function () {
         'created_by' => $user->id,
         'order_type' => 'waste',
         'status' => 'pending',
+        'site_id' => 10,
+        'estimated_quantity' => 2,
+        'slip_number' => 'SLIP-100',
         'requested_collection_date' => now()->toDateString(),
     ]);
 
     $this->artisan('companies:report-duplicates')
         ->expectsOutputToContain('Duplicate company names found:')
         ->expectsOutputToContain('Acme (2 records)')
+        ->expectsOutputToContain('Potential duplicate orders across company IDs:')
         ->expectsTable(
             ['Company ID', 'Branches', 'Sites', 'Orders'],
             [
@@ -70,6 +78,15 @@ it('reports duplicate company names with ids and related counts', function () {
                 [$secondAcme->id, 1, 1, 1],
             ]
         )
+        ->expectsTable(
+            ['Method', 'Matched Order Groups', 'Orders Involved'],
+            [
+                ['Shared slip number', 1, 2],
+                ['Shared fingerprint', 1, 2],
+            ]
+        )
+        ->expectsOutputToContain('Shared slip number')
+        ->expectsOutputToContain('Shared fingerprint')
         ->assertSuccessful();
 });
 
