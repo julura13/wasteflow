@@ -22,6 +22,7 @@ use Carbon\Carbon;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -643,11 +644,8 @@ class ReportController extends Controller
         $wasteStreamTotals = $this->orderWasteStreamReporting->wasteStreamTotalsFromSummaries($materialSummaries);
         $classificationTotals = $this->orderWasteStreamReporting->classificationTotalsFromSummaries($materialSummaries);
 
-        // Get material weights from finalized orders
-        $materialWeights = $this->getMaterialWeights($company, $branch, $site, $month, $year);
         $grades = $this->getGrades($company, $branch, $site, $month, $year);
-        $recyclingCommodities = $this->getRecyclingCommodities($materialWeights, 1);
-        $recyclingCommodities2 = $this->getRecyclingCommodities($materialWeights, 2);
+        [$recyclingCommodities, $recyclingCommodities2] = $this->getRecyclingCommodities($materialSummaries);
 
         // Calculate recyclingRecovered = sum of all recycling weights
         $recyclingRecovered = 0;
@@ -833,60 +831,42 @@ class ReportController extends Controller
     }
 
     /**
-     * Get material weights from pre-calculated summaries for a company/branch/site in a given month
+     * Build recycling commodity rows from material summaries, keyed by grade name,
+     * filtered to the Recycling classification, sorted alphabetically, and split
+     * into two equal halves for the two-column report layout.
+     *
+     * @param  Collection<int, object{material_id: int, total_weight: float, material: \App\Models\Material}>  $materialSummaries
+     * @return array{0: list<array{name: string, qty: float}>, 1: list<array{name: string, qty: float}>}
      */
-    private function getMaterialWeights(?Company $company = null, ?Branch $branch = null, ?Site $site = null, ?int $month = null, ?int $year = null): array
+    private function getRecyclingCommodities(Collection $materialSummaries): array
     {
-        if ((! $company && ! $branch && ! $site) || ! $month || ! $year) {
-            return [];
-        }
+        $weights = [];
 
-        // Get material-level summaries
-        $summaries = $this->getMaterialSummaries($company, $branch, $site, $month, $year);
-
-        // Group by grade name and sum total_weight
-        $materialWeights = [];
-        foreach ($summaries as $summary) {
-            if (! $summary->material || ! $summary->material->grade) {
+        foreach ($materialSummaries as $summary) {
+            if (! $summary->material || ! $summary->material->grade || ! $summary->material->classification) {
                 continue;
             }
-
-            $gradeName = $summary->material->grade->name;
-            if (! isset($materialWeights[$gradeName])) {
-                $materialWeights[$gradeName] = 0;
+            if ($summary->material->classification->slug !== 'recycling') {
+                continue;
             }
-            $materialWeights[$gradeName] += (float) $summary->total_weight;
+            $name = $summary->material->grade->name;
+            $weights[$name] = ($weights[$name] ?? 0.0) + (float) $summary->total_weight;
         }
 
-        return $materialWeights;
-    }
+        ksort($weights);
 
-    /**
-     * Get recycling commodities array with actual weights
-     */
-    private function getRecyclingCommodities(array $materialWeights, int $set = 1): array
-    {
-        $commodities1 = [
-            'Alu Cans', 'Alu Foil', 'BOPP', 'CMW', 'CMW Rolls', 'EPS/XPS', 'FN/SBM', 'Glass', 'Hangers',
-            'HD', 'HD - Colour', 'HD - PP', 'HD Clear', 'HD Crates', 'HD Dark', 'HD Light', 'HD White',
-            'Heavy Steel', 'HL 1', 'HL Books', 'HL Dirty',
+        $all = array_map(
+            fn ($name, $weight) => ['name' => $name, 'qty' => round($weight, 2)],
+            array_keys($weights),
+            $weights
+        );
+
+        $half = (int) ceil(count($all) / 2);
+
+        return [
+            array_slice($all, 0, $half),
+            array_slice($all, $half),
         ];
-
-        $commodities2 = [
-            'K4', 'K4 Rolls', 'Label Backing', 'LD Clear', 'LD Consul', 'LD Mix', 'Light Steel',
-            'Light Steel Cans', 'Light Steel Drums', 'Mixed Bag', 'Oil', 'PET Clear', 'PET Mix',
-            'Pet Strapping', 'PP', 'PP Caps', 'Tetrapak', 'Tissue Paper', 'Wrapping', 'XPS', '',
-        ];
-
-        $commodities = $set === 1 ? $commodities1 : $commodities2;
-        $result = [];
-
-        foreach ($commodities as $name) {
-            $weight = isset($materialWeights[$name]) ? round($materialWeights[$name], 2) : 0;
-            $result[] = ['name' => $name, 'qty' => $weight];
-        }
-
-        return $result;
     }
 
     /**
