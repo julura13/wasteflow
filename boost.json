@@ -1,12 +1,15 @@
 {
     "agents": [
         "cursor",
-        "phpstorm"
+        "claude_code"
     ],
-    "editors": [
-        "cursor",
-        "phpstorm"
-    ],
-    "guidelines": [],
-    "sail": true
+    "guidelines": true,
+    "herd_mcp": false,
+    "mcp": true,
+    "sail": true,
+    "skills": [
+        "pest-testing",
+        "inertia-react-development",
+        "tailwindcss-development"
+    ]
 }

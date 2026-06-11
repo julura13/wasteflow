@@ -681,9 +681,10 @@ class ReportController extends Controller
         // Calculate environmental impact (trees, energy, water, dashboard-style CO₂e + equivalencies)
         $environmentalImpact = $this->getEnvironmentalImpact($company, $branch, $site, $month, $year, $organicsRecovered);
 
-        // Align carbon equivalency metrics with materials table lifecycle total (split plastics)
+        // Align all carbon metrics with materials table lifecycle total (split plastics)
         $lifecycleKg = (float) ($materialsCO2eTotals['lifecycleSaving'] ?? 0);
         $reportEquivalency = $this->lifecycleCarbonEquivalency->fromLifecycleSavingKgCo2e($lifecycleKg);
+        $environmentalImpact['co2Saved'] = $lifecycleKg;
         $environmentalImpact['electricityEquivalentKwhSaGrid'] = $reportEquivalency['electricityEquivalentKwhSaGrid'];
         $environmentalImpact['transportEquivalentKm'] = $reportEquivalency['transportEquivalentKm'];
         $environmentalImpact['fuelEquivalentLitresPetrol'] = $reportEquivalency['fuelEquivalentLitresPetrol'];
