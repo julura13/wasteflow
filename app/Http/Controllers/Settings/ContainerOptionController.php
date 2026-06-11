@@ -40,9 +40,11 @@ class ContainerOptionController extends Controller
             ],
             'is_active' => 'sometimes|boolean',
             'default_weight' => 'nullable|numeric|min:0',
+            'show_in_summary' => 'sometimes|boolean',
         ]);
 
         $data['is_active'] = $request->has('is_active') ? $request->boolean('is_active') : true;
+        $data['show_in_summary'] = $request->boolean('show_in_summary', false);
         $data['default_weight'] = $request->filled('default_weight') ? (float) $request->input('default_weight') : null;
 
         $containerOption = ContainerOption::create($data);
@@ -68,9 +70,11 @@ class ContainerOptionController extends Controller
             ],
             'is_active' => 'sometimes|boolean',
             'default_weight' => 'nullable|numeric|min:0',
+            'show_in_summary' => 'sometimes|boolean',
         ]);
 
         $data['is_active'] = $request->has('is_active') ? $request->boolean('is_active') : true;
+        $data['show_in_summary'] = $request->boolean('show_in_summary', false);
         $data['default_weight'] = $request->filled('default_weight') ? (float) $request->input('default_weight') : null;
 
         $containerOption->update($data);
@@ -80,6 +84,16 @@ class ContainerOptionController extends Controller
         ]);
 
         return back()->with('success', 'Container option updated successfully.');
+    }
+
+    public function toggleSummary(ContainerOption $containerOption): RedirectResponse
+    {
+        $containerOption->update(['show_in_summary' => ! $containerOption->show_in_summary]);
+
+        return back()->with('success', $containerOption->show_in_summary
+            ? "'{$containerOption->name}' will now appear in the Container Summary."
+            : "'{$containerOption->name}' removed from the Container Summary."
+        );
     }
 
     public function destroy(ContainerOption $containerOption): RedirectResponse

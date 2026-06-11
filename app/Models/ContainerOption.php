@@ -16,6 +16,7 @@ class ContainerOption extends Model
         'slug',
         'is_active',
         'default_weight',
+        'show_in_summary',
     ];
 
     protected function casts(): array
@@ -23,6 +24,7 @@ class ContainerOption extends Model
         return [
             'is_active' => 'boolean',
             'default_weight' => 'float',
+            'show_in_summary' => 'boolean',
         ];
     }
 

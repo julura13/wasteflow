@@ -46,6 +46,7 @@ class RolePermissionSeeder extends Seeder
             'orders-capture-weights',    // capture weights (then status -> documents_required)
             'orders-finalize',
             'view-activity-log',         // view activity log / audit trail (filter by order)
+            'manage-recurring-orders',   // create / edit / delete recurring order templates (admin only)
         ];
 
         foreach ($permissions as $permission) {

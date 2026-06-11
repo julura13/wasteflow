@@ -21,6 +21,7 @@ export default function ContainerOptionsIndex({ containerOptions, filters }) {
         name: '',
         is_active: true,
         default_weight: '',
+        show_in_summary: false,
     });
 
     const columns = [
@@ -43,6 +44,20 @@ export default function ContainerOptionsIndex({ containerOptions, filters }) {
                 <span className="text-gray-600">
                     {row.original.default_weight != null ? `${Number(row.original.default_weight)} kg` : '—'}
                 </span>
+            ),
+        },
+        {
+            id: 'show_in_summary',
+            header: 'In summary',
+            cell: ({ row }) => (
+                <button
+                    type="button"
+                    onClick={() => router.patch(route('settings.container-options.toggle-summary', row.original.id), {}, { preserveScroll: true })}
+                    title="Click to toggle"
+                    className={`px-2 py-1 text-xs font-medium rounded-full transition-opacity hover:opacity-70 cursor-pointer ${row.original.show_in_summary ? 'bg-indigo-100 text-indigo-800' : 'bg-gray-100 text-gray-500'}`}
+                >
+                    {row.original.show_in_summary ? 'Yes' : 'No'}
+                </button>
             ),
         },
         {
@@ -78,6 +93,7 @@ export default function ContainerOptionsIndex({ containerOptions, filters }) {
             name: '',
             is_active: true,
             default_weight: '',
+            show_in_summary: false,
         });
         setEditingId(null);
     };
@@ -95,6 +111,7 @@ export default function ContainerOptionsIndex({ containerOptions, filters }) {
             name: option.name ?? '',
             is_active: Boolean(option.is_active),
             default_weight: option.default_weight != null ? String(option.default_weight) : '',
+            show_in_summary: Boolean(option.show_in_summary),
         });
         setEditingId(option.id);
         setMode('edit');
@@ -271,6 +288,15 @@ export default function ContainerOptionsIndex({ containerOptions, filters }) {
                                 className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                             />
                             <span className="text-sm text-gray-700">Active</span>
+                        </label>
+                        <label className="inline-flex items-center space-x-2">
+                            <input
+                                type="checkbox"
+                                checked={form.data.show_in_summary}
+                                onChange={(event) => form.setData('show_in_summary', event.target.checked)}
+                                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                            />
+                            <span className="text-sm text-gray-700">Show in Container Summary (dashboard)</span>
                         </label>
                     </div>
 

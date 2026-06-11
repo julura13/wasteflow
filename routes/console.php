@@ -12,6 +12,11 @@ Artisan::command('inspire', function () {
 
 Schedule::job(new CleanupLocalOrderMediaJob)->daily();
 
+Schedule::command('recurring-orders:create')
+    ->dailyAt('04:00')
+    ->withoutOverlapping()
+    ->runInBackground();
+
 if (config('database_backup.schedule_enabled')) {
     Schedule::job(new DatabaseBackupJob)
         ->dailyAt((string) config('database_backup.schedule_time', '03:00'))

@@ -20,6 +20,7 @@ class Order extends Model
         'site_id',
         'service_provider_id',
         'created_by',
+        'recurring_order_id',
         'order_type',
         'status',
         'waste_type',

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Branch;
 use App\Models\Company;
+use App\Models\ContainerOption;
 use App\Models\Material;
 use App\Models\Order;
 use App\Models\OrderWasteStream;
@@ -334,9 +335,10 @@ class OrderWasteStreamReportingService
 
     /**
      * Container option quantity totals by calendar month for a year.
+     * Only containers flagged with show_in_summary = true are included, regardless of order type.
      * Reads quantity_lines JSON from finalized orders; rows sorted alphabetically by container label.
      *
-     * @return array<int, array{name: string, jan: int, feb: int, mar: int, apr: int, may: int, jun: int, jul: int, aug: int, sep: int, oct: int, nov: int, dec: int, total: int}>
+     * @return array<int, array{name: string, container_option_name: string, description: string, jan: int, feb: int, mar: int, apr: int, may: int, jun: int, jul: int, aug: int, sep: int, oct: int, nov: int, dec: int, total: int}>
      */
     public function containerSummaryForYear(?Company $company, ?Branch $branch, ?Site $site, int $year): array
     {
@@ -344,9 +346,17 @@ class OrderWasteStreamReportingService
         $yearStart = sprintf('%04d-01-01', $year);
         $yearEnd = sprintf('%04d-12-31', $year);
 
+        $summaryContainerIds = ContainerOption::where('show_in_summary', true)
+            ->pluck('id')
+            ->flip() // make it a set: id => index for O(1) lookup
+            ->all();
+
+        if ($summaryContainerIds === []) {
+            return [];
+        }
+
         $query = Order::query()
             ->where('status', 'finalized')
-            ->where('order_type', 'waste')
             ->whereNotNull('quantity_lines')
             ->whereRaw(
                 'DATE(COALESCE(actual_collection_date, requested_collection_date)) BETWEEN ? AND ?',
@@ -388,6 +398,11 @@ class OrderWasteStreamReportingService
             $monthKey = $monthNames[$month - 1];
 
             foreach ($lines as $line) {
+                $containerOptionId = (int) ($line['container_option_id'] ?? 0);
+                if (! array_key_exists($containerOptionId, $summaryContainerIds)) {
+                    continue;
+                }
+
                 $containerName = trim((string) ($line['container_option_name'] ?? ''));
                 if ($containerName === '') {
                     continue;
@@ -436,7 +451,6 @@ class OrderWasteStreamReportingService
 
         $query = Order::query()
             ->where('status', 'finalized')
-            ->where('order_type', 'waste')
             ->whereNotNull('quantity_lines')
             ->whereRaw(
                 'DATE(COALESCE(actual_collection_date, requested_collection_date)) BETWEEN ? AND ?',

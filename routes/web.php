@@ -85,6 +85,15 @@ Route::post('orders/seeder/generate', [App\Http\Controllers\OrderSeederControlle
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.seeder.generate');
 Route::resource('orders', App\Http\Controllers\OrderController::class)
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"]);
+
+// Recurring orders
+Route::middleware(['auth', 'verified', 'permission:manage-recurring-orders'])->group(function () {
+    Route::resource('recurring-orders', App\Http\Controllers\RecurringOrderController::class)
+        ->except(['show']);
+    Route::post('recurring-orders/{id}/restore', [App\Http\Controllers\RecurringOrderController::class, 'restore'])
+        ->name('recurring-orders.restore');
+});
+
 Route::resource('waste-types', App\Http\Controllers\WasteTypeController::class)
     ->middleware(['auth', 'verified', 'permission:manage-services']);
 Route::resource('service-providers', App\Http\Controllers\ServiceProviderController::class)
@@ -184,6 +193,7 @@ Route::middleware(['auth', 'verified', 'permission:manage-settings'])->prefix('s
     Route::resource('waste-streams', WasteStreamController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::resource('grades', GradeController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::resource('container-options', ContainerOptionController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::patch('container-options/{containerOption}/toggle-summary', [ContainerOptionController::class, 'toggleSummary'])->name('container-options.toggle-summary');
     Route::resource('classifications', ClassificationController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::resource('facilities', FacilityController::class)->only(['index', 'store', 'update', 'destroy']);
 });

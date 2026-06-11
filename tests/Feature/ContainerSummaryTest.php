@@ -2,6 +2,7 @@
 
 use App\Models\Branch;
 use App\Models\Company;
+use App\Models\ContainerOption;
 use App\Models\Order;
 use App\Models\ServiceProvider;
 use App\Models\Site;
@@ -17,21 +18,32 @@ beforeEach(function () {
     $this->seed(RolePermissionSeeder::class);
 });
 
-it('aggregates waste order quantity lines by container type and month', function () {
+// Helper: create a ContainerOption with show_in_summary flag
+function makeContainerOption(string $name, string $orderType = 'waste', bool $showInSummary = true): ContainerOption
+{
+    return ContainerOption::create([
+        'name' => $name,
+        'order_type' => $orderType,
+        'is_active' => true,
+        'show_in_summary' => $showInSummary,
+    ]);
+}
+
+it('aggregates quantity lines for containers flagged show_in_summary by month', function () {
     $user = User::factory()->create();
     $company = Company::create(['name' => 'Test Co', 'is_active' => true]);
     $branch = Branch::create(['company_id' => $company->id, 'name' => 'B', 'is_active' => true]);
     $site = Site::create(['branch_id' => $branch->id, 'name' => 'S', 'is_active' => true]);
     $provider = ServiceProvider::create(['name' => 'P', 'is_active' => true]);
 
+    $wheelie = makeContainerOption('240l Wheelie Bin', 'waste', showInSummary: true);
+    $skip = makeContainerOption('6m3 Skip', 'waste', showInSummary: true);
+    $compactor = makeContainerOption('23m3 Compactor', 'waste', showInSummary: true);
+
     $base = [
-        'company_id' => $company->id,
-        'branch_id' => $branch->id,
-        'site_id' => $site->id,
-        'service_provider_id' => $provider->id,
-        'created_by' => $user->id,
-        'order_type' => 'waste',
-        'status' => 'finalized',
+        'company_id' => $company->id, 'branch_id' => $branch->id, 'site_id' => $site->id,
+        'service_provider_id' => $provider->id, 'created_by' => $user->id,
+        'order_type' => 'waste', 'status' => 'finalized',
     ];
 
     // January: 2× 240l Wheelie Bin - General Waste
@@ -39,7 +51,7 @@ it('aggregates waste order quantity lines by container type and month', function
         'requested_collection_date' => Carbon::parse('2026-01-10'),
         'actual_collection_date' => Carbon::parse('2026-01-10'),
         'quantity_lines' => [
-            ['container_option_name' => '240l Wheelie Bin', 'description' => 'General Waste', 'quantity' => 2],
+            ['container_option_id' => $wheelie->id, 'container_option_name' => $wheelie->name, 'description' => 'General Waste', 'quantity' => 2],
         ],
     ]));
 
@@ -48,7 +60,7 @@ it('aggregates waste order quantity lines by container type and month', function
         'requested_collection_date' => Carbon::parse('2026-01-15'),
         'actual_collection_date' => Carbon::parse('2026-01-15'),
         'quantity_lines' => [
-            ['container_option_name' => '6m3 Skip', 'description' => 'General Waste', 'quantity' => 1],
+            ['container_option_id' => $skip->id, 'container_option_name' => $skip->name, 'description' => 'General Waste', 'quantity' => 1],
         ],
     ]));
 
@@ -57,81 +69,102 @@ it('aggregates waste order quantity lines by container type and month', function
         'requested_collection_date' => Carbon::parse('2026-02-05'),
         'actual_collection_date' => Carbon::parse('2026-02-05'),
         'quantity_lines' => [
-            ['container_option_name' => '240l Wheelie Bin', 'description' => 'General Waste', 'quantity' => 3],
+            ['container_option_id' => $wheelie->id, 'container_option_name' => $wheelie->name, 'description' => 'General Waste', 'quantity' => 3],
         ],
     ]));
 
-    // Container with no description (no " - " suffix)
+    // March: 1× 23m3 Compactor (no description)
     Order::create(array_merge($base, [
         'requested_collection_date' => Carbon::parse('2026-03-01'),
         'actual_collection_date' => Carbon::parse('2026-03-01'),
         'quantity_lines' => [
-            ['container_option_name' => '23m3 Compactor', 'description' => '', 'quantity' => 1],
+            ['container_option_id' => $compactor->id, 'container_option_name' => $compactor->name, 'description' => '', 'quantity' => 1],
         ],
     ]));
 
-    $service = app(OrderWasteStreamReportingService::class);
-    $rows = $service->containerSummaryForYear($company, null, null, 2026);
+    $rows = app(OrderWasteStreamReportingService::class)->containerSummaryForYear($company, null, null, 2026);
 
-    // Sorted alphabetically by name
     expect(array_column($rows, 'name'))->toBe([
         '23m3 Compactor',
         '240l Wheelie Bin - General Waste',
         '6m3 Skip - General Waste',
     ]);
 
-    $wheelieBin = collect($rows)->firstWhere('name', '240l Wheelie Bin - General Waste');
-    expect($wheelieBin['jan'])->toBe(2);
-    expect($wheelieBin['feb'])->toBe(3);
-    expect($wheelieBin['mar'])->toBe(0);
-    expect($wheelieBin['total'])->toBe(5);
+    $wb = collect($rows)->firstWhere('name', '240l Wheelie Bin - General Waste');
+    expect($wb['jan'])->toBe(2);
+    expect($wb['feb'])->toBe(3);
+    expect($wb['mar'])->toBe(0);
+    expect($wb['total'])->toBe(5);
 
-    $skip = collect($rows)->firstWhere('name', '6m3 Skip - General Waste');
-    expect($skip['jan'])->toBe(1);
-    expect($skip['total'])->toBe(1);
-
-    $compactor = collect($rows)->firstWhere('name', '23m3 Compactor');
-    expect($compactor['mar'])->toBe(1);
-    expect($compactor['total'])->toBe(1);
+    expect(collect($rows)->firstWhere('name', '6m3 Skip - General Waste')['total'])->toBe(1);
+    expect(collect($rows)->firstWhere('name', '23m3 Compactor')['mar'])->toBe(1);
 });
 
-it('excludes recycling orders from container summary', function () {
+it('excludes containers not flagged with show_in_summary', function () {
+    $user = User::factory()->create();
+    $company = Company::create(['name' => 'Flag Co', 'is_active' => true]);
+    $branch = Branch::create(['company_id' => $company->id, 'name' => 'B', 'is_active' => true]);
+    $site = Site::create(['branch_id' => $branch->id, 'name' => 'S', 'is_active' => true]);
+    $provider = ServiceProvider::create(['name' => 'P', 'is_active' => true]);
+
+    $visible = makeContainerOption('240l Wheelie Bin', 'waste', showInSummary: true);
+    $hidden = makeContainerOption('23m3 Compactor', 'waste', showInSummary: false);
+
+    $base = [
+        'company_id' => $company->id, 'branch_id' => $branch->id, 'site_id' => $site->id,
+        'service_provider_id' => $provider->id, 'created_by' => $user->id,
+        'order_type' => 'waste', 'status' => 'finalized',
+        'requested_collection_date' => Carbon::parse('2026-04-10'),
+        'actual_collection_date' => Carbon::parse('2026-04-10'),
+    ];
+
+    Order::create(array_merge($base, ['quantity_lines' => [
+        ['container_option_id' => $visible->id, 'container_option_name' => $visible->name, 'description' => 'General Waste', 'quantity' => 2],
+    ]]));
+
+    Order::create(array_merge($base, ['quantity_lines' => [
+        ['container_option_id' => $hidden->id, 'container_option_name' => $hidden->name, 'description' => '', 'quantity' => 5],
+    ]]));
+
+    $rows = app(OrderWasteStreamReportingService::class)->containerSummaryForYear($company, null, null, 2026);
+
+    expect($rows)->toHaveCount(1);
+    expect($rows[0]['name'])->toBe('240l Wheelie Bin - General Waste');
+});
+
+it('includes recycling order containers when flagged show_in_summary', function () {
     $user = User::factory()->create();
     $company = Company::create(['name' => 'Recycle Co', 'is_active' => true]);
     $branch = Branch::create(['company_id' => $company->id, 'name' => 'B', 'is_active' => true]);
     $site = Site::create(['branch_id' => $branch->id, 'name' => 'S', 'is_active' => true]);
     $provider = ServiceProvider::create(['name' => 'P', 'is_active' => true]);
 
+    $scrap = makeContainerOption('Test Scrap Bin', 'recycling', showInSummary: true);
+    $wheelie = makeContainerOption('Test Wheelie 240l', 'waste', showInSummary: true);
+
     $base = [
-        'company_id' => $company->id,
-        'branch_id' => $branch->id,
-        'site_id' => $site->id,
-        'service_provider_id' => $provider->id,
-        'created_by' => $user->id,
+        'company_id' => $company->id, 'branch_id' => $branch->id, 'site_id' => $site->id,
+        'service_provider_id' => $provider->id, 'created_by' => $user->id,
         'status' => 'finalized',
         'requested_collection_date' => Carbon::parse('2026-04-10'),
         'actual_collection_date' => Carbon::parse('2026-04-10'),
     ];
 
-    Order::create(array_merge($base, [
-        'order_type' => 'recycling',
-        'quantity_lines' => [
-            ['container_option_name' => 'Scrap Load', 'description' => '', 'quantity' => 5],
-        ],
-    ]));
+    Order::create(array_merge($base, ['order_type' => 'recycling', 'quantity_lines' => [
+        ['container_option_id' => $scrap->id, 'container_option_name' => $scrap->name, 'description' => '', 'quantity' => 5],
+    ]]));
 
-    Order::create(array_merge($base, [
-        'order_type' => 'waste',
-        'quantity_lines' => [
-            ['container_option_name' => '240l Wheelie Bin', 'description' => 'General Waste', 'quantity' => 2],
-        ],
-    ]));
+    Order::create(array_merge($base, ['order_type' => 'waste', 'quantity_lines' => [
+        ['container_option_id' => $wheelie->id, 'container_option_name' => $wheelie->name, 'description' => 'General Waste', 'quantity' => 2],
+    ]]));
 
-    $service = app(OrderWasteStreamReportingService::class);
-    $rows = $service->containerSummaryForYear($company, null, null, 2026);
+    $rows = app(OrderWasteStreamReportingService::class)->containerSummaryForYear($company, null, null, 2026);
 
-    expect($rows)->toHaveCount(1);
-    expect($rows[0]['name'])->toBe('240l Wheelie Bin - General Waste');
+    // Both containers show (recycling + waste), both flagged
+    expect($rows)->toHaveCount(2);
+    $names = array_column($rows, 'name');
+    expect($names)->toContain('Test Scrap Bin');
+    expect($names)->toContain('Test Wheelie 240l - General Waste');
 });
 
 it('returns daily counts for a container type via the daily detail endpoint', function () {
@@ -149,7 +182,6 @@ it('returns daily counts for a container type via the daily detail endpoint', fu
         'order_type' => 'waste', 'status' => 'finalized',
     ];
 
-    // Day 5: 3 bins; day 10: 2 bins
     Order::create(array_merge($base, [
         'requested_collection_date' => Carbon::parse('2026-03-05'),
         'actual_collection_date' => Carbon::parse('2026-03-05'),
@@ -227,18 +259,16 @@ it('returns container summary via dashboard controller', function () {
     $site = Site::create(['branch_id' => $branch->id, 'name' => 'S', 'is_active' => true]);
     $provider = ServiceProvider::create(['name' => 'P', 'is_active' => true]);
 
+    $wheelie = makeContainerOption('240l Wheelie Bin', 'waste', showInSummary: true);
+
     Order::create([
-        'company_id' => $company->id,
-        'branch_id' => $branch->id,
-        'site_id' => $site->id,
-        'service_provider_id' => $provider->id,
-        'created_by' => $user->id,
-        'order_type' => 'waste',
-        'status' => 'finalized',
+        'company_id' => $company->id, 'branch_id' => $branch->id, 'site_id' => $site->id,
+        'service_provider_id' => $provider->id, 'created_by' => $user->id,
+        'order_type' => 'waste', 'status' => 'finalized',
         'requested_collection_date' => Carbon::parse('2026-05-20'),
         'actual_collection_date' => Carbon::parse('2026-05-20'),
         'quantity_lines' => [
-            ['container_option_name' => '240l Wheelie Bin', 'description' => 'General Waste', 'quantity' => 4],
+            ['container_option_id' => $wheelie->id, 'container_option_name' => $wheelie->name, 'description' => 'General Waste', 'quantity' => 4],
         ],
     ]);
 
