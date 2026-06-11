@@ -13,8 +13,9 @@ class OrdersIndexQueryService
      * Build the base query for orders index/export with search, status and order_type filters.
      *
      * @param  array<int, string>  $orderTypes  ['waste'], ['recycling'], or ['waste','recycling']/[] for all
+     * @param  array<int, int>  $serviceProviderIds  Empty = no filter; non-empty = restrict to these providers
      */
-    public function buildForUser(User $user, ?string $search, ?string $status, array $orderTypes, ?string $requestedCollectionDateFrom = null, ?string $requestedCollectionDateTo = null): Builder
+    public function buildForUser(User $user, ?string $search, ?string $status, array $orderTypes, ?string $requestedCollectionDateFrom = null, ?string $requestedCollectionDateTo = null, array $serviceProviderIds = []): Builder
     {
         $query = Order::with(['site.branch.company', 'company', 'branch', 'creator', 'serviceProvider']);
 
@@ -38,6 +39,10 @@ class OrdersIndexQueryService
 
         if (count($orderTypes) === 1) {
             $query->where('orders.order_type', $orderTypes[0]);
+        }
+
+        if ($serviceProviderIds !== []) {
+            $query->whereIn('orders.service_provider_id', $serviceProviderIds);
         }
 
         $query->when($requestedCollectionDateFrom, function ($q) use ($requestedCollectionDateFrom) {

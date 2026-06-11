@@ -400,6 +400,92 @@ it('sorts queued CSV export rows by service provider name then newest order firs
     expect($posAlphaOld)->toBeLessThan($posZebra);
 });
 
+it('filters orders index by service provider ids', function () {
+    $user = User::factory()->create();
+    $user->assignRole('admin');
+
+    $company = Company::create(['name' => 'SP Filter Co', 'is_active' => true]);
+    $branch = Branch::create(['company_id' => $company->id, 'name' => 'B', 'is_active' => true]);
+    $site = Site::create(['branch_id' => $branch->id, 'name' => 'S', 'is_active' => true]);
+    $alpha = ServiceProvider::create(['name' => 'Alpha Hauliers', 'is_active' => true]);
+    $beta = ServiceProvider::create(['name' => 'Beta Waste', 'is_active' => true]);
+    $gamma = ServiceProvider::create(['name' => 'Gamma Recycle', 'is_active' => true]);
+
+    $base = [
+        'company_id' => $company->id,
+        'branch_id' => $branch->id,
+        'site_id' => $site->id,
+        'created_by' => $user->id,
+        'order_type' => 'waste',
+        'status' => 'pending',
+        'requested_collection_date' => Carbon::parse('2025-12-15'),
+    ];
+
+    Order::create(array_merge($base, ['tracking_number' => 'WO-ALPHA', 'service_provider_id' => $alpha->id]));
+    Order::create(array_merge($base, ['tracking_number' => 'WO-BETA', 'service_provider_id' => $beta->id]));
+    Order::create(array_merge($base, ['tracking_number' => 'WO-GAMMA', 'service_provider_id' => $gamma->id]));
+
+    // Single provider filter
+    $response = $this->actingAs($user)->get(route('orders.index', ['service_provider_ids' => [$alpha->id]]));
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page->has('orders.data', 1)
+        ->where('orders.data.0.tracking_number', 'WO-ALPHA'));
+
+    // Two providers
+    $response = $this->actingAs($user)->get(route('orders.index', ['service_provider_ids' => [$alpha->id, $beta->id]]));
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page->has('orders.data', 2));
+
+    // No filter = all orders
+    $response = $this->actingAs($user)->get(route('orders.index'));
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page->has('orders.data', 3));
+
+    // Filter IDs are echoed back in the filters prop
+    $response = $this->actingAs($user)->get(route('orders.index', ['service_provider_ids' => [$gamma->id]]));
+    $response->assertInertia(fn ($page) => $page->where('filters.service_provider_ids', [$gamma->id]));
+});
+
+it('stores service_provider_ids in export filters and applies them when generating CSV', function () {
+    $user = User::factory()->create();
+    $user->assignRole('admin');
+
+    $company = Company::create(['name' => 'SP Export Co', 'is_active' => true]);
+    $branch = Branch::create(['company_id' => $company->id, 'name' => 'B', 'is_active' => true]);
+    $site = Site::create(['branch_id' => $branch->id, 'name' => 'S', 'is_active' => true]);
+    $included = ServiceProvider::create(['name' => 'Included Provider', 'is_active' => true]);
+    $excluded = ServiceProvider::create(['name' => 'Excluded Provider', 'is_active' => true]);
+
+    $base = [
+        'company_id' => $company->id,
+        'branch_id' => $branch->id,
+        'site_id' => $site->id,
+        'created_by' => $user->id,
+        'order_type' => 'waste',
+        'status' => 'pending',
+        'requested_collection_date' => Carbon::parse('2025-12-15'),
+    ];
+
+    Order::create(array_merge($base, ['tracking_number' => 'WO-INCLUDED', 'service_provider_id' => $included->id]));
+    Order::create(array_merge($base, ['tracking_number' => 'WO-EXCLUDED', 'service_provider_id' => $excluded->id]));
+
+    $this->actingAs($user)->post(route('orders.export.request'), [
+        'format' => 'csv',
+        'service_provider_ids' => [$included->id],
+    ])->assertRedirect();
+
+    $export = OrderIndexExport::query()->firstOrFail();
+    expect($export->filters['service_provider_ids'])->toBe([$included->id]);
+
+    GenerateOrderIndexExportJob::dispatchSync($export->id);
+    $export->refresh();
+    expect($export->status)->toBe(OrderIndexExport::STATUS_COMPLETED);
+
+    $csv = $this->actingAs($user)->get(route('orders.export.download', $export->uuid))->streamedContent();
+    expect($csv)->toContain('WO-INCLUDED');
+    expect($csv)->not->toContain('WO-EXCLUDED');
+});
+
 it('omits the service provider column from CSV when hide_service_provider is true', function () {
     $user = User::factory()->create();
     $user->assignRole('admin');

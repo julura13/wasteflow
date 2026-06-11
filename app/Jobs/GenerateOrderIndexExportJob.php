@@ -57,6 +57,12 @@ class GenerateOrderIndexExportJob implements ShouldQueue
             }
             $orderTypes = array_values(array_unique(array_filter(array_map('strtolower', $orderTypes), fn ($t) => in_array($t, ['waste', 'recycling'], true))));
 
+            $serviceProviderIds = $filters['service_provider_ids'] ?? [];
+            if (! is_array($serviceProviderIds)) {
+                $serviceProviderIds = [];
+            }
+            $serviceProviderIds = array_values(array_unique(array_filter(array_map('intval', $serviceProviderIds), fn ($id) => $id > 0)));
+
             $baseQuery = $ordersIndexQueryService->buildForUser(
                 $user,
                 isset($filters['search']) ? (string) $filters['search'] : null,
@@ -64,6 +70,7 @@ class GenerateOrderIndexExportJob implements ShouldQueue
                 $orderTypes,
                 $requestedCollectionFrom,
                 $requestedCollectionTo,
+                $serviceProviderIds,
             );
 
             $query = $ordersIndexQueryService->applyExportOrdering($baseQuery);

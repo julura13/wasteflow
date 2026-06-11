@@ -70,13 +70,16 @@ class OrderController extends Controller
         $orderTypes = $request->has('order_types') ? (array) $request->input('order_types') : [];
         $orderTypes = array_values(array_unique(array_filter(array_map('strtolower', $orderTypes), fn ($t) => in_array($t, ['waste', 'recycling'], true))));
 
+        // Service provider IDs: array of integers. Empty = show all.
+        $serviceProviderIds = array_values(array_unique(array_filter(array_map('intval', (array) $request->input('service_provider_ids', [])), fn ($id) => $id > 0)));
+
         [$requestedCollectionFrom, $requestedCollectionTo] = $this->ordersIndexQueryService->parseRequestedCollectionDateRangeInput(
             $request->input('requested_collection_from'),
             $request->input('requested_collection_to'),
         );
 
         $user = auth()->user();
-        $query = $this->ordersIndexQueryService->buildForUser($user, $request->input('search'), $status, $orderTypes, $requestedCollectionFrom, $requestedCollectionTo);
+        $query = $this->ordersIndexQueryService->buildForUser($user, $request->input('search'), $status, $orderTypes, $requestedCollectionFrom, $requestedCollectionTo, $serviceProviderIds);
 
         $orders = $query
             ->orderBy('created_at', 'desc')
@@ -99,6 +102,7 @@ class OrderController extends Controller
                 'search' => $request->input('search'),
                 'status' => $status,
                 'order_types' => $orderTypes,
+                'service_provider_ids' => $serviceProviderIds,
                 'requested_collection_from' => $requestedCollectionFrom,
                 'requested_collection_to' => $requestedCollectionTo,
             ],
@@ -823,6 +827,8 @@ class OrderController extends Controller
             'status' => ['nullable', 'string'],
             'order_types' => ['nullable', 'array'],
             'order_types.*' => ['string', Rule::in(['waste', 'recycling'])],
+            'service_provider_ids' => ['nullable', 'array'],
+            'service_provider_ids.*' => ['integer', 'min:1'],
             'requested_collection_from' => ['nullable', 'string'],
             'requested_collection_to' => ['nullable', 'string'],
             'hide_service_provider' => ['sometimes', 'boolean'],
@@ -830,6 +836,8 @@ class OrderController extends Controller
 
         $orderTypes = $validated['order_types'] ?? [];
         $orderTypes = array_values(array_unique(array_filter(array_map('strtolower', $orderTypes), fn ($t) => in_array($t, ['waste', 'recycling'], true))));
+
+        $serviceProviderIds = array_values(array_unique(array_filter(array_map('intval', $validated['service_provider_ids'] ?? []), fn ($id) => $id > 0)));
 
         [$requestedCollectionFrom, $requestedCollectionTo] = $this->ordersIndexQueryService->parseRequestedCollectionDateRangeInput(
             $validated['requested_collection_from'] ?? null,
@@ -851,6 +859,7 @@ class OrderController extends Controller
                 'search' => $validated['search'] ?? null,
                 'status' => $validated['status'] ?? null,
                 'order_types' => $orderTypes,
+                'service_provider_ids' => $serviceProviderIds,
                 'requested_collection_from' => $requestedCollectionFrom,
                 'requested_collection_to' => $requestedCollectionTo,
                 'hide_service_provider' => $request->boolean('hide_service_provider'),

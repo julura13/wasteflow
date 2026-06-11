@@ -8,6 +8,8 @@ import { Plus, Trash2, Eye, Search, Filter, Package, CheckCircle, X, FileDown, F
 import axios from 'axios';
 
 export default function OrdersIndex({ orders, filters, serviceProviders = [], userCompanyRoles = {} }) {
+    // Normalise so IDs are always numbers for reliable comparison
+    const allServiceProviders = serviceProviders.map((sp) => ({ ...sp, id: Number(sp.id) }));
     const { flash, auth, errors: pageErrors = {} } = usePage().props;
     const user = auth?.user;
     const [showSuccess, setShowSuccess] = useState(false);
@@ -106,6 +108,11 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
     const [orderTypeRecycling, setOrderTypeRecycling] = useState(
         () => !filters.order_types?.length || filters.order_types.includes('recycling')
     );
+    const [selectedServiceProviderIds, setSelectedServiceProviderIds] = useState(
+        () => (filters.service_provider_ids ?? []).map(Number)
+    );
+    const [filterModalOpen, setFilterModalOpen] = useState(false);
+    const [spSearch, setSpSearch] = useState('');
 
     useEffect(() => {
         setRequestedCollectionFrom(filters.requested_collection_from || '');
@@ -391,7 +398,7 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
         return types;
     };
 
-    const buildFilterParams = (orderTypesOverride) => {
+    const buildFilterParams = (orderTypesOverride, spIdsOverride) => {
         const params = {
             search: search || undefined,
             status: statusFilter,
@@ -403,6 +410,10 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
             params.order_types = types;
         } else if (types.length === 2) {
             params.order_types = ['waste', 'recycling'];
+        }
+        const spIds = spIdsOverride ?? selectedServiceProviderIds;
+        if (spIds.length > 0) {
+            params.service_provider_ids = spIds;
         }
         return params;
     };
@@ -429,6 +440,9 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
         } else if (types.length === 2) {
             params.order_types = ['waste', 'recycling'];
         }
+        if (selectedServiceProviderIds.length > 0) {
+            params.service_provider_ids = selectedServiceProviderIds;
+        }
         router.get('/orders', params, {
             preserveState: true,
             replace: true,
@@ -441,7 +455,7 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
         const types = [];
         if (waste) types.push('waste');
         if (recycling) types.push('recycling');
-        router.get('/orders', buildFilterParams(types), { preserveState: true, replace: true });
+        router.get('/orders', buildFilterParams(types, selectedServiceProviderIds), { preserveState: true, replace: true });
     };
 
     const buildExportPostBody = useCallback(
@@ -471,6 +485,9 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
             } else if (types.length === 2) {
                 data.order_types = ['waste', 'recycling'];
             }
+            if (selectedServiceProviderIds.length > 0) {
+                data.service_provider_ids = selectedServiceProviderIds;
+            }
             if (exportHideServiceProvider) {
                 data.hide_service_provider = true;
             }
@@ -483,6 +500,7 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
             requestedCollectionTo,
             orderTypeWaste,
             orderTypeRecycling,
+            selectedServiceProviderIds,
             exportHideServiceProvider,
         ],
     );
@@ -838,6 +856,121 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
                 </div>
             )}
 
+            {/* Service Provider Filter Modal */}
+            {filterModalOpen && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-start justify-center pt-20">
+                    <div className="relative w-full max-w-md shadow-lg rounded-md bg-white dark:bg-gray-800 flex flex-col max-h-[80vh]">
+                        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-600">
+                            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                                Filter by Service Provider
+                            </h3>
+                            <button
+                                onClick={() => setFilterModalOpen(false)}
+                                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        {/* Search */}
+                        <div className="p-3 border-b border-gray-200 dark:border-gray-600">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                <input
+                                    type="text"
+                                    value={spSearch}
+                                    onChange={(e) => setSpSearch(e.target.value)}
+                                    placeholder="Search service providers…"
+                                    className="pl-9 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 placeholder:text-gray-400"
+                                    autoFocus
+                                />
+                            </div>
+                        </div>
+
+                        {/* Select all / Clear row */}
+                        <div className="flex items-center justify-between px-4 py-2 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600">
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                                {selectedServiceProviderIds.length === 0
+                                    ? 'None selected'
+                                    : `${selectedServiceProviderIds.length} selected`}
+                            </span>
+                            <div className="flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedServiceProviderIds(allServiceProviders.map((sp) => sp.id))}
+                                    className="text-xs text-primary-600 hover:text-primary-800 dark:text-primary-400"
+                                >
+                                    Select all
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedServiceProviderIds([])}
+                                    className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                                >
+                                    Clear
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Provider list */}
+                        <div className="overflow-y-auto flex-1 p-2">
+                            {allServiceProviders
+                                .filter((sp) =>
+                                    sp.name.toLowerCase().includes(spSearch.toLowerCase())
+                                )
+                                .map((sp) => (
+                                    <label
+                                        key={sp.id}
+                                        className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedServiceProviderIds.includes(sp.id)}
+                                            onChange={(e) => {
+                                                setSelectedServiceProviderIds((prev) =>
+                                                    e.target.checked
+                                                        ? [...prev, sp.id]
+                                                        : prev.filter((id) => id !== sp.id)
+                                                );
+                                            }}
+                                            className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700"
+                                        />
+                                        <span className="text-sm text-gray-900 dark:text-gray-100">{sp.name}</span>
+                                    </label>
+                                ))}
+                            {allServiceProviders.filter((sp) =>
+                                sp.name.toLowerCase().includes(spSearch.toLowerCase())
+                            ).length === 0 && (
+                                <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+                                    No service providers found.
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="flex justify-end gap-3 p-4 border-t border-gray-200 dark:border-gray-600">
+                            <button
+                                type="button"
+                                onClick={() => setFilterModalOpen(false)}
+                                className="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600 dark:hover:bg-gray-600"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setFilterModalOpen(false);
+                                    router.get('/orders', buildFilterParams(), { preserveState: true, replace: true });
+                                }}
+                                className="px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                            >
+                                Apply filters
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Filters */}
             <div className="mb-6 bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
                 <form onSubmit={handleSearch} className="space-y-4">
@@ -901,11 +1034,21 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
                             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Both selected = show all</p>
                         </div>
                         <button
-                            type="submit"
-                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                            type="button"
+                            onClick={() => { setSpSearch(''); setFilterModalOpen(true); }}
+                            className={`inline-flex items-center px-4 py-2 border text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 ${
+                                selectedServiceProviderIds.length > 0
+                                    ? 'border-primary-500 bg-primary-600 text-white hover:bg-primary-700'
+                                    : 'border-transparent bg-primary-600 text-white hover:bg-primary-700'
+                            }`}
                         >
                             <Filter className="h-4 w-4 mr-2" />
                             Filter
+                            {selectedServiceProviderIds.length > 0 && (
+                                <span className="ml-1.5 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold bg-white text-primary-700 rounded-full leading-none">
+                                    {selectedServiceProviderIds.length}
+                                </span>
+                            )}
                         </button>
                         <div className="relative">
                             <button
