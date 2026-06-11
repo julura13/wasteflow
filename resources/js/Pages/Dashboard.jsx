@@ -15,6 +15,7 @@ import {
     Droplet,
     Fuel,
     LayoutDashboard,
+    PackageCheck,
     Table2,
     TreePine,
     Truck,
@@ -84,7 +85,7 @@ function getOrdersQuickViewDayOptionsAndValues() {
     return { options: opts, valueSet: values };
 }
 
-export default function Dashboard({ companies = [], dashboardData = null, gradeSummaryByYear = [], ordersNearDates = [], filters = {} }) {
+export default function Dashboard({ companies = [], dashboardData = null, gradeSummaryByYear = [], containerSummaryByYear = [], ordersNearDates = [], filters = {} }) {
     const [branches, setBranches] = useState([]);
     const [sites, setSites] = useState([]);
     const [loadingBranches, setLoadingBranches] = useState(false);
@@ -112,6 +113,18 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
         ordersForDate: null,
         ordersLoading: false,
         selectedDate: null,
+    });
+
+    // Container Summary drill-down
+    const [containerDetailPanel, setContainerDetailPanel] = useState({
+        open: false,
+        dailyData: null,
+        dailyLoading: false,
+        containerOptionName: null,
+        description: null,
+        label: null,
+        month: null,
+        year: null,
     });
 
     // Default date range: 1st of current month to today
@@ -262,6 +275,49 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
 
     const closeDetailPanel = () => {
         setDetailPanel((prev) => ({ ...prev, open: false }));
+    };
+
+    const isContainerMonthCellSelected = (rowName, monthIndex) =>
+        containerDetailPanel.open &&
+        containerDetailPanel.label === rowName &&
+        containerDetailPanel.month === monthIndex + 1 &&
+        containerDetailPanel.year === yearForGradeSummary;
+
+    const isContainerRowHeaderActive = (rowName) =>
+        containerDetailPanel.open && containerDetailPanel.label === rowName;
+
+    const handleContainerMonthClick = (row, monthIndex) => {
+        const month = monthIndex + 1;
+        setContainerDetailPanel({
+            open: true,
+            dailyData: null,
+            dailyLoading: true,
+            containerOptionName: row.container_option_name,
+            description: row.description,
+            label: row.name,
+            month,
+            year: yearForGradeSummary,
+        });
+        const params = {
+            container_option_name: row.container_option_name,
+            description: row.description,
+            month,
+            year: yearForGradeSummary,
+            company_id: filters.company_id || undefined,
+            branch_id: filters.branch_id || undefined,
+            site_id: filters.site_id || undefined,
+        };
+        axios.get(route('dashboard.container-month-detail'), { params })
+            .then((res) => {
+                setContainerDetailPanel((prev) => ({ ...prev, dailyData: res.data, dailyLoading: false }));
+            })
+            .catch(() => {
+                setContainerDetailPanel((prev) => ({ ...prev, dailyData: { counts: {}, days_in_month: 0 }, dailyLoading: false }));
+            });
+    };
+
+    const closeContainerDetailPanel = () => {
+        setContainerDetailPanel((prev) => ({ ...prev, open: false }));
     };
 
     const handleSubmit = (e) => {
@@ -581,6 +637,19 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
                             <Table2 className="w-4 h-4" />
                             Grade Summary
                         </button>
+                        <button
+                            type="button"
+                            onClick={() => setActiveTab('container-summary')}
+                            className={[
+                                'flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors',
+                                activeTab === 'container-summary'
+                                    ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/30'
+                                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600',
+                            ].join(' ')}
+                        >
+                            <PackageCheck className="w-4 h-4" />
+                            Container Summary
+                        </button>
                     </nav>
                 </div>
             </div>
@@ -754,6 +823,153 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
                             )}
                         </div>
                     )}
+                </div>
+            )}
+
+            {activeTab === 'container-summary' && (
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 mb-3 overflow-x-auto border border-gray-200 dark:border-gray-700">
+                    <h2 className="text-sm font-semibold mb-2 text-gray-900 dark:text-gray-100">
+                        Waste orders by container type (count) – {filters.from_date ? new Date(filters.from_date).getFullYear() : new Date().getFullYear()}
+                    </h2>
+                    <table className="w-full text-sm border-collapse">
+                        <thead>
+                            <tr className="border-b border-gray-200 dark:border-gray-600">
+                                <th className="text-left py-2 px-2 font-semibold text-gray-700 dark:text-gray-300">CONTAINER TYPE</th>
+                                {MONTH_LABELS.map((label) => (
+                                    <th key={label} className="text-right py-2 px-2 font-semibold text-gray-700 dark:text-gray-300">{label}</th>
+                                ))}
+                                <th className="text-right py-2 px-2 font-semibold text-gray-700 dark:text-gray-300">TOTAL</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {containerSummaryByYear.length === 0 ? (
+                                <tr>
+                                    <td colSpan={14} className="py-4 text-center text-gray-500 dark:text-gray-400">
+                                        No data for the selected filters and year. Select company/branch/site and apply.
+                                    </td>
+                                </tr>
+                            ) : (
+                                containerSummaryByYear.map((row) => (
+                                    <tr
+                                        key={row.name}
+                                        className={[
+                                            'border-b border-gray-100 dark:border-gray-700',
+                                            isContainerRowHeaderActive(row.name)
+                                                ? 'bg-indigo-50/40 dark:bg-indigo-950/30'
+                                                : 'hover:bg-gray-50 dark:hover:bg-gray-700/50',
+                                        ].join(' ')}
+                                    >
+                                        <td
+                                            className={[
+                                                'py-2 px-2 font-medium border-l-[3px] border-transparent',
+                                                isContainerRowHeaderActive(row.name)
+                                                    ? 'border-l-indigo-500 text-indigo-900 dark:text-indigo-100'
+                                                    : 'text-gray-900 dark:text-gray-100',
+                                            ].join(' ')}
+                                        >
+                                            {row.name}
+                                        </td>
+                                        {MONTHS.map((m, idx) => {
+                                            const selected = isContainerMonthCellSelected(row.name, idx);
+                                            return (
+                                                <td
+                                                    key={m}
+                                                    className={[
+                                                        'text-right py-2 px-1 tabular-nums transition-colors',
+                                                        selected
+                                                            ? 'bg-indigo-100 dark:bg-indigo-900/50 ring-2 ring-inset ring-indigo-500 dark:ring-indigo-400'
+                                                            : 'text-gray-600 dark:text-gray-300',
+                                                    ].join(' ')}
+                                                >
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleContainerMonthClick(row, idx)}
+                                                        className={[
+                                                            'min-w-[2.25rem] inline-block rounded px-1 py-0.5 -mx-0.5',
+                                                            row[m]
+                                                                ? selected
+                                                                    ? 'cursor-pointer font-semibold text-indigo-900 dark:text-indigo-100'
+                                                                    : 'cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-700 dark:hover:text-indigo-300'
+                                                                : 'cursor-default',
+                                                        ].join(' ')}
+                                                        title={row[m] ? `View daily breakdown for ${row.name} in ${MONTH_LABELS[idx]}` : undefined}
+                                                        aria-pressed={selected}
+                                                    >
+                                                        {row[m] ? row[m].toLocaleString() : '–'}
+                                                    </button>
+                                                </td>
+                                            );
+                                        })}
+                                        <td className="text-right py-2 px-2 font-semibold text-gray-900 dark:text-gray-100 tabular-nums">
+                                            {row.total.toLocaleString()}
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
+            {/* Container daily drill-down panel */}
+            {activeTab === 'container-summary' && containerDetailPanel.open && (
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 mb-3 overflow-hidden">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
+                        <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                            {containerDetailPanel.label} – {MONTH_LABELS[(containerDetailPanel.month || 1) - 1]} {containerDetailPanel.year}
+                        </h3>
+                        <button
+                            type="button"
+                            onClick={closeContainerDetailPanel}
+                            className="inline-flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
+                        >
+                            <X className="w-4 h-4" /> Close
+                        </button>
+                    </div>
+                    <div className="p-4 overflow-x-auto">
+                        {containerDetailPanel.dailyLoading ? (
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Loading daily breakdown…</p>
+                        ) : containerDetailPanel.dailyData && containerDetailPanel.dailyData.days_in_month > 0 ? (
+                            <table className="w-full text-sm border-collapse border border-gray-300 dark:border-gray-600">
+                                <thead>
+                                    <tr className="bg-gray-50 dark:bg-gray-700">
+                                        <th className="text-left py-2 px-2 font-semibold text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600">Container</th>
+                                        {Array.from({ length: containerDetailPanel.dailyData.days_in_month }, (_, i) => i + 1).map((d) => (
+                                            <th key={d} className="text-right py-2 px-2 font-semibold text-gray-700 dark:text-gray-300 w-12 border border-gray-300 dark:border-gray-600">{d}</th>
+                                        ))}
+                                        <th className="text-right py-2 px-2 font-semibold text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600">TOTAL</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td className="py-2 px-2 border border-gray-300 dark:border-gray-600 align-top">
+                                            <div className="font-medium text-gray-900 dark:text-gray-100">{containerDetailPanel.label}</div>
+                                            <div className="text-xs font-semibold text-gray-600 dark:text-gray-400 mt-0.5 tabular-nums">
+                                                {Object.values(containerDetailPanel.dailyData.counts || {}).reduce((a, b) => a + b, 0)} total
+                                            </div>
+                                        </td>
+                                        {Array.from({ length: containerDetailPanel.dailyData.days_in_month }, (_, i) => i + 1).map((day) => {
+                                            const val = containerDetailPanel.dailyData.counts?.[day] ?? 0;
+                                            return (
+                                                <td
+                                                    key={day}
+                                                    className={`text-right py-2 px-1 tabular-nums border border-gray-300 dark:border-gray-600 ${!val ? 'bg-gray-50 dark:bg-gray-700/50 text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-gray-100'}`}
+                                                >
+                                                    {val || '–'}
+                                                </td>
+                                            );
+                                        })}
+                                        <td className="text-right py-2 px-2 font-semibold text-gray-900 dark:text-gray-100 tabular-nums border border-gray-300 dark:border-gray-600">
+                                            {Object.values(containerDetailPanel.dailyData.counts || {}).reduce((a, b) => a + b, 0)}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        ) : (
+                            <p className="text-sm text-gray-500 dark:text-gray-400">No data for this container type in this month.</p>
+                        )}
+                    </div>
+
                 </div>
             )}
 

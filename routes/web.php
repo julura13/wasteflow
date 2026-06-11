@@ -28,6 +28,12 @@ Route::get('/dashboard/grade-month-detail', [App\Http\Controllers\DashboardContr
 Route::get('/dashboard/orders-for-day', [App\Http\Controllers\DashboardController::class, 'getOrdersForDay'])
     ->middleware(['auth', 'verified', 'permission:view-dashboard'])->name('dashboard.orders-for-day');
 
+Route::get('/dashboard/container-month-detail', [App\Http\Controllers\DashboardController::class, 'getContainerMonthDailyDetail'])
+    ->middleware(['auth', 'verified', 'permission:view-dashboard'])->name('dashboard.container-month-detail');
+
+Route::get('/dashboard/orders-for-day-by-container', [App\Http\Controllers\DashboardController::class, 'getOrdersForDayByContainer'])
+    ->middleware(['auth', 'verified', 'permission:view-dashboard'])->name('dashboard.orders-for-day-by-container');
+
 Route::get('/activity-log', [App\Http\Controllers\ActivityLogController::class, 'index'])
     ->middleware(['auth', 'verified', 'permission:view-activity-log'])->name('activity-log.index');
 

@@ -49,6 +49,7 @@ class DashboardController extends Controller
 
         $year = Carbon::parse($fromDate)->year;
         $gradeSummaryByYear = $this->orderWasteStreamReporting->gradeSummaryForYear($company, $branch, $site, $year);
+        $containerSummaryByYear = $this->orderWasteStreamReporting->containerSummaryForYear($company, $branch, $site, $year);
 
         $ordersNearDates = $this->getOrdersForNearDates($companyId, $branchId, $siteId);
 
@@ -56,6 +57,7 @@ class DashboardController extends Controller
             'companies' => $companies,
             'dashboardData' => $dashboardData,
             'gradeSummaryByYear' => $gradeSummaryByYear,
+            'containerSummaryByYear' => $containerSummaryByYear,
             'ordersNearDates' => $ordersNearDates,
             'filters' => [
                 'company_id' => $companyId,
@@ -149,6 +151,134 @@ class DashboardController extends Controller
         );
 
         return response()->json($payload);
+    }
+
+    /**
+     * Daily container quantity counts for a specific container type in a month.
+     * Used when clicking a month cell in the Container Summary table.
+     */
+    public function getContainerMonthDailyDetail(Request $request)
+    {
+        $containerOptionName = $request->input('container_option_name', '');
+        $description = $request->input('description', '');
+        $month = (int) $request->input('month');
+        $year = (int) $request->input('year');
+        $companyId = $request->input('company_id') ? (int) $request->input('company_id') : null;
+        $branchId = $request->input('branch_id') ? (int) $request->input('branch_id') : null;
+        $siteId = $request->input('site_id') ? (int) $request->input('site_id') : null;
+
+        if (! $containerOptionName || ! $month || ! $year) {
+            return response()->json(['counts' => [], 'days_in_month' => 0], 400);
+        }
+
+        [$companyId, $branchId, $siteId] = $this->enforceCompanyScope($companyId, $branchId, $siteId);
+
+        $company = $companyId ? Company::find($companyId) : null;
+        $branch = $branchId ? Branch::find($branchId) : null;
+        $site = $siteId ? Site::find($siteId) : null;
+
+        $payload = $this->orderWasteStreamReporting->containerMonthDailyDetail(
+            $company,
+            $branch,
+            $site,
+            (string) $containerOptionName,
+            (string) $description,
+            $month,
+            $year
+        );
+
+        return response()->json($payload);
+    }
+
+    /**
+     * Finalized waste orders for a specific day filtered by container type.
+     * Used when clicking a day cell in the container daily detail panel.
+     */
+    public function getOrdersForDayByContainer(Request $request)
+    {
+        $date = $request->input('date');
+        $containerOptionName = $request->input('container_option_name', '');
+        $description = $request->input('description', '');
+        $companyId = $request->input('company_id') ? (int) $request->input('company_id') : null;
+        $branchId = $request->input('branch_id') ? (int) $request->input('branch_id') : null;
+        $siteId = $request->input('site_id') ? (int) $request->input('site_id') : null;
+
+        if (! $date) {
+            return response()->json(['orders' => []], 400);
+        }
+
+        [$companyId, $branchId, $siteId] = $this->enforceCompanyScope($companyId, $branchId, $siteId);
+
+        $query = Order::query()
+            ->with(['site:id,name,branch_id', 'site.branch:id,name,company_id', 'site.branch.company:id,name'])
+            ->where('status', 'finalized')
+            ->where('order_type', 'waste')
+            ->where(function ($q) use ($date) {
+                $q->where('actual_collection_date', $date)
+                    ->orWhere(function ($q2) use ($date) {
+                        $q2->whereNull('actual_collection_date')
+                            ->where('requested_collection_date', $date);
+                    });
+            });
+
+        if ($siteId) {
+            $query->where('site_id', $siteId);
+        } elseif ($branchId) {
+            $query->where('branch_id', $branchId);
+        } elseif ($companyId) {
+            $query->where('company_id', $companyId);
+        }
+
+        if ($this->isClientScoped() && auth()->user()->company_id) {
+            $query->where('company_id', auth()->user()->company_id);
+        }
+
+        $orders = $query
+            ->whereNotNull('quantity_lines')
+            ->orderBy('actual_collection_date')
+            ->orderBy('requested_collection_date')
+            ->orderBy('id')
+            ->get(['id', 'tracking_number', 'company_id', 'branch_id', 'site_id', 'order_type', 'status', 'requested_collection_date', 'actual_collection_date', 'quantity_lines']);
+
+        $list = $orders
+            ->filter(function ($order) use ($containerOptionName, $description) {
+                $lines = $order->quantity_lines;
+                if (! is_array($lines)) {
+                    return false;
+                }
+                foreach ($lines as $line) {
+                    $lineName = trim((string) ($line['container_option_name'] ?? ''));
+                    $lineDesc = trim((string) ($line['description'] ?? ''));
+                    if ($lineName === $containerOptionName && $lineDesc === $description) {
+                        return true;
+                    }
+                }
+
+                return false;
+            })
+            ->map(function ($order) use ($containerOptionName, $description) {
+                $d = $order->actual_collection_date ?? $order->requested_collection_date;
+                $qty = 0;
+                foreach ($order->quantity_lines as $line) {
+                    if (trim((string) ($line['container_option_name'] ?? '')) === $containerOptionName &&
+                        trim((string) ($line['description'] ?? '')) === $description) {
+                        $qty += (int) ($line['quantity'] ?? 0);
+                    }
+                }
+
+                return [
+                    'id' => $order->id,
+                    'tracking_number' => $order->tracking_number,
+                    'status' => $order->status,
+                    'quantity' => $qty,
+                    'collection_date' => $d ? $d->format('Y-m-d') : null,
+                    'site' => $order->site ? ['name' => $order->site->name] : null,
+                ];
+            })
+            ->values()
+            ->all();
+
+        return response()->json(['orders' => $list]);
     }
 
     /**

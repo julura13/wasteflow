@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\Material;
+use App\Models\Order;
 use App\Models\OrderWasteStream;
 use App\Models\Site;
 use App\Models\WasteStream;
@@ -328,6 +329,170 @@ class OrderWasteStreamReportingService
                 'total' => round($divertedTotal, 2),
                 'percentage' => $totalWeight > 0 ? round(($divertedTotal / $totalWeight) * 100, 1) : 0,
             ],
+        ];
+    }
+
+    /**
+     * Container option quantity totals by calendar month for a year.
+     * Reads quantity_lines JSON from finalized orders; rows sorted alphabetically by container label.
+     *
+     * @return array<int, array{name: string, jan: int, feb: int, mar: int, apr: int, may: int, jun: int, jul: int, aug: int, sep: int, oct: int, nov: int, dec: int, total: int}>
+     */
+    public function containerSummaryForYear(?Company $company, ?Branch $branch, ?Site $site, int $year): array
+    {
+        $monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+        $yearStart = sprintf('%04d-01-01', $year);
+        $yearEnd = sprintf('%04d-12-31', $year);
+
+        $query = Order::query()
+            ->where('status', 'finalized')
+            ->where('order_type', 'waste')
+            ->whereNotNull('quantity_lines')
+            ->whereRaw(
+                'DATE(COALESCE(actual_collection_date, requested_collection_date)) BETWEEN ? AND ?',
+                [$yearStart, $yearEnd]
+            )
+            ->select(['quantity_lines', 'actual_collection_date', 'requested_collection_date']);
+
+        if ($site) {
+            $query->where('site_id', $site->id);
+        } elseif ($branch) {
+            $query->where('branch_id', $branch->id);
+        } elseif ($company) {
+            $query->where('company_id', $company->id);
+        }
+
+        $user = Auth::user();
+        if ($user && $user->company_id && ! $user->can('view-reports-all')) {
+            $query->where('company_id', $user->company_id);
+        }
+
+        $byContainer = [];
+
+        foreach ($query->cursor() as $order) {
+            $lines = $order->quantity_lines;
+            if (! is_array($lines) || $lines === []) {
+                continue;
+            }
+
+            $date = $order->actual_collection_date ?? $order->requested_collection_date;
+            if (! $date) {
+                continue;
+            }
+
+            $month = (int) $date->format('n');
+            if ($month < 1 || $month > 12) {
+                continue;
+            }
+
+            $monthKey = $monthNames[$month - 1];
+
+            foreach ($lines as $line) {
+                $containerName = trim((string) ($line['container_option_name'] ?? ''));
+                if ($containerName === '') {
+                    continue;
+                }
+                $description = trim((string) ($line['description'] ?? ''));
+                $label = $description !== '' ? $containerName.' - '.$description : $containerName;
+                $qty = (int) ($line['quantity'] ?? 0);
+                if ($qty <= 0) {
+                    continue;
+                }
+
+                if (! isset($byContainer[$label])) {
+                    $byContainer[$label] = array_merge(
+                        array_combine($monthNames, array_fill(0, 12, 0)),
+                        [
+                            'name' => $label,
+                            'container_option_name' => $containerName,
+                            'description' => $description,
+                            'total' => 0,
+                        ]
+                    );
+                }
+                $byContainer[$label][$monthKey] += $qty;
+                $byContainer[$label]['total'] += $qty;
+            }
+        }
+
+        $out = array_values($byContainer);
+        usort($out, fn ($a, $b) => strcasecmp($a['name'], $b['name']));
+
+        return $out;
+    }
+
+    /**
+     * Day-by-day container quantity counts for one container type in one calendar month.
+     *
+     * @return array{container_option_name: string, description: string, label: string, month: int, year: int, days_in_month: int, counts: array<int, int>}
+     */
+    public function containerMonthDailyDetail(?Company $company, ?Branch $branch, ?Site $site, string $containerOptionName, string $description, int $month, int $year): array
+    {
+        $lastDay = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+        $start = Carbon::createFromDate($year, $month, 1)->format('Y-m-d');
+        $end = Carbon::createFromDate($year, $month, $lastDay)->format('Y-m-d');
+
+        $label = $description !== '' ? $containerOptionName.' - '.$description : $containerOptionName;
+
+        $query = Order::query()
+            ->where('status', 'finalized')
+            ->where('order_type', 'waste')
+            ->whereNotNull('quantity_lines')
+            ->whereRaw(
+                'DATE(COALESCE(actual_collection_date, requested_collection_date)) BETWEEN ? AND ?',
+                [$start, $end]
+            )
+            ->select(['quantity_lines', 'actual_collection_date', 'requested_collection_date']);
+
+        if ($site) {
+            $query->where('site_id', $site->id);
+        } elseif ($branch) {
+            $query->where('branch_id', $branch->id);
+        } elseif ($company) {
+            $query->where('company_id', $company->id);
+        }
+
+        $user = Auth::user();
+        if ($user && $user->company_id && ! $user->can('view-reports-all')) {
+            $query->where('company_id', $user->company_id);
+        }
+
+        $counts = array_fill(1, $lastDay, 0);
+
+        foreach ($query->cursor() as $order) {
+            $lines = $order->quantity_lines;
+            if (! is_array($lines) || $lines === []) {
+                continue;
+            }
+
+            $date = $order->actual_collection_date ?? $order->requested_collection_date;
+            if (! $date) {
+                continue;
+            }
+
+            $day = (int) $date->format('j');
+            if ($day < 1 || $day > $lastDay) {
+                continue;
+            }
+
+            foreach ($lines as $line) {
+                $lineName = trim((string) ($line['container_option_name'] ?? ''));
+                $lineDesc = trim((string) ($line['description'] ?? ''));
+                if ($lineName !== $containerOptionName || $lineDesc !== $description) {
+                    continue;
+                }
+                $counts[$day] += (int) ($line['quantity'] ?? 0);
+            }
+        }
+
+        return [
+            'container_option_name' => $containerOptionName,
+            'description' => $description,
+            'label' => $label,
+            'month' => $month,
+            'year' => $year,
+            'days_in_month' => $lastDay,
+            'counts' => $counts,
         ];
     }
 
