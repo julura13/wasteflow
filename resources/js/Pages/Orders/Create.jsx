@@ -59,8 +59,8 @@ export default function Create({
         
         if (dayOfWeek === 1) { // Monday -> Tuesday
             nextDate.setDate(today.getDate() + 1);
-        } else if (dayOfWeek === 5) { // Friday -> Monday
-            nextDate.setDate(today.getDate() + 3);
+        } else if (dayOfWeek === 5) { // Friday -> Saturday
+            nextDate.setDate(today.getDate() + 1);
         } else if (dayOfWeek === 6) { // Saturday -> Monday
             nextDate.setDate(today.getDate() + 2);
         } else if (dayOfWeek === 0) { // Sunday -> Monday
