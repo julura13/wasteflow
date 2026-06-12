@@ -13,7 +13,8 @@ Artisan::command('inspire', function () {
 Schedule::job(new CleanupLocalOrderMediaJob)->daily();
 
 Schedule::command('recurring-orders:create')
-    ->dailyAt('04:00')
+    ->dailyAt('13:00')
+    ->timezone('Africa/Johannesburg')
     ->withoutOverlapping()
     ->runInBackground();
 
