@@ -2,17 +2,19 @@
 
 namespace App\Console\Commands;
 
+use App\Mail\RecurringOrdersSummaryMail;
 use App\Models\Order;
 use App\Models\RecurringOrder;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 
 class CreateRecurringOrdersCommand extends Command
 {
     protected $signature = 'recurring-orders:create {--date= : Date to create orders for (Y-m-d), defaults to today}';
 
-    protected $description = 'Create pending orders from active recurring order templates for the given day (default: today). Runs daily at 04:00.';
+    protected $description = 'Create pending orders from active recurring order templates for the given day (default: today). Runs daily at 13:00 Africa/Johannesburg.';
 
     public function handle(): int
     {
@@ -20,7 +22,7 @@ class CreateRecurringOrdersCommand extends Command
             ? Carbon::createFromFormat('Y-m-d', $this->option('date'))
             : Carbon::today();
 
-        $dayName = strtolower($date->format('l')); // e.g. 'monday'
+        $dayName = strtolower($date->format('l'));
 
         $this->info("Creating recurring orders for {$date->toDateString()} ({$dayName})…");
 
@@ -29,26 +31,25 @@ class CreateRecurringOrdersCommand extends Command
             ->get()
             ->filter(fn ($t) => $t->firesOnDay($dayName));
 
-        $created = 0;
-        $skipped = 0;
+        $createdRows = [];
+        $skippedRows = [];
 
         foreach ($templates as $template) {
-            // Skip if an order was already created from this template today
             $alreadyExists = Order::where('recurring_order_id', $template->id)
                 ->whereDate('requested_collection_date', $date->toDateString())
                 ->exists();
 
             if ($alreadyExists) {
-                $skipped++;
+                $skippedRows[] = $this->templateRow($template);
                 $this->line("  Skipped #{$template->id} — order already exists for {$date->toDateString()}.");
 
                 continue;
             }
 
-            DB::transaction(function () use ($template, $date, &$created) {
+            DB::transaction(function () use ($template, $date, &$createdRows) {
                 $totalQuantity = collect($template->quantity_lines)->sum('quantity');
 
-                Order::create([
+                $order = Order::create([
                     'company_id' => $template->company_id,
                     'branch_id' => $template->branch_id,
                     'site_id' => $template->site_id,
@@ -63,12 +64,52 @@ class CreateRecurringOrdersCommand extends Command
                     'notes' => $template->notes,
                 ]);
 
-                $created++;
+                $createdRows[] = array_merge($this->templateRow($template), [
+                    'tracking_number' => $order->tracking_number,
+                ]);
             });
         }
 
-        $this->info("Done. Created: {$created}, Skipped (already existed): {$skipped}.");
+        $this->info('Done. Created: '.count($createdRows).', Skipped (already existed): '.count($skippedRows).'.');
+
+        $this->sendSummaryEmail($date->toDateString(), $createdRows, $skippedRows);
 
         return self::SUCCESS;
+    }
+
+    private function templateRow(RecurringOrder $template): array
+    {
+        $containers = collect($template->quantity_lines)
+            ->map(fn ($l) => $l['quantity'].'× '.($l['container_option_name'] ?? ''))
+            ->join(', ');
+
+        return [
+            'company' => $template->company?->name ?? '—',
+            'branch' => $template->branch?->name,
+            'site' => $template->site?->name,
+            'order_type' => $template->order_type,
+            'service_provider' => $template->serviceProvider?->name ?? '—',
+            'containers' => $containers,
+            'tracking_number' => null,
+        ];
+    }
+
+    private function sendSummaryEmail(string $date, array $created, array $skipped): void
+    {
+        $recipients = config('recurring_orders.notify_emails', []);
+
+        if (empty($recipients)) {
+            $this->line('  No RECURRING_ORDERS_NOTIFY_EMAILS configured — skipping summary email.');
+
+            return;
+        }
+
+        try {
+            Mail::to($recipients)->send(new RecurringOrdersSummaryMail($date, $created, $skipped));
+            $this->info('  Summary email sent to: '.implode(', ', $recipients));
+        } catch (\Throwable $e) {
+            $this->error('  Failed to send summary email: '.$e->getMessage());
+            report($e);
+        }
     }
 }
