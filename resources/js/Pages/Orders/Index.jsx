@@ -3,6 +3,7 @@ import DashboardLayout from '@/Layouts/DashboardLayout';
 import DataTable from '@/Components/Dashboard/DataTable';
 import { formatQuantityLineLabel } from '@/utils/orderQuantityLines';
 import { formatDateYyyyMmDd } from '@/utils/formatDateYyyyMmDd';
+import { normalizeToYmd } from '@/utils/normalizeDate';
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { Plus, Trash2, Eye, Search, Filter, Package, CheckCircle, X, FileDown, FileText, FileSpreadsheet, Pencil, ChevronDown, Loader2, Download } from 'lucide-react';
 import axios from 'axios';
@@ -1117,7 +1118,7 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
                                 type="date"
                                 id="requested_collection_from"
                                 value={requestedCollectionFrom}
-                                onChange={(e) => setRequestedCollectionFrom(e.target.value)}
+                                onChange={(e) => setRequestedCollectionFrom(normalizeToYmd(e.target.value))}
                                 className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
                             />
                         </div>
@@ -1132,7 +1133,7 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
                                 type="date"
                                 id="requested_collection_to"
                                 value={requestedCollectionTo}
-                                onChange={(e) => setRequestedCollectionTo(e.target.value)}
+                                onChange={(e) => setRequestedCollectionTo(normalizeToYmd(e.target.value))}
                                 className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
                             />
                         </div>

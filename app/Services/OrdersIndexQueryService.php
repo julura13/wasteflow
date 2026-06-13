@@ -97,10 +97,23 @@ class OrdersIndexQueryService
             return null;
         }
 
-        try {
-            return Carbon::createFromFormat('Y-m-d', $value)->startOfDay();
-        } catch (\Throwable) {
-            return null;
+        // Try formats in order of specificity
+        $formats = [
+            'Y-m-d',  // ISO: 2026-06-01 (standard browser value)
+            'Y/m/d',  // ZA/Asian display: 2026/06/01
+            'm/d/Y',  // US display: 06/01/2026
+            'd/m/Y',  // UK/ZA manual entry: 01/06/2026
+            'd-m-Y',  // DD-MM-YYYY
+        ];
+
+        foreach ($formats as $format) {
+            try {
+                return Carbon::createFromFormat($format, $value)->startOfDay();
+            } catch (\Throwable) {
+                // try next format
+            }
         }
+
+        return null;
     }
 }

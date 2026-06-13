@@ -1,6 +1,7 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { formatDateYyyyMmDd } from '@/utils/formatDateYyyyMmDd';
+import { normalizeToYmd } from '@/utils/normalizeDate';
 import { useState, useEffect, useRef } from 'react';
 import {
     PieChart,
@@ -156,8 +157,8 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
             company_id: stored.company_id || undefined,
             branch_id: stored.branch_id || undefined,
             site_id: stored.site_id || undefined,
-            from_date: stored.from_date || getDefaultFromDate(),
-            to_date: stored.to_date || getDefaultToDate(),
+            from_date: normalizeToYmd(stored.from_date) || getDefaultFromDate(),
+            to_date: normalizeToYmd(stored.to_date) || getDefaultToDate(),
         };
         router.get(route('dashboard'), params, { preserveState: false });
     }, []);
@@ -211,7 +212,8 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
     }, [data.branch_id]);
 
     const handleFilterChange = (field, value) => {
-        setData(field, value);
+        const normalized = (field === 'from_date' || field === 'to_date') ? normalizeToYmd(value) : value;
+        setData(field, normalized);
     };
 
     const yearForGradeSummary = filters.from_date ? new Date(filters.from_date).getFullYear() : new Date().getFullYear();
