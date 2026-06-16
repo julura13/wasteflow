@@ -7,9 +7,12 @@ use App\Models\RecurringOrder;
 use App\Models\ServiceProvider;
 use App\Models\Site;
 use App\Models\User;
+use App\Notifications\RecurringOrdersSummaryNotification;
 use Carbon\Carbon;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Notification;
 
 uses(RefreshDatabase::class);
 
@@ -83,4 +86,72 @@ it('does not create a duplicate order if run twice on the same day', function ()
     $this->artisan('recurring-orders:create', ['--date' => $monday->toDateString()])->assertSuccessful();
 
     expect(Order::count())->toBe(1);
+});
+
+it('sends the summary via mail when communicator is disabled', function () {
+    Notification::fake();
+    config([
+        'communicator.enabled' => false,
+        'recurring_orders.notify_emails' => ['ops@example.com'],
+        'recurring_orders.sms_to' => null,
+    ]);
+
+    $monday = Carbon::parse('next monday');
+    makeTemplate(['monday']);
+
+    $this->artisan('recurring-orders:create', ['--date' => $monday->toDateString()])->assertSuccessful();
+
+    Notification::assertSentOnDemand(
+        RecurringOrdersSummaryNotification::class,
+        fn ($notification, $channels) => in_array('mail', $channels, true)
+    );
+});
+
+it('sends the summary via communicator and an sms when both are configured', function () {
+    Notification::fake();
+    Http::fake([
+        'https://sndng.co.za/api/v1/sms-notifications' => Http::response(['ok' => true], 200),
+    ]);
+
+    config([
+        'communicator.enabled' => true,
+        'communicator.url' => 'https://sndng.co.za',
+        'communicator.token' => 'test-token',
+        'recurring_orders.notify_emails' => ['ops@example.com'],
+        'recurring_orders.sms_to' => '27817878984',
+    ]);
+
+    $monday = Carbon::parse('next monday');
+    makeTemplate(['monday']);
+
+    $this->artisan('recurring-orders:create', ['--date' => $monday->toDateString()])->assertSuccessful();
+
+    Notification::assertSentOnDemand(
+        RecurringOrdersSummaryNotification::class,
+        fn ($notification, $channels) => in_array('communicator', $channels, true)
+    );
+
+    Http::assertSent(function ($request) {
+        return $request->url() === 'https://sndng.co.za/api/v1/sms-notifications'
+            && $request['to'] === '27817878984'
+            && str_contains((string) $request['message'], 'scheduled recurring orders created');
+    });
+});
+
+it('skips the sms when no recipient is configured', function () {
+    Notification::fake();
+    Http::fake();
+
+    config([
+        'communicator.enabled' => true,
+        'recurring_orders.notify_emails' => [],
+        'recurring_orders.sms_to' => null,
+    ]);
+
+    $monday = Carbon::parse('next monday');
+    makeTemplate(['monday']);
+
+    $this->artisan('recurring-orders:create', ['--date' => $monday->toDateString()])->assertSuccessful();
+
+    Http::assertNothingSent();
 });

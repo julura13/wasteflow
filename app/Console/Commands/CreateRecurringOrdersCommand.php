@@ -2,13 +2,14 @@
 
 namespace App\Console\Commands;
 
-use App\Mail\RecurringOrdersSummaryMail;
 use App\Models\Order;
 use App\Models\RecurringOrder;
+use App\Notifications\RecurringOrdersSummaryNotification;
+use App\Services\CommunicatorSmsClient;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 
 class CreateRecurringOrdersCommand extends Command
 {
@@ -100,15 +101,46 @@ class CreateRecurringOrdersCommand extends Command
 
         if (empty($recipients)) {
             $this->line('  No RECURRING_ORDERS_NOTIFY_EMAILS configured — skipping summary email.');
+        } else {
+            $notification = new RecurringOrdersSummaryNotification($date, $created, $skipped);
+
+            foreach ($recipients as $email) {
+                try {
+                    Notification::route('mail', $email)->notify($notification);
+                } catch (\Throwable $e) {
+                    $this->error("  Failed to send summary email to {$email}: ".$e->getMessage());
+                    report($e);
+                }
+            }
+
+            $this->info('  Summary email sent to: '.implode(', ', $recipients));
+        }
+
+        $this->sendSummarySms($date, $created, $skipped);
+    }
+
+    private function sendSummarySms(string $date, array $created, array $skipped): void
+    {
+        $to = config('recurring_orders.sms_to');
+
+        if (! $to) {
+            return;
+        }
+
+        if (! config('communicator.enabled', false)) {
+            $this->line('  RECURRING_ORDERS_SMS_TO is set but COMMUNICATOR_ENABLED is false — skipping summary SMS.');
 
             return;
         }
 
+        $message = "WasteFlow: scheduled recurring orders created for {$date} — "
+            .count($created).' created, '.count($skipped).' skipped.';
+
         try {
-            Mail::to($recipients)->send(new RecurringOrdersSummaryMail($date, $created, $skipped));
-            $this->info('  Summary email sent to: '.implode(', ', $recipients));
+            app(CommunicatorSmsClient::class)->send($to, $message);
+            $this->info("  Summary SMS sent to: {$to}");
         } catch (\Throwable $e) {
-            $this->error('  Failed to send summary email: '.$e->getMessage());
+            $this->error('  Failed to send summary SMS: '.$e->getMessage());
             report($e);
         }
     }
