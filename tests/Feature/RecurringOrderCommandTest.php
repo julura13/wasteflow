@@ -44,6 +44,17 @@ function makeTemplate(array $days, bool $isActive = true): RecurringOrder
     ]);
 }
 
+it('defaults to tomorrow when no date option is given', function () {
+    $tomorrow = Carbon::tomorrow();
+    makeTemplate([strtolower($tomorrow->format('l'))]);
+
+    $this->artisan('recurring-orders:create')
+        ->assertSuccessful();
+
+    expect(Order::count())->toBe(1);
+    expect(Order::first()->requested_collection_date->toDateString())->toBe($tomorrow->toDateString());
+});
+
 it('creates a pending order for active templates matching the given day', function () {
     $monday = Carbon::parse('next monday');
     makeTemplate(['monday']);

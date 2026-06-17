@@ -15,13 +15,13 @@ class CreateRecurringOrdersCommand extends Command
 {
     protected $signature = 'recurring-orders:create {--date= : Date to create orders for (Y-m-d), defaults to today}';
 
-    protected $description = 'Create pending orders from active recurring order templates for the given day (default: today). Runs daily at 13:00 Africa/Johannesburg.';
+    protected $description = 'Create pending orders from active recurring order templates for the given day (default: tomorrow). Runs daily at 13:00 Africa/Johannesburg.';
 
     public function handle(): int
     {
         $date = $this->option('date')
             ? Carbon::createFromFormat('Y-m-d', $this->option('date'))
-            : Carbon::today();
+            : Carbon::tomorrow();
 
         $dayName = strtolower($date->format('l'));
 
