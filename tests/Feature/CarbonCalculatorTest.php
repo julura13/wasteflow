@@ -29,7 +29,7 @@ it('returns carbon calculation from posted weights', function () {
 
     $weights = [
         'paper' => 85,
-        'plasticPPHD' => 35,
+        'plasticPPHD' => 0,
         'plasticPS' => 0,
         'plasticLDPE' => 0,
         'aluminium' => 0,
@@ -40,6 +40,7 @@ it('returns carbon calculation from posted weights', function () {
         'batteries' => 0,
         'electronics' => 0,
         'tetrapak' => 0,
+        'wood' => 0,
     ];
 
     $response = $this->actingAs($user)->postJson(route('reports.carbon-calculator.calculate'), [

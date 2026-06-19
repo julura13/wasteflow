@@ -494,6 +494,7 @@ class ReportController extends Controller
             'weights.glass' => ['nullable', 'numeric', 'min:0'],
             'weights.tetrapak' => ['nullable', 'numeric', 'min:0'],
             'weights.organics' => ['nullable', 'numeric', 'min:0'],
+            'weights.wood' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $weights = array_map(fn ($v) => (float) ($v ?? 0), $validated['weights'] ?? []);
@@ -527,6 +528,7 @@ class ReportController extends Controller
             'weights.glass' => ['nullable', 'numeric', 'min:0'],
             'weights.tetrapak' => ['nullable', 'numeric', 'min:0'],
             'weights.organics' => ['nullable', 'numeric', 'min:0'],
+            'weights.wood' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $weights = array_map(fn ($v) => (float) ($v ?? 0), $validated['weights'] ?? []);
@@ -883,6 +885,7 @@ class ReportController extends Controller
             'glass' => 0.0,
             'tetrapak' => 0.0,
             'organics' => 0.0,
+            'wood' => 0.0,
         ];
 
         if ((! $company && ! $branch && ! $site) || ! $month || ! $year) {
@@ -899,6 +902,7 @@ class ReportController extends Controller
             'glass' => 0.0,
             'tetrapak' => 0.0,
             'organics' => $organicsRecovered,
+            'wood' => 0.0,
         ];
 
         foreach ($summaries as $summary) {
@@ -922,6 +926,8 @@ class ReportController extends Controller
                 $weightsKg['steel'] += $weight;
             } elseif ($wasteStreamName === 'Glass') {
                 $weightsKg['glass'] += $weight;
+            } elseif ($wasteStreamName === 'Wood') {
+                $weightsKg['wood'] += $weight;
             }
         }
 
@@ -1051,7 +1057,7 @@ class ReportController extends Controller
             ['material' => 'Batteries', 'weight' => 0, 'scope3EF' => 0, 'landfillAvoidanceEF' => 0, 'lifecycleSaving' => 0],
             ['material' => 'Electronics (E-waste)', 'weight' => 0, 'scope3EF' => 0, 'landfillAvoidanceEF' => 0, 'lifecycleSaving' => 0],
             ['material' => 'Tetrapak variants', 'weight' => 0, 'scope3EF' => 0, 'landfillAvoidanceEF' => 0, 'lifecycleSaving' => 0],
-            ['material' => 'Wood (Timber / Pallets)', 'weight' => 0, 'scope3EF' => 0, 'landfillAvoidanceEF' => 0, 'lifecycleSaving' => 0],
+            ['material' => 'Wood – Reuse (Pallets & Timber)', 'weight' => 0, 'scope3EF' => 0, 'landfillAvoidanceEF' => 0, 'lifecycleSaving' => 0],
         ];
 
         return [

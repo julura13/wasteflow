@@ -47,8 +47,8 @@ it('returns water breakdown from posted weights', function () {
             'totalKilolitres',
         ],
     ]);
-    expect($response->json('breakdown.paper.waterSavedLitres'))->toBe(180000.0);
-    expect($response->json('breakdown.totalKilolitres'))->toBe(180.0);
+    expect($response->json('breakdown.paper.waterSavedLitres'))->toEqual(180000.0);
+    expect($response->json('breakdown.totalKilolitres'))->toEqual(180.0);
 });
 
 it('forbids water calculator GET/POST without calculator permission', function () {

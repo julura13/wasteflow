@@ -362,7 +362,7 @@ class OrderWasteStreamReportingService
                 'DATE(COALESCE(actual_collection_date, requested_collection_date)) BETWEEN ? AND ?',
                 [$yearStart, $yearEnd]
             )
-            ->select(['quantity_lines', 'actual_collection_date', 'requested_collection_date']);
+            ->select(['quantity_lines', 'actual_collection_date', 'requested_collection_date', 'actual_quantity', 'estimated_quantity']);
 
         if ($site) {
             $query->where('site_id', $site->id);
@@ -396,6 +396,9 @@ class OrderWasteStreamReportingService
             }
 
             $monthKey = $monthNames[$month - 1];
+            $lineCount = count($lines);
+            $actualQty = $order->actual_quantity !== null ? (int) $order->actual_quantity : null;
+            $estimatedQty = $order->estimated_quantity !== null ? (int) $order->estimated_quantity : null;
 
             foreach ($lines as $line) {
                 $containerOptionId = (int) ($line['container_option_id'] ?? 0);
@@ -409,7 +412,7 @@ class OrderWasteStreamReportingService
                 }
                 $description = trim((string) ($line['description'] ?? ''));
                 $label = $description !== '' ? $containerName.' - '.$description : $containerName;
-                $qty = (int) ($line['quantity'] ?? 0);
+                $qty = $this->effectiveLineQty($line, $lineCount, $actualQty, $estimatedQty);
                 if ($qty <= 0) {
                     continue;
                 }
@@ -456,7 +459,7 @@ class OrderWasteStreamReportingService
                 'DATE(COALESCE(actual_collection_date, requested_collection_date)) BETWEEN ? AND ?',
                 [$start, $end]
             )
-            ->select(['quantity_lines', 'actual_collection_date', 'requested_collection_date']);
+            ->select(['quantity_lines', 'actual_collection_date', 'requested_collection_date', 'actual_quantity', 'estimated_quantity']);
 
         if ($site) {
             $query->where('site_id', $site->id);
@@ -489,13 +492,17 @@ class OrderWasteStreamReportingService
                 continue;
             }
 
+            $lineCount = count($lines);
+            $actualQty = $order->actual_quantity !== null ? (int) $order->actual_quantity : null;
+            $estimatedQty = $order->estimated_quantity !== null ? (int) $order->estimated_quantity : null;
+
             foreach ($lines as $line) {
                 $lineName = trim((string) ($line['container_option_name'] ?? ''));
                 $lineDesc = trim((string) ($line['description'] ?? ''));
                 if ($lineName !== $containerOptionName || $lineDesc !== $description) {
                     continue;
                 }
-                $counts[$day] += (int) ($line['quantity'] ?? 0);
+                $counts[$day] += $this->effectiveLineQty($line, $lineCount, $actualQty, $estimatedQty);
             }
         }
 
@@ -508,6 +515,27 @@ class OrderWasteStreamReportingService
             'days_in_month' => $lastDay,
             'counts' => $counts,
         ];
+    }
+
+    /**
+     * Resolve the effective quantity for a single quantity_line entry, using actual_quantity where available.
+     *
+     * For single-line orders the actual_quantity replaces the estimated line quantity directly.
+     * For multi-line orders where actual differs from estimated, each line is scaled proportionally.
+     */
+    private function effectiveLineQty(array $line, int $lineCount, ?int $actualQty, ?int $estimatedQty): int
+    {
+        $estimatedLineQty = (int) ($line['quantity'] ?? 0);
+
+        if ($actualQty === null || $estimatedQty === null || $estimatedQty <= 0) {
+            return $estimatedLineQty;
+        }
+
+        if ($lineCount === 1) {
+            return $actualQty;
+        }
+
+        return (int) round($estimatedLineQty * $actualQty / $estimatedQty);
     }
 
     /**

@@ -12,6 +12,7 @@ const ROWS = [
     { key: 'glass', label: 'Glass' },
     { key: 'tetrapak', label: 'Tetrapak' },
     { key: 'organics', label: 'Organics' },
+    { key: 'wood', label: 'Wood' },
 ];
 
 const initialWeights = Object.fromEntries(ROWS.map((r) => [r.key, '']));

@@ -35,3 +35,12 @@ test('includes density metadata per category', function () {
     expect($result['plastics']['densityKgPerM3'])->toBe(65.0);
     expect($result['aluminium']['densityKgPerM3'])->toBe(1300.0);
 });
+
+test('wood uses 250 kg/m3 density factor', function () {
+    $calculator = new LandfillSpaceCalculator;
+    $result = $calculator->calculate(['wood' => 1000]);
+
+    expect($result['wood']['densityKgPerM3'])->toBe(250.0);
+    expect($result['wood']['spaceSaved'])->toBe(4.0); // 1000 ÷ 250
+    expect($result['total'])->toBe(4.0);
+});

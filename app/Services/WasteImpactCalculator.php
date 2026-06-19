@@ -47,7 +47,7 @@ class WasteImpactCalculator
         'batteries' => 4.0,
         'electronics' => 6.0,
         'tetrapak' => 0.7,
-        'wood' => 0.5,
+        'wood' => 1.5,
     ];
 
     /** Landfill avoidance emission factors (kg CO₂e per kg) */
@@ -56,15 +56,15 @@ class WasteImpactCalculator
         'plasticPPHD' => 0.08,
         'plasticPS' => 0.05,
         'plasticLDPE' => 0.06,
-        'aluminium' => 9,
-        'steel' => 2,
+        'aluminium' => 0,
+        'steel' => 0,
         'glass' => 0.03,
         'foodWaste' => 0.7,
         'gardenWaste' => 0.5,
         'batteries' => 1.5,
         'electronics' => 1,
         'tetrapak' => 0.25,
-        'wood' => 1.2,
+        'wood' => 0.6,
     ];
 
     /** Other offsets factors (divided by 25 in calculation) */

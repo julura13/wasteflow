@@ -16,7 +16,8 @@ class WaterCalculator
         'steel' => 50.0,
         'glass' => 25.0,
         'tetrapak' => 400.0,
-        'organics' => 45.0,
+        'organics' => 2.0,
+        'wood' => 30.0,
     ];
 
     /**

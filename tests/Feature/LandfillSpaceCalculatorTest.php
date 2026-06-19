@@ -46,8 +46,8 @@ it('returns landfill breakdown from posted weights', function () {
             'total',
         ],
     ]);
-    expect($response->json('breakdown.paper.spaceSaved'))->toBe(1.0);
-    expect($response->json('breakdown.total'))->toBe(1.0);
+    expect($response->json('breakdown.paper.spaceSaved'))->toEqual(1.0);
+    expect($response->json('breakdown.total'))->toEqual(1.0);
 });
 
 it('forbids landfill space calculator GET/POST without calculator permission', function () {

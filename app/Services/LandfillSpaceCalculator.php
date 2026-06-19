@@ -18,6 +18,7 @@ class LandfillSpaceCalculator
         'glass' => 400.0,
         'tetrapak' => 150.0,
         'organics' => 500.0,
+        'wood' => 250.0,
     ];
 
     /**

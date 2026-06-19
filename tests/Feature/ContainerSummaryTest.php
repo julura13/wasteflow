@@ -250,6 +250,102 @@ it('returns orders for a day filtered by container type', function () {
     expect($orders[0]['quantity'])->toBe(2);
 });
 
+it('uses actual_quantity instead of estimated line quantity for single-line orders', function () {
+    $user = User::factory()->create();
+    $company = Company::create(['name' => 'Actual Co', 'is_active' => true]);
+    $branch = Branch::create(['company_id' => $company->id, 'name' => 'B', 'is_active' => true]);
+    $provider = ServiceProvider::create(['name' => 'P', 'is_active' => true]);
+
+    $bin = makeContainerOption('240l Wheelie Bin', 'waste', showInSummary: true);
+
+    // Estimated 5, actual 3 — actual should win
+    Order::create([
+        'company_id' => $company->id, 'branch_id' => $branch->id,
+        'service_provider_id' => $provider->id, 'created_by' => $user->id,
+        'order_type' => 'waste', 'status' => 'finalized',
+        'requested_collection_date' => Carbon::parse('2026-06-10'),
+        'actual_collection_date' => Carbon::parse('2026-06-10'),
+        'estimated_quantity' => 5,
+        'actual_quantity' => 3,
+        'quantity_lines' => [
+            ['container_option_id' => $bin->id, 'container_option_name' => $bin->name, 'description' => '', 'quantity' => 5],
+        ],
+    ]);
+
+    $rows = app(OrderWasteStreamReportingService::class)->containerSummaryForYear($company, null, null, 2026);
+
+    expect($rows)->toHaveCount(1);
+    expect($rows[0]['jun'])->toBe(3);
+    expect($rows[0]['total'])->toBe(3);
+});
+
+it('proportionally scales multi-line quantities when actual differs from estimated', function () {
+    $user = User::factory()->create();
+    $company = Company::create(['name' => 'Scale Co', 'is_active' => true]);
+    $branch = Branch::create(['company_id' => $company->id, 'name' => 'B', 'is_active' => true]);
+    $provider = ServiceProvider::create(['name' => 'P', 'is_active' => true]);
+
+    $bags = makeContainerOption('Loose Bags', 'waste', showInSummary: true);
+    $cage = makeContainerOption('8m³ Cage', 'waste', showInSummary: true);
+
+    // Estimated: 16 bags + 4 cages = 20; actual = 10 (half)
+    Order::create([
+        'company_id' => $company->id, 'branch_id' => $branch->id,
+        'service_provider_id' => $provider->id, 'created_by' => $user->id,
+        'order_type' => 'waste', 'status' => 'finalized',
+        'requested_collection_date' => Carbon::parse('2026-06-10'),
+        'actual_collection_date' => Carbon::parse('2026-06-10'),
+        'estimated_quantity' => 20,
+        'actual_quantity' => 10,
+        'quantity_lines' => [
+            ['container_option_id' => $bags->id, 'container_option_name' => $bags->name, 'description' => '', 'quantity' => 16],
+            ['container_option_id' => $cage->id, 'container_option_name' => $cage->name, 'description' => '', 'quantity' => 4],
+        ],
+    ]);
+
+    $rows = app(OrderWasteStreamReportingService::class)->containerSummaryForYear($company, null, null, 2026);
+
+    $bagsRow = collect($rows)->firstWhere('name', 'Loose Bags');
+    $cageRow = collect($rows)->firstWhere('name', '8m³ Cage');
+
+    // 16 * 10/20 = 8, 4 * 10/20 = 2
+    expect($bagsRow['jun'])->toBe(8);
+    expect($cageRow['jun'])->toBe(2);
+});
+
+it('uses actual_quantity in daily detail for single-line orders', function () {
+    $user = User::factory()->create();
+    $user->assignRole('admin');
+
+    $company = Company::create(['name' => 'Daily Actual Co', 'is_active' => true]);
+    $branch = Branch::create(['company_id' => $company->id, 'name' => 'B', 'is_active' => true]);
+    $provider = ServiceProvider::create(['name' => 'P', 'is_active' => true]);
+
+    Order::create([
+        'company_id' => $company->id, 'branch_id' => $branch->id,
+        'service_provider_id' => $provider->id, 'created_by' => $user->id,
+        'order_type' => 'waste', 'status' => 'finalized',
+        'requested_collection_date' => Carbon::parse('2026-06-05'),
+        'actual_collection_date' => Carbon::parse('2026-06-05'),
+        'estimated_quantity' => 10,
+        'actual_quantity' => 7,
+        'quantity_lines' => [
+            ['container_option_name' => '240l Wheelie Bin', 'description' => 'General Waste', 'quantity' => 10],
+        ],
+    ]);
+
+    $response = $this->actingAs($user)->getJson(route('dashboard.container-month-detail', [
+        'container_option_name' => '240l Wheelie Bin',
+        'description' => 'General Waste',
+        'month' => 6,
+        'year' => 2026,
+        'company_id' => $company->id,
+    ]));
+
+    $response->assertOk();
+    expect($response->json('counts.5'))->toBe(7);
+});
+
 it('returns container summary via dashboard controller', function () {
     $user = User::factory()->create();
     $user->assignRole('admin');

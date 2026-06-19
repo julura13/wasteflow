@@ -83,7 +83,8 @@
             text-align: center;
             padding: 12px 16px;
         }
-        .env-page-header .t1 { font-size: 14px; font-weight: bold; color: #111827; }
+        .env-page-header .env-scope-name { font-size: 16px; font-weight: bold; color: #111827; }
+        .env-page-header .t1 { font-size: 11px; font-weight: 600; color: #1f2937; margin-top: 1px; }
         .env-page-header .t2 { font-size: 10px; font-weight: 600; color: #1f2937; margin-top: 2px; }
         .env-page-header .t3 { font-size: 9px; color: #374151; margin-top: 2px; }
 
@@ -194,7 +195,30 @@
         .carbon-explain strong { color: #111827; }
         .carbon-explain .num { color: #1d4ed8; font-weight: bold; }
 
-        .methodology { background: #f9fafb; padding: 10px; font-size: 8.5px; color: #4b5563; line-height: 1.5; }
+        .carbon-landfill-note {
+            background: #fefce8;
+            border: 1px solid #fde68a;
+            border-radius: 2px;
+            padding: 7px 10px;
+            font-size: 7.5px;
+            font-weight: 600;
+            line-height: 1.45;
+            color: #1f2937;
+            text-align: center;
+            margin-top: 6px;
+        }
+        .carbon-methodology-note {
+            border: 1px solid #d1d5db;
+            border-radius: 2px;
+            padding: 7px 10px;
+            font-size: 7.5px;
+            line-height: 1.45;
+            color: #1f2937;
+            text-align: center;
+            margin-top: 6px;
+        }
+
+        .methodology { background: #ffffff; padding: 10px; font-size: 8.5px; color: #4b5563; line-height: 1.5; }
         .methodology h3 { font-size: 9px; color: #1F3A5F; margin-bottom: 5px; }
         .methodology p { margin-bottom: 4px; }
         .methodology .foot { border-top: 1px solid #d1d5db; margin-top: 5px; padding-top: 5px; font-weight: 600; color: #374151; }
@@ -575,28 +599,35 @@
 
         <div class="carbon-explain">
             <p>
-                <strong>Total Upstream (Scope 3) Avoided (kg CO₂e): </strong>
+                <strong>Material Recovery Impact (kg CO₂e): </strong>
                 <span class="num">{{ number_format($materialsCO2eTotals['scope3EF'] ?? 0, 2) }}</span>
-                — Indirect carbon emissions avoided through diversion of waste to recycling streams.
+                — (Avoided emissions from reduced virgin material production)
             </p>
             <p>
-                <strong>Total Landfill Emissions Avoided (kg CO₂e): </strong>
+                <strong>Landfill Diversion Impact (kg CO₂e): </strong>
                 <span class="num">{{ number_format($materialsCO2eTotals['landfillAvoidanceEF'] ?? 0, 2) }}</span>
-                — Carbon emissions avoided by preventing waste from being disposed to landfill.
+                — (Avoided methane emissions from diversion of biodegradable waste from landfill)
             </p>
             <p>
-                <strong>Total Lifecycle Carbon Avoided (kg CO₂e): </strong>
+                <strong>Total Environmental Impact (kg CO₂e): </strong>
                 <span class="num">{{ number_format($materialsCO2eTotals['lifecycleSaving'] ?? 0, 2) }}</span>
-                — Combined total of upstream and landfill emissions avoided.
             </p>
+        </div>
+
+        <div class="carbon-landfill-note">
+            Landfill emissions primarily reflect the methane generation potential of biodegradable materials. Inert materials such as metals and glass have negligible associated emissions and are therefore assigned low or zero landfill emission factors.
+        </div>
+
+        <div class="carbon-methodology-note">
+            Carbon emission factors and avoided emission assumptions are based on internationally recognised standards, including DEFRA (UK Government), the EPA WARM model, and peer-reviewed global life cycle assessment (LCA) datasets (e.g. Ecoinvent). Calculations are aligned with best practice under the GHG Protocol, ensuring consistency, transparency, and the avoidance of double counting.
         </div>
     </div>
 
     {{-- Page 3: environmental impact (matches ResourceIntelligence) --}}
     <div class="page border-sep">
         <div class="env-page-header">
+            <div class="env-scope-name">{{ $reportData['scopeDisplayName'] ?? '—' }}</div>
             <div class="t1">WasteFlow Resource Intelligence Report</div>
-            <div class="t2">Environmental Impact &amp; Resource Saving</div>
             <div class="t3">{{ $reportData['reportingPeriodLabel'] ?? '' }}</div>
         </div>
 
@@ -714,6 +745,20 @@
             </div>
         @endif
 
+        {{-- Landfill Space Saved + Diversion Rate tiles --}}
+        <table style="width:100%; border-collapse:separate; border-spacing:6px 0; margin-top:8px; table-layout:fixed;">
+            <tr>
+                <td style="width:50%; background:#f0fdfa; border:1px solid #99f6e4; border-radius:4px; padding:8px 6px; text-align:center; vertical-align:middle;">
+                    <div style="font-size:7px; color:#374151; margin-bottom:3px;">Landfill Space Saved</div>
+                    <div style="font-size:13px; font-weight:bold; color:#0d9488;">{{ number_format($summary['landfillSpaceSaved'] ?? 0, 2) }} m³</div>
+                </td>
+                <td style="width:50%; background:#faf5ff; border:1px solid #d8b4fe; border-radius:4px; padding:8px 6px; text-align:center; vertical-align:middle;">
+                    <div style="font-size:7px; color:#374151; margin-bottom:3px;">Diversion Rate</div>
+                    <div style="font-size:13px; font-weight:bold; color:#7c3aed;">{{ number_format($summary['divertedFromLandfill'] ?? 0, 1) }}%</div>
+                </td>
+            </tr>
+        </table>
+
         <div class="methodology methodology-merged">
             <h3>Methodology &amp; Data Sources</h3>
             <p>This report has been prepared using verified waste data collected on-site and processed through the WasteFlow Resource Intelligence Portal.</p>
@@ -730,7 +775,7 @@
                     </div>
                 @endif
                 <div class="brand-line"></div>
-                <div class="brand-tagline"><strong>WASTEFLOW</strong> – Sustainable Waste Management</div>
+                <div class="brand-tagline">Sustainable Waste Management</div>
             </div>
         </div>
     </div>

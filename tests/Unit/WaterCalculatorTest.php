@@ -14,6 +14,7 @@ test('matches docs/Water Calculator.xlsx sample rows', function () {
         'glass' => 900,
         'tetrapak' => 55,
         'organics' => 45,
+        'wood' => 0,
     ];
 
     $result = $calculator->calculate($weights);
@@ -24,9 +25,20 @@ test('matches docs/Water Calculator.xlsx sample rows', function () {
     expect($result['steel']['waterSavedLitres'])->toBe(2250.0);
     expect($result['glass']['waterSavedLitres'])->toBe(22500.0);
     expect($result['tetrapak']['waterSavedLitres'])->toBe(22000.0);
-    expect($result['organics']['waterSavedLitres'])->toBe(2025.0);
-    expect($result['totalLitres'])->toBe(317775.0);
-    expect($result['totalKilolitres'])->toBe(317.78);
+    expect($result['organics']['waterSavedLitres'])->toBe(90.0); // 45 kg × 2 L/kg
+    expect($result['wood']['waterSavedLitres'])->toBe(0.0);
+    expect($result['totalLitres'])->toBe(315840.0);
+    expect($result['totalKilolitres'])->toBe(315.84);
+});
+
+test('wood (reuse only) uses 30 L/kg factor', function () {
+    $calculator = new WaterCalculator;
+
+    $result = $calculator->calculate(['wood' => 100]);
+
+    expect($result['wood']['factorLPerKg'])->toBe(30.0);
+    expect($result['wood']['waterSavedLitres'])->toBe(3000.0);
+    expect($result['totalKilolitres'])->toBe(3.0);
 });
 
 test('exposes spreadsheet factors', function () {

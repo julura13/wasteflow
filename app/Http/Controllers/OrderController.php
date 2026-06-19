@@ -78,11 +78,15 @@ class OrderController extends Controller
             $request->input('requested_collection_to'),
         );
 
+        $validSortColumns = ['company'];
+        $sortBy = in_array($request->input('sort_by'), $validSortColumns, true) ? $request->input('sort_by') : null;
+        $sortDir = $request->input('sort_dir') === 'desc' ? 'desc' : 'asc';
+
         $user = auth()->user();
         $query = $this->ordersIndexQueryService->buildForUser($user, $request->input('search'), $status, $orderTypes, $requestedCollectionFrom, $requestedCollectionTo, $serviceProviderIds);
+        $query = $this->ordersIndexQueryService->applyIndexOrdering($query, $sortBy, $sortDir);
 
         $orders = $query
-            ->orderBy('created_at', 'desc')
             ->paginate(100)
             ->withQueryString();
 
@@ -105,6 +109,8 @@ class OrderController extends Controller
                 'service_provider_ids' => $serviceProviderIds,
                 'requested_collection_from' => $requestedCollectionFrom,
                 'requested_collection_to' => $requestedCollectionTo,
+                'sort_by' => $sortBy,
+                'sort_dir' => $sortDir,
             ],
             'serviceProviders' => $serviceProviders,
             'userCompanyRoles' => $userCompanyRoles,

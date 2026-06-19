@@ -29,12 +29,12 @@ class EnvironmentalImpactService
         ],
         'aluminium' => [
             'scope3' => 10.0,
-            'landfill_avoidance' => 9.0,
+            'landfill_avoidance' => 0.0,
             'other_offsets' => 12.0,
         ],
         'steel' => [
             'scope3' => 2.0,
-            'landfill_avoidance' => 2.0,
+            'landfill_avoidance' => 0.0,
             'other_offsets' => 2.0,
         ],
         'glass' => [
@@ -48,8 +48,8 @@ class EnvironmentalImpactService
             'other_offsets' => 1.0,
         ],
         'wood' => [
-            'scope3' => 0.5,
-            'landfill_avoidance' => 1.2,
+            'scope3' => 1.5,
+            'landfill_avoidance' => 0.6,
             'other_offsets' => 0.8,
         ],
     ];
@@ -213,7 +213,7 @@ class EnvironmentalImpactService
             'steel' => 'Steel',
             'glass' => 'Glass',
             'tetrapak' => 'Tetrapak variants',
-            'wood' => 'Wood (Timber / Pallets)',
+            'wood' => 'Wood – Reuse (Pallets & Timber)',
             default => 'Other',
         };
     }

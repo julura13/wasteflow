@@ -11,6 +11,7 @@ import SearchableDropdown from '@/Components/SearchableDropdown';
 import {
     Cloud, Droplet, TreePine, Zap,
     Truck, Fuel, CarFront, Eye, ChevronDown, ChevronUp,
+    Layers, Percent,
 } from 'lucide-react';
 
 const HEADER_BG = '#9AD993';
@@ -519,20 +520,29 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                 {/* Carbon summary box */}
                                 <div className={`border border-green-300 rounded bg-green-50 space-y-2 leading-relaxed ${printMode ? 'p-3 text-[11px]' : 'p-4 text-xs'}`}>
                                     <p>
-                                        <strong>Total Upstream (Scope 3) Avoided (kg CO₂e): </strong>
+                                        <strong>Material Recovery Impact (kg CO₂e): </strong>
                                         <span className="text-green-700 font-bold">{fmtN(materialsCO2eTotals.scope3EF)}</span>
-                                        {' '}— Indirect carbon emissions avoided through diversion of waste to recycling streams.
+                                        {' '}— (Avoided emissions from reduced virgin material production)
                                     </p>
                                     <p>
-                                        <strong>Total Landfill Emissions Avoided (kg CO₂e): </strong>
+                                        <strong>Landfill Diversion Impact (kg CO₂e): </strong>
                                         <span className="text-green-700 font-bold">{fmtN(materialsCO2eTotals.landfillAvoidanceEF)}</span>
-                                        {' '}— Carbon emissions avoided by preventing waste from being disposed to landfill.
+                                        {' '}— (Avoided methane emissions from diversion of biodegradable waste from landfill)
                                     </p>
                                     <p>
-                                        <strong>Total Lifecycle Carbon Avoided (kg CO₂e): </strong>
+                                        <strong>Total Environmental Impact (kg CO₂e): </strong>
                                         <span className="text-green-700 font-bold">{fmtN(materialsCO2eTotals.lifecycleSaving)}</span>
-                                        {' '}— Combined total of upstream and landfill emissions avoided.
                                     </p>
+                                </div>
+
+                                {/* Landfill note */}
+                                <div className={`rounded bg-yellow-50 border border-yellow-300 text-center font-semibold leading-snug ${printMode ? 'p-3 text-[10px]' : 'p-4 text-xs'}`}>
+                                    Landfill emissions primarily reflect the methane generation potential of biodegradable materials. Inert materials such as metals and glass have negligible associated emissions and are therefore assigned low or zero landfill emission factors.
+                                </div>
+
+                                {/* Methodology note */}
+                                <div className={`rounded border border-gray-300 text-center leading-snug ${printMode ? 'p-3 text-[10px]' : 'p-4 text-xs'}`}>
+                                    Carbon emission factors and avoided emission assumptions are based on internationally recognised standards, including DEFRA (UK Government), the EPA WARM model, and peer-reviewed global life cycle assessment (LCA) datasets (e.g. Ecoinvent). Calculations are aligned with best practice under the GHG Protocol, ensuring consistency, transparency, and the avoidance of double counting.
                                 </div>
                             </div>
                         </div>
@@ -540,8 +550,8 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                         {/* ── PAGE 3: ENVIRONMENTAL IMPACT ─────────────── */}
                         <div className="border-t-4 border-gray-100 print-page-break">
                             <div className="text-center py-4 px-6" style={{ backgroundColor: HEADER_BG }}>
-                                <div className="text-xl font-bold text-gray-900">WasteFlow Resource Intelligence Report</div>
-                                <div className="text-base font-semibold text-gray-800">Environmental Impact &amp; Resource Saving</div>
+                                <div className="text-2xl font-bold text-gray-900">{rd.scopeDisplayName}</div>
+                                <div className="text-base font-semibold text-gray-800">WasteFlow Resource Intelligence Report</div>
                                 <div className="text-sm text-gray-700">{rd.reportingPeriodLabel}</div>
                             </div>
 
@@ -660,13 +670,31 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                                 </ResponsiveContainer>
                                             )}
                                         </div>
+
+                                        {/* Landfill Space Saved + Diversion Rate tiles */}
+                                        <div className="mt-4 grid grid-cols-2 gap-3">
+                                            <div className="text-center p-3 bg-teal-50 rounded-lg border border-teal-100">
+                                                <Layers className="w-8 h-8 mx-auto mb-1 text-teal-600" />
+                                                <p className="text-xs text-gray-600 mb-1">Landfill Space Saved</p>
+                                                <p className="text-lg font-bold text-teal-600">
+                                                    {fmtN(summary.landfillSpaceSaved ?? 0)} m³
+                                                </p>
+                                            </div>
+                                            <div className="text-center p-3 bg-purple-50 rounded-lg border border-purple-100">
+                                                <Percent className="w-8 h-8 mx-auto mb-1 text-purple-600" />
+                                                <p className="text-xs text-gray-600 mb-1">Diversion Rate</p>
+                                                <p className="text-lg font-bold text-purple-600">
+                                                    {fmtOneDecimal(summary.divertedFromLandfill ?? 0)}%
+                                                </p>
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
                             </div>
                         </div>
 
                         {/* ── PAGE 4: METHODOLOGY — client: keep content; add logo at end; readable copy ── */}
-                        <div className="border-t-4 border-gray-100 p-4 sm:p-5 bg-gray-50 print-page-break">
+                        <div className="border-t-4 border-gray-100 p-4 sm:p-5 bg-white print-page-break">
                             <div className="font-bold text-sm mb-3" style={{ color: NAVY }}>Methodology &amp; Data Sources</div>
                             <div className="space-y-2.5 text-sm text-gray-600 leading-relaxed max-w-4xl">
                                 <p>This report has been prepared using verified waste data collected on-site and processed through the WasteFlow Resource Intelligence Portal.</p>
@@ -692,8 +720,7 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                     className="mt-4 max-w-2xl px-2 text-center text-base sm:text-lg leading-snug"
                                     style={{ color: BRAND_BLUE }}
                                 >
-                                    <span className="font-bold">WASTEFLOW</span>
-                                    <span className="font-normal"> – Sustainable Waste Management</span>
+                                    Sustainable Waste Management
                                 </p>
                             </div>
                         </div>

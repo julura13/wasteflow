@@ -595,28 +595,30 @@
     </table>
 
     <div class="summary-box" style="margin-top: 20px;">
-        <h3>Summary</h3>
         <div class="summary-row">
-            <div class="summary-label">Total Upstream (Scope 3) Avoided (kg CO₂e)</div>
+            <div class="summary-label">Material Recovery Impact (kg CO₂e)</div>
             <div class="summary-value">{{ number_format($impact['total_scope3'], 2) }}</div>
         </div>
-        <div style="font-size: 8px; color: #666; margin-top: 5px;">Indirect carbon emissions avoided from sending waste for recycling.</div>
+        <div style="font-size: 8px; color: #666; margin-top: 5px;">(Avoided emissions from reduced virgin material production)</div>
 
         <div class="summary-row" style="margin-top: 15px;">
-            <div class="summary-label">Total Landfill Emissions Avoided (kg CO₂e)</div>
+            <div class="summary-label">Landfill Diversion Impact (kg CO₂e)</div>
             <div class="summary-value">{{ number_format($impact['total_landfill_avoidance'], 2) }}</div>
         </div>
-        <div style="font-size: 8px; color: #666; margin-top: 5px;">Carbon emission savings due to landfill avoidance.</div>
+        <div style="font-size: 8px; color: #666; margin-top: 5px;">(Avoided methane emissions from diversion of biodegradable waste from landfill)</div>
 
         <div class="summary-row" style="margin-top: 15px; font-weight: bold;">
-            <div class="summary-label">Total Lifecycle Carbon Avoided (kg CO₂e)</div>
+            <div class="summary-label">Total Environmental Impact (kg CO₂e)</div>
             <div class="summary-value">{{ number_format($impact['total_lifecycle_saving'], 2) }}</div>
         </div>
-        <div style="font-size: 8px; color: #666; margin-top: 5px;">Sum of upstream and landfill avoided (same basis as Carbon Calculator workbook).</div>
 
-        <p style="margin-top: 24px; text-align: center; font-weight: bold; font-size: 10px; line-height: 1.45; color: #111827; padding: 0 8px;">
+        <div style="margin-top: 16px; background: #fefce8; border: 1px solid #fde68a; border-radius: 2px; padding: 8px 10px; font-size: 8px; font-weight: 600; text-align: center; line-height: 1.45; color: #1f2937;">
+            Landfill emissions primarily reflect the methane generation potential of biodegradable materials. Inert materials such as metals and glass have negligible associated emissions and are therefore assigned low or zero landfill emission factors.
+        </div>
+
+        <div style="margin-top: 8px; border: 1px solid #d1d5db; border-radius: 2px; padding: 8px 10px; font-size: 8px; text-align: center; line-height: 1.45; color: #1f2937;">
             Carbon emission factors and avoided emission assumptions are based on internationally recognised standards, including DEFRA (UK Government), the EPA WARM model, and peer-reviewed global life cycle assessment (LCA) datasets (e.g. Ecoinvent). Calculations are aligned with best practice under the GHG Protocol, ensuring consistency, transparency, and the avoidance of double counting.
-        </p>
+        </div>
     </div>
     @else
     <div style="text-align: center; margin-top: 100px; color: #999;">

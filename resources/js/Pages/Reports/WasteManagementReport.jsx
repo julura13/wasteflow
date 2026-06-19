@@ -406,31 +406,37 @@ export default function WasteManagementReport() {
                     </table>
 
                     {/* Summary Box */}
-                    <div className="mt-6 border-2 border-gray-800 bg-blue-100 rounded p-4">
-                        <h3 className="text-center font-bold text-lg mb-3">Summary</h3>
-                        <div className="space-y-2 text-sm">
-                            <p>
-                                <span className="font-semibold">Total Upstream (Scope 3) Avoided (kg CO₂e)</span>{' '}
-                                <span className="font-bold text-red-600">
-                                    {reportData.materialsCO2e.reduce((sum, m) => sum + m.scope3EF, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                </span>{' '}
-                                Indirect carbon emissions avoided from sending waste for recycling.
-                            </p>
-                            <p>
-                                <span className="font-semibold">Total Landfill Emissions Avoided (kg CO₂e)</span>{' '}
-                                <span className="font-bold text-red-600">
-                                    {reportData.materialsCO2e.reduce((sum, m) => sum + m.landfillAvoidanceEF, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                </span>{' '}
-                                Carbon emission savings due to landfill avoidance.
-                            </p>
-                            <p>
-                                <span className="font-semibold">Total Lifecycle Carbon Avoided (kg CO₂e)</span>{' '}
-                                <span className="font-bold text-red-600">
-                                    {reportData.materialsCO2e.reduce((sum, m) => sum + m.lifecycleSaving, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                </span>{' '}
-                                Sum of upstream and landfill avoided (spreadsheet column H).
-                            </p>
-                        </div>
+                    <div className="mt-6 border border-green-300 bg-green-50 rounded p-4 space-y-2 text-sm">
+                        <p>
+                            <span className="font-semibold">Material Recovery Impact (kg CO₂e): </span>
+                            <span className="font-bold text-green-700">
+                                {reportData.materialsCO2e.reduce((sum, m) => sum + m.scope3EF, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>{' '}
+                            — (Avoided emissions from reduced virgin material production)
+                        </p>
+                        <p>
+                            <span className="font-semibold">Landfill Diversion Impact (kg CO₂e): </span>
+                            <span className="font-bold text-green-700">
+                                {reportData.materialsCO2e.reduce((sum, m) => sum + m.landfillAvoidanceEF, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>{' '}
+                            — (Avoided methane emissions from diversion of biodegradable waste from landfill)
+                        </p>
+                        <p>
+                            <span className="font-semibold">Total Environmental Impact (kg CO₂e): </span>
+                            <span className="font-bold text-green-700">
+                                {reportData.materialsCO2e.reduce((sum, m) => sum + m.lifecycleSaving, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                        </p>
+                    </div>
+
+                    {/* Landfill note */}
+                    <div className="mt-3 rounded bg-yellow-50 border border-yellow-300 p-4 text-sm font-semibold text-center leading-snug">
+                        Landfill emissions primarily reflect the methane generation potential of biodegradable materials. Inert materials such as metals and glass have negligible associated emissions and are therefore assigned low or zero landfill emission factors.
+                    </div>
+
+                    {/* Methodology note */}
+                    <div className="mt-3 rounded border border-gray-300 p-4 text-sm text-center leading-snug">
+                        Carbon emission factors and avoided emission assumptions are based on internationally recognised standards, including DEFRA (UK Government), the EPA WARM model, and peer-reviewed global life cycle assessment (LCA) datasets (e.g. Ecoinvent). Calculations are aligned with best practice under the GHG Protocol, ensuring consistency, transparency, and the avoidance of double counting.
                     </div>
                 </div>
             </div>

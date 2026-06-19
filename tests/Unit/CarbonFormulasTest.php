@@ -9,10 +9,10 @@ test('CarbonCalculator wood row matches workbook (100 kg example)', function () 
 
     $result = $calculator->calculateMaterialsCO2e(['wood' => 100]);
 
-    $woodRow = collect($result['materials'])->firstWhere('material', 'Wood (Timber / Pallets)');
-    expect($woodRow['scope3EF'])->toBe(50.0)
-        ->and($woodRow['landfillAvoidanceEF'])->toBe(120.0)
-        ->and($woodRow['lifecycleSaving'])->toBe(170.0)
+    $woodRow = collect($result['materials'])->firstWhere('material', 'Wood – Reuse (Pallets & Timber)');
+    expect($woodRow['scope3EF'])->toBe(150.0)       // 100 × 1.5
+        ->and($woodRow['landfillAvoidanceEF'])->toBe(60.0)  // 100 × 0.6
+        ->and($woodRow['lifecycleSaving'])->toBe(210.0)
         ->and($woodRow['recyclingSubstitutionFactor'])->toBe(0.8);
 });
 
@@ -38,13 +38,13 @@ test('CarbonCalculator matches spreadsheet lifecycle formula', function () {
     $result = $calculator->calculateMaterialsCO2e($weightsByMaterialKey);
 
     expect($result['totals']['scope3EF'])->toBe(423.2);
-    expect($result['totals']['landfillAvoidanceEF'])->toBe(254.16);
-    expect($result['totals']['lifecycleSaving'])->toBe(677.36);
+    expect($result['totals']['landfillAvoidanceEF'])->toBe(96.16);  // aluminium (0) + steel (0) now zero
+    expect($result['totals']['lifecycleSaving'])->toBe(519.36);
     expect($result['materials'][0]['material'])->toBe('Paper');
     expect($result['materials'][0]['recyclingSubstitutionFactor'])->toBe(1.3);
     expect($result['materials'][11]['material'])->toBe('Tetrapak variants');
     expect($result['materials'][11]['recyclingSubstitutionFactor'])->toBe(1.0);
-    expect($result['materials'][12]['material'])->toBe('Wood (Timber / Pallets)');
+    expect($result['materials'][12]['material'])->toBe('Wood – Reuse (Pallets & Timber)');
     expect($result['materials'][12]['recyclingSubstitutionFactor'])->toBe(0.8);
 });
 
@@ -65,8 +65,8 @@ test('WasteImpactCalculator lifecycle excludes other offsets', function () {
     $lifecycle = $calculator->calculateLifecycleCarbonSaved($categoryWeights);
 
     // lifecycle = paper + plastics + aluminium + steel + glass + foodWaste + tetrapak
-    // = 108.80 + 72.80 + 228.00 + 100.00 + 1.98 + 7.20 + 9.50
-    expect($lifecycle)->toBe(528.28);
+    // = 108.80 + 72.80 + 120.00 + 50.00 + 1.98 + 7.20 + 9.50 (aluminium/steel landfill now 0)
+    expect($lifecycle)->toBe(370.28);
 });
 
 test('EnvironmentalImpactService lifecycle excludes other offsets', function () {
@@ -134,5 +134,6 @@ test('EnvironmentalImpactService lifecycle excludes other offsets', function () 
     $impact = $service->calculateImpact($streams);
 
     // lifecycle_saving must equal scope3 + landfill_avoidance only (no other_offsets)
-    expect($impact['total_lifecycle_saving'])->toBe(578.36);
+    // aluminium and steel landfill avoidance factors now 0, so -108 and -50 from old total
+    expect($impact['total_lifecycle_saving'])->toBe(420.36);
 });

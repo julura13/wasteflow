@@ -5,7 +5,7 @@ import { formatQuantityLineLabel } from '@/utils/orderQuantityLines';
 import { formatDateYyyyMmDd } from '@/utils/formatDateYyyyMmDd';
 import { normalizeToYmd } from '@/utils/normalizeDate';
 import { useMemo, useState, useEffect, useCallback } from 'react';
-import { Plus, Trash2, Eye, Search, Filter, Package, CheckCircle, X, FileDown, FileText, FileSpreadsheet, Pencil, ChevronDown, Loader2, Download } from 'lucide-react';
+import { Plus, Trash2, Eye, Search, Filter, Package, CheckCircle, X, FileDown, FileText, FileSpreadsheet, Pencil, ChevronDown, ChevronUp, Loader2, Download } from 'lucide-react';
 import axios from 'axios';
 
 export default function OrdersIndex({ orders, filters, serviceProviders = [], userCompanyRoles = {} }) {
@@ -114,6 +114,8 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
     );
     const [filterModalOpen, setFilterModalOpen] = useState(false);
     const [spSearch, setSpSearch] = useState('');
+    const [sortBy, setSortBy] = useState(filters.sort_by || '');
+    const [sortDir, setSortDir] = useState(filters.sort_dir || 'asc');
 
     useEffect(() => {
         setRequestedCollectionFrom(filters.requested_collection_from || '');
@@ -123,6 +125,17 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
     useEffect(() => {
         setStatusFilter(filters.status ?? '');
     }, [filters.status]);
+
+    const handleColumnSort = (column) => {
+        const newDir = sortBy === column && sortDir === 'asc' ? 'desc' : 'asc';
+        setSortBy(column);
+        setSortDir(newDir);
+        router.get('/orders', {
+            ...buildFilterParams(),
+            sort_by: column,
+            sort_dir: newDir,
+        }, { preserveState: true, replace: true });
+    };
 
     const columns = useMemo(() => [
         {
@@ -155,7 +168,19 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
         },
         {
             accessorKey: 'site.name',
-            header: 'Company / Branch / Site',
+            enableSorting: false,
+            header: () => (
+                <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); handleColumnSort('company'); }}
+                    className="flex items-center gap-1 uppercase tracking-wider"
+                >
+                    Company / Branch / Site
+                    {sortBy === 'company'
+                        ? (sortDir === 'asc' ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />)
+                        : <div className="h-3.5 w-3.5" />}
+                </button>
+            ),
             cell: ({ row }) => {
                 const order = row.original;
                 const site = order.site;
@@ -358,7 +383,7 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
                 );
             },
         },
-    ], [user, userCompanyRoles]);
+    ], [user, userCompanyRoles, sortBy, sortDir]);
 
     const deleteReasonOptions = [
         { value: 'incorrect_order', label: 'Incorrect order' },
@@ -415,6 +440,10 @@ export default function OrdersIndex({ orders, filters, serviceProviders = [], us
         const spIds = spIdsOverride ?? selectedServiceProviderIds;
         if (spIds.length > 0) {
             params.service_provider_ids = spIds;
+        }
+        if (sortBy) {
+            params.sort_by = sortBy;
+            params.sort_dir = sortDir;
         }
         return params;
     };

@@ -56,6 +56,30 @@ class OrdersIndexQueryService
     }
 
     /**
+     * Apply server-side ordering for the orders index page.
+     *
+     * Supported $sortBy values: 'company' (sorts by company → branch → site name).
+     * Falls back to newest-first when $sortBy is null or unrecognised.
+     */
+    public function applyIndexOrdering(Builder $query, ?string $sortBy, string $sortDir): Builder
+    {
+        $dir = $sortDir === 'desc' ? 'desc' : 'asc';
+
+        if ($sortBy === 'company') {
+            return $query
+                ->leftJoin('companies as idx_companies', 'orders.company_id', '=', 'idx_companies.id')
+                ->leftJoin('branches as idx_branches', 'orders.branch_id', '=', 'idx_branches.id')
+                ->leftJoin('sites as idx_sites', 'orders.site_id', '=', 'idx_sites.id')
+                ->select('orders.*')
+                ->orderBy('idx_companies.name', $dir)
+                ->orderBy('idx_branches.name', $dir)
+                ->orderBy('idx_sites.name', $dir);
+        }
+
+        return $query->orderByDesc('orders.created_at');
+    }
+
+    /**
      * Sort exports by service provider (A–Z), then by newest order first. Unassigned providers sort last.
      */
     public function applyExportOrdering(Builder $query): Builder
