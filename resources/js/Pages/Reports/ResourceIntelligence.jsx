@@ -62,7 +62,7 @@ function useIsPrintMedia() {
 }
 
 /** Donut using ResponsiveContainer – matches dashboard pattern exactly. */
-function ClassificationDonut({ title, percentage, fill, totalKg, printMode = false }) {
+function ClassificationDonut({ title, totalLabel, percentage, fill, totalKg, printMode = false }) {
     const pct = Math.min(100, Math.max(0, parseFloat(percentage) || 0));
     const pieData = [
         { value: pct, fill },
@@ -107,7 +107,7 @@ function ClassificationDonut({ title, percentage, fill, totalKg, printMode = fal
                 </div>
             </div>
             <div className="text-center p-1.5 bg-gray-50 rounded">
-                <p className="text-xs text-gray-500">Total {title.charAt(0) + title.slice(1).toLowerCase()}</p>
+                <p className="text-xs text-gray-500">{totalLabel ?? `Total ${title.charAt(0) + title.slice(1).toLowerCase()}`}</p>
                 <p className="text-sm font-semibold text-gray-900">{fmtN(totalKg)} kg</p>
             </div>
         </div>
@@ -370,7 +370,8 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                             {/* Classification doughnuts + landfill (bottom of page 1) — matches PDF */}
                             <div className="space-y-8 pt-1">
                                 <div className="grid grid-cols-1 items-start gap-2 sm:grid-cols-3 sm:gap-3 sm:items-start">
-                                    <ClassificationDonut title="AVOIDANCE"
+                                    <ClassificationDonut title="CIRCULARITY (REUSE)"
+                                        totalLabel="Circularity (Reuse)"
                                         percentage={ct.avoidance?.percentage ?? 0}
                                         fill={CLASS_COLORS.avoidance}
                                         totalKg={ct.avoidance?.total ?? 0}

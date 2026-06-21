@@ -411,10 +411,10 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
 
     const renderClassificationDonut = (title, percentage, fill) => {
         const renderTotalRowBelowChart = () => {
-            if (title === 'AVOIDANCE') {
+            if (title === 'CIRCULARITY (REUSE)') {
                 return (
                     <div className="text-center p-1.5 bg-gray-50 dark:bg-gray-700/50 rounded">
-                        <p className="text-xs text-gray-600 dark:text-gray-400">Total Avoidance</p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">Circularity (Reuse)</p>
                         <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{formatNumber(classificationData.avoidance.total)} kg</p>
                     </div>
                 );
@@ -1031,7 +1031,7 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
                     {/* Classification donut charts: row 1 avoidance / recycling / recovery; row 2 disposal / diverted / landfill saved */}
                     <div className="lg:col-span-6 flex flex-col gap-4">
                         <div className="grid grid-cols-1 sm:grid-cols-3">
-                            {renderClassificationDonut('AVOIDANCE', classificationData.avoidance.percentage, classificationColors.avoidance)}
+                            {renderClassificationDonut('CIRCULARITY (REUSE)', classificationData.avoidance.percentage, classificationColors.avoidance)}
                             {renderClassificationDonut('RECYCLING', classificationData.recycling.percentage, classificationColors.recycling)}
                             {renderClassificationDonut('RECOVERY', classificationData.recovery.percentage, classificationColors.recovery)}
                         </div>

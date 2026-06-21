@@ -328,7 +328,7 @@
             'page1_donut_diverted' => (float) ($ct['diverted']['percentage'] ?? 0),
         ];
         $donutTitleByKey = [
-            'page1_donut_avoidance' => 'AVOIDANCE',
+            'page1_donut_avoidance' => 'CIRCULARITY (REUSE)',
             'page1_donut_recycling' => 'RECYCLING',
             'page1_donut_recovery' => 'RECOVERY',
             'page1_donut_disposal' => 'DISPOSAL',
@@ -421,7 +421,7 @@
                         </div>
                         <div class="donut-box">
                             @if($dk === 'page1_donut_avoidance')
-                                <div class="lbl">Total Avoidance</div>
+                                <div class="lbl">Circularity (Reuse)</div>
                                 <div class="val">{{ number_format($ct['avoidance']['total'] ?? 0, 2) }} kg</div>
                             @elseif($dk === 'page1_donut_recycling')
                                 <div class="lbl">Total Recycling</div>
