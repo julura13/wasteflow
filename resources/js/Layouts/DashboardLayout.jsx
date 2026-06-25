@@ -281,7 +281,7 @@ export default function DashboardLayout({ children }) {
                             <button
                                 type="button"
                                 onClick={toggleTheme}
-                                className="-m-2.5 p-2.5 text-gray-400 hover:text-gray-500 dark:text-gray-300 dark:hover:text-gray-100"
+                                className="-m-2.5 p-2.5 flex items-center text-gray-400 hover:text-gray-500 dark:text-gray-300 dark:hover:text-gray-100"
                                 aria-label="Toggle theme"
                                 title="Toggle theme"
                             >
@@ -292,7 +292,7 @@ export default function DashboardLayout({ children }) {
                                 <button
                                     type="button"
                                     onClick={() => setNotificationsOpen(!notificationsOpen)}
-                                    className="-m-2.5 p-2.5 text-gray-400 hover:text-gray-500 dark:text-gray-300 dark:hover:text-gray-100 relative"
+                                    className="-m-2.5 p-2.5 flex items-center text-gray-400 hover:text-gray-500 dark:text-gray-300 dark:hover:text-gray-100 relative"
                                     aria-label="View notifications"
                                 >
                                     <Bell className="h-6 w-6" />
