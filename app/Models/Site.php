@@ -7,10 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Laravel\Scout\Searchable;
 
 class Site extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, Searchable, SoftDeletes;
 
     protected $fillable = [
         'branch_id',
@@ -31,6 +32,34 @@ class Site extends Model
             'longitude' => 'decimal:8',
             'is_active' => 'boolean',
         ];
+    }
+
+    public function searchableAs(): string
+    {
+        return 'sites';
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function toSearchableArray(): array
+    {
+        $this->loadMissing(['branch', 'branch.company']);
+
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'email' => $this->email,
+            'phone' => $this->phone,
+            'contact_person' => $this->contact_person,
+            'branch_name' => $this->branch?->name,
+            'company_name' => $this->branch?->company?->name,
+        ];
+    }
+
+    public function shouldBeSearchable(): bool
+    {
+        return (bool) $this->is_active;
     }
 
     /**
@@ -57,7 +86,7 @@ class Site extends Model
         if ($this->branch_id && $this->branch && $this->branch->company) {
             return $this->branch->company->name;
         }
-        
+
         return null;
     }
 

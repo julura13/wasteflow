@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Order;
 use App\Models\RecurringOrder;
+use App\Models\User;
 use App\Notifications\RecurringOrdersSummaryNotification;
 use App\Services\CommunicatorSmsClient;
 use Carbon\Carbon;
@@ -114,6 +115,12 @@ class CreateRecurringOrdersCommand extends Command
             }
 
             $this->info('  Summary email sent to: '.implode(', ', $recipients));
+        }
+
+        $notification = $notification ?? new RecurringOrdersSummaryNotification($date, $created, $skipped);
+        $admins = User::role('admin')->get();
+        if ($admins->isNotEmpty()) {
+            Notification::send($admins, $notification);
         }
 
         $this->sendSummarySms($date, $created, $skipped);

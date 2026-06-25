@@ -32,11 +32,37 @@ class DatabaseBackupStatusNotification extends Notification
      */
     public function via(object $notifiable): array
     {
+        if ($notifiable instanceof \App\Models\User) {
+            return ['database'];
+        }
+
         if (config('communicator.enabled', false)) {
             return ['communicator'];
         }
 
         return ['mail'];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function toDatabase(object $notifiable): array
+    {
+        return [
+            'kind' => 'backup',
+            'badge_type' => match ($this->phase) {
+                DatabaseBackupPhase::Succeeded => 'success',
+                DatabaseBackupPhase::Failed => 'error',
+                DatabaseBackupPhase::Started => 'info',
+            },
+            'badge_label' => strtolower($this->phase->name),
+            'title' => $this->greetingLine(),
+            'description' => match ($this->phase) {
+                DatabaseBackupPhase::Succeeded => 'Completed in '.number_format((float) $this->durationSeconds, 2).'s — '.$this->remotePath,
+                DatabaseBackupPhase::Failed => $this->errorMessage,
+                DatabaseBackupPhase::Started => null,
+            },
+        ];
     }
 
     /**

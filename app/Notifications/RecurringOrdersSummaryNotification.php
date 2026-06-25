@@ -26,11 +26,31 @@ class RecurringOrdersSummaryNotification extends Notification
      */
     public function via(object $notifiable): array
     {
+        if ($notifiable instanceof \App\Models\User) {
+            return ['database'];
+        }
+
         if (config('communicator.enabled', false)) {
             return ['communicator'];
         }
 
         return ['mail'];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function toDatabase(object $notifiable): array
+    {
+        $count = count($this->created);
+
+        return [
+            'kind' => 'recurring_orders',
+            'badge_type' => 'info',
+            'badge_label' => 'schedule',
+            'title' => $count === 1 ? '1 recurring order created' : "{$count} recurring orders created",
+            'description' => 'For '.$this->date.($this->skipped !== [] ? ' — '.count($this->skipped).' skipped' : ''),
+        ];
     }
 
     public function toMail(object $notifiable): Mailable

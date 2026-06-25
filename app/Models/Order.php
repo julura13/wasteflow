@@ -8,10 +8,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Laravel\Scout\Searchable;
 
 class Order extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, Searchable, SoftDeletes;
 
     protected $fillable = [
         'tracking_number',
@@ -89,6 +90,32 @@ class Order extends Model
             // Delete media (documents) and their files from storage.
             $order->media()->delete();
         });
+    }
+
+    public function searchableAs(): string
+    {
+        return 'orders';
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function toSearchableArray(): array
+    {
+        $this->loadMissing(['company', 'branch', 'site']);
+
+        return [
+            'id' => $this->id,
+            'tracking_number' => $this->tracking_number,
+            'slip_number' => $this->slip_number,
+            'status' => $this->status,
+            'order_type' => $this->order_type,
+            'requested_collection_date' => $this->requested_collection_date?->toDateString(),
+            'company_name' => $this->company?->name,
+            'branch_name' => $this->branch?->name,
+            'site_name' => $this->site?->name,
+            'notes' => $this->notes,
+        ];
     }
 
     public static function generateTrackingNumber(string $orderType = 'waste'): string

@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
+            'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
@@ -29,6 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
                         'message' => $e->getMessage() ?: 'This action is unauthorized.',
                     ])->toResponse($request)->setStatusCode(403);
                 }
+
                 return response()->json([
                     'message' => $e->getMessage() ?: 'This action is unauthorized.',
                     'status' => 403,

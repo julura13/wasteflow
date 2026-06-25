@@ -7,10 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Laravel\Scout\Searchable;
 
 class Branch extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, Searchable, SoftDeletes;
 
     protected $fillable = [
         'company_id',
@@ -27,6 +28,33 @@ class Branch extends Model
         return [
             'is_active' => 'boolean',
         ];
+    }
+
+    public function searchableAs(): string
+    {
+        return 'branches';
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function toSearchableArray(): array
+    {
+        $this->loadMissing('company');
+
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'email' => $this->email,
+            'phone' => $this->phone,
+            'contact_person' => $this->contact_person,
+            'company_name' => $this->company?->name,
+        ];
+    }
+
+    public function shouldBeSearchable(): bool
+    {
+        return (bool) $this->is_active;
     }
 
     /**

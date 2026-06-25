@@ -2,6 +2,8 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\ReleaseNote;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -58,6 +60,44 @@ class HandleInertiaRequests extends Middleware
             'mapbox' => [
                 'access_token' => config('services.mapbox.access_token'),
             ],
+            'bellNotifications' => fn () => $user && $user->isAdmin()
+                ? $this->bellNotifications($user)
+                : [],
         ];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function bellNotifications(User $user): array
+    {
+        $releaseNotes = ReleaseNote::query()
+            ->unreadByUser($user->id)
+            ->orderByDesc('released_at')
+            ->get()
+            ->map(fn ($note) => [
+                'id' => (string) $note->id,
+                'kind' => 'release_note',
+                'badge_type' => $note->type,
+                'badge_label' => $note->type,
+                'title' => $note->title,
+                'description' => $note->description,
+                'read_url' => "/release-notes/{$note->id}/read",
+            ]);
+
+        $systemNotifications = $user->unreadNotifications()
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(fn ($n) => [
+                'id' => $n->id,
+                'kind' => $n->data['kind'] ?? 'system',
+                'badge_type' => $n->data['badge_type'] ?? 'info',
+                'badge_label' => $n->data['badge_label'] ?? 'system',
+                'title' => $n->data['title'] ?? 'Notification',
+                'description' => $n->data['description'] ?? null,
+                'read_url' => "/notifications/{$n->id}/read",
+            ]);
+
+        return $releaseNotes->concat($systemNotifications)->values()->all();
     }
 }

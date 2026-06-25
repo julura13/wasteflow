@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, usePage, router } from '@inertiajs/react';
+import CommandPalette from '@/Components/CommandPalette';
 import {
     LayoutDashboard,
     Users,
@@ -38,15 +39,34 @@ export default function DashboardLayout({ children }) {
             return false;
         }
     });
+    const [searchOpen, setSearchOpen] = useState(false);
     const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+    const [notificationsOpen, setNotificationsOpen] = useState(false);
     const [isDark, setIsDark] = useState(false);
     const profileDropdownRef = useRef(null);
+    const notificationsRef = useRef(null);
+    const bellNotifications = usePage().props.bellNotifications ?? [];
 
-    // Close dropdown when clicking outside
+    // Open command palette with ⌘K / Ctrl+K
+    useEffect(() => {
+        function handleKeydown(e) {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                setSearchOpen((v) => !v);
+            }
+        }
+        document.addEventListener('keydown', handleKeydown);
+        return () => document.removeEventListener('keydown', handleKeydown);
+    }, []);
+
+    // Close dropdowns when clicking outside
     useEffect(() => {
         function handleClickOutside(event) {
             if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target)) {
                 setProfileDropdownOpen(false);
+            }
+            if (notificationsRef.current && !notificationsRef.current.contains(event.target)) {
+                setNotificationsOpen(false);
             }
         }
 
@@ -120,6 +140,7 @@ export default function DashboardLayout({ children }) {
     const navigation = allNavItems.filter((item) => hasAny(item.permissions));
 
     return (
+        <>
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
             {/* Mobile sidebar */}
             <div className={`fixed inset-0 z-50 lg:hidden print:hidden ${sidebarOpen ? 'block' : 'hidden'}`}>
@@ -244,23 +265,17 @@ export default function DashboardLayout({ children }) {
 
                     <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
                         <div className="relative flex flex-1 items-center">
-                            <div className="w-full">
-                                <label htmlFor="search" className="sr-only">
-                                    Search
-                                </label>
-                                <div className="relative">
-                                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                                        <Search className="h-5 w-5 text-gray-400 dark:text-gray-500" />
-                                    </div>
-                                    <input
-                                        id="search"
-                                        name="search"
-                                        className="block w-full rounded-md border-0 py-1.5 pl-10 pr-3 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6 dark:bg-gray-700 dark:text-gray-100 dark:ring-gray-600 dark:placeholder:text-gray-400"
-                                        placeholder="Search..."
-                                        type="search"
-                                    />
-                                </div>
-                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setSearchOpen(true)}
+                                className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-sm text-gray-400 ring-1 ring-inset ring-gray-300 hover:ring-gray-400 dark:ring-gray-600 dark:hover:ring-gray-500 dark:text-gray-500 transition-colors"
+                            >
+                                <Search className="h-4 w-4 flex-shrink-0" />
+                                <span className="flex-1 text-left">Search…</span>
+                                <kbd className="hidden sm:inline-flex items-center gap-0.5 text-[11px] font-mono text-gray-400 dark:text-gray-500">
+                                    <span className="text-xs">⌘</span>K
+                                </kbd>
+                            </button>
                         </div>
                         <div className="flex items-center gap-x-4 lg:gap-x-6">
                             <button
@@ -272,12 +287,79 @@ export default function DashboardLayout({ children }) {
                             >
                                 {isDark ? <Sun className="h-6 w-6" /> : <Moon className="h-6 w-6" />}
                             </button>
-                            <button
-                                type="button"
-                                className="-m-2.5 p-2.5 text-gray-400 hover:text-gray-500 dark:text-gray-300 dark:hover:text-gray-100"
-                            >
-                                <Bell className="h-6 w-6" />
-                            </button>
+                            {/* Notifications */}
+                            <div className="relative" ref={notificationsRef}>
+                                <button
+                                    type="button"
+                                    onClick={() => setNotificationsOpen(!notificationsOpen)}
+                                    className="-m-2.5 p-2.5 text-gray-400 hover:text-gray-500 dark:text-gray-300 dark:hover:text-gray-100 relative"
+                                    aria-label="View notifications"
+                                >
+                                    <Bell className="h-6 w-6" />
+                                    {bellNotifications.length > 0 && (
+                                        <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary-500/80 text-[10px] font-bold text-white leading-none">
+                                            {bellNotifications.length > 9 ? '9+' : bellNotifications.length}
+                                        </span>
+                                    )}
+                                </button>
+
+                                {notificationsOpen && (
+                                    <div className="absolute right-0 z-20 mt-2 w-80 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 dark:bg-gray-800 dark:ring-gray-700">
+                                        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                                            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Notifications</h3>
+                                            {bellNotifications.length > 0 && (
+                                                <button
+                                                    onClick={() => {
+                                                        router.post('/release-notes/read-all');
+                                                        setNotificationsOpen(false);
+                                                    }}
+                                                    className="text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+                                                >
+                                                    Mark all as read
+                                                </button>
+                                            )}
+                                        </div>
+                                        {bellNotifications.length === 0 ? (
+                                            <p className="px-4 py-6 text-sm text-center text-gray-500 dark:text-gray-400">You're all caught up!</p>
+                                        ) : (
+                                            <div className="max-h-80 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700">
+                                                {bellNotifications.map((note) => (
+                                                    <div key={note.id} className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-750">
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                                                                    note.badge_type === 'feature' || note.badge_type === 'success'
+                                                                        ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
+                                                                        : note.badge_type === 'bugfix' || note.badge_type === 'error'
+                                                                        ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
+                                                                        : 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400'
+                                                                }`}>
+                                                                    {note.badge_label}
+                                                                </span>
+                                                                {note.kind === 'release_note' && note.version && (
+                                                                    <span className="text-[11px] text-gray-400 dark:text-gray-500">v{note.version}</span>
+                                                                )}
+                                                            </div>
+                                                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{note.title}</p>
+                                                            {note.description && (
+                                                                <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{note.description}</p>
+                                                            )}
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => router.post(note.read_url)}
+                                                            className="flex-shrink-0 mt-0.5 text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-300"
+                                                            title="Dismiss"
+                                                        >
+                                                            <X className="h-4 w-4" />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
 
                             {/* Profile dropdown */}
                             <div className="relative" ref={profileDropdownRef}>
@@ -343,5 +425,8 @@ export default function DashboardLayout({ children }) {
                 </main>
             </div>
         </div>
+
+        <CommandPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
+        </>
     );
 }

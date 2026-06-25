@@ -5,10 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Laravel\Scout\Searchable;
 
 class ServiceProvider extends Model
 {
-    use HasFactory;
+    use HasFactory, Searchable;
 
     protected $fillable = [
         'name',
@@ -29,6 +30,32 @@ class ServiceProvider extends Model
             'types' => 'array',
             'is_active' => 'boolean',
         ];
+    }
+
+    public function searchableAs(): string
+    {
+        return 'service_providers';
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function toSearchableArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'email' => $this->email,
+            'phone' => $this->phone,
+            'registration_number' => $this->registration_number,
+            'contact_person' => $this->contact_person,
+            'slip_number_prefix' => $this->slip_number_prefix,
+        ];
+    }
+
+    public function shouldBeSearchable(): bool
+    {
+        return (bool) $this->is_active;
     }
 
     /**

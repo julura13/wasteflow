@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Enums\DatabaseBackupPhase;
+use App\Models\User;
 use App\Notifications\DatabaseBackupStatusNotification;
 use App\Services\DatabaseWasabiBackupService;
 use Illuminate\Console\Command;
@@ -84,12 +85,13 @@ class BackupDatabaseCommand extends Command
      */
     private function sendNotifications(array $emails, DatabaseBackupStatusNotification $notification): void
     {
-        if ($emails === []) {
-            return;
-        }
-
         foreach ($emails as $email) {
             Notification::route('mail', $email)->notify($notification);
+        }
+
+        $admins = User::role('admin')->get();
+        if ($admins->isNotEmpty()) {
+            Notification::send($admins, $notification);
         }
     }
 

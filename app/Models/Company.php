@@ -9,10 +9,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Laravel\Scout\Searchable;
 
 class Company extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, Searchable, SoftDeletes;
 
     protected $fillable = [
         'name',
@@ -33,6 +34,31 @@ class Company extends Model
             'is_active' => 'boolean',
             'rebate_percentage' => 'decimal:2',
         ];
+    }
+
+    public function searchableAs(): string
+    {
+        return 'companies';
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function toSearchableArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'email' => $this->email,
+            'phone' => $this->phone,
+            'registration_number' => $this->registration_number,
+            'contact_person' => $this->contact_person,
+        ];
+    }
+
+    public function shouldBeSearchable(): bool
+    {
+        return (bool) $this->is_active;
     }
 
     public function defaultWasteServiceProvider(): BelongsTo

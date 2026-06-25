@@ -285,4 +285,98 @@ protected function isAccessible(User $user, ?string $path = null): bool
 - Always use existing Tailwind conventions; check project patterns before adding new ones.
 - IMPORTANT: Always use `search-docs` tool for version-specific Tailwind CSS documentation and updated code examples. Never rely on training data.
 - IMPORTANT: Activate `tailwindcss-development` every time you're working with a Tailwind CSS or styling-related task.
+
+=== search rules ===
+
+# Global Search (Meilisearch + Laravel Scout)
+
+This application uses Meilisearch for full-text global search, powered by Laravel Scout.
+
+## Architecture
+
+- **Driver:** `SCOUT_DRIVER=meilisearch` (env)
+- **Models indexed:** Order, Company, User, Branch, Site, ContainerOption, WasteStream, Grade
+- **Entry point:** `GET /search?q=` → `GlobalSearchController` → Meilisearch multi-search API
+- **UI:** `CommandPalette` React component (⌘K / Ctrl+K), lives in `resources/js/Components/CommandPalette.jsx`
+- **Each model** defines `searchableAs()`, `toSearchableArray()`, and `shouldBeSearchable()`
+
+## Adding a new searchable model
+
+1. Add `use Laravel\Scout\Searchable;` and the trait to the model
+2. Define `searchableAs()` (index name), `toSearchableArray()`, and optionally `shouldBeSearchable()`
+3. Add the index to the `queries` array in `GlobalSearchController`
+4. Add the mapping in `mapHit()` and add a `CATEGORIES` entry in `CommandPalette.jsx`
+5. Run `vendor/bin/sail artisan scout:import "App\Models\YourModel"` to index existing records
+
+## Keeping the index in sync
+
+Scout observers automatically sync records on create/update/delete. Soft-deleted models are removed from the index.
+
+## Local development
+
+Meilisearch runs in Docker via Sail. No extra setup needed beyond `vendor/bin/sail up -d`.
+Env: `MEILISEARCH_HOST=http://meilisearch:7700`, `MEILISEARCH_KEY=masterKey`
+
+## Production (Laravel Forge)
+
+Meilisearch must be installed on the Forge server. Two options:
+
+**Option A — Install on the Forge server (recommended):**
+1. SSH into the server and run: `curl -L https://install.meilisearch.com | sh`
+2. Move to `/usr/local/bin`: `sudo mv ./meilisearch /usr/local/bin/`
+3. In Forge → Server → Daemons, create a daemon:
+   - Command: `meilisearch --master-key YOUR_KEY --db-path /var/www/meilisearch-data`
+   - User: `forge`
+4. Set env vars in Forge site environment: `MEILISEARCH_HOST=http://127.0.0.1:7700`, `MEILISEARCH_KEY=YOUR_KEY`
+5. After deploy, run: `php artisan scout:import "App\Models\Order"` (and other models) via Forge deploy script
+
+**Option B — Meilisearch Cloud (free tier):**
+1. Sign up at cloud.meilisearch.com (free, no credit card for the free tier)
+2. Create a project, copy the host URL and API key
+3. Set in Forge: `MEILISEARCH_HOST=https://your-project.meilisearch.io`, `MEILISEARCH_KEY=your_api_key`
+4. Run the scout:import commands
+
+=== release-notes rules ===
+
+# Release Notes Convention
+
+This application has a `release_notes` table that powers the in-app notification bell for admin users. Every time a feature is added, a bug is fixed, or a meaningful improvement is made, you MUST insert a corresponding `ReleaseNote` record.
+
+## When to add a release note
+
+Add one whenever you:
+- Add a new feature or page
+- Fix a bug that affected user-visible behaviour
+- Make a notable improvement (performance, UX, reporting, etc.)
+
+## How to add a release note
+
+At the end of your implementation, insert a row using Laravel tinker or a seeder. Use the current `app.version` from `config/app.php` as the version.
+
+```bash
+vendor/bin/sail artisan tinker --no-interaction <<'EOF'
+\App\Models\ReleaseNote::create([
+    'version' => '1.x.x',         // match config('app.version')
+    'type'    => 'feature',       // feature | bugfix | improvement
+    'title'   => 'Short title',   // shown in the bell dropdown
+    'description' => 'Optional longer explanation shown beneath the title.',
+    'released_at' => now(),
+]);
+EOF
+```
+
+## Types
+
+| type | use for |
+|------|---------|
+| `feature` | new functionality |
+| `bugfix` | fixing broken behaviour |
+| `improvement` | performance, UX, or reporting enhancements |
+
+## Notes
+
+- Admin users see unread notes as a badge count on the bell icon in the top nav.
+- They can dismiss individual notes (×) or mark all as read.
+- Non-admin users never see release notes.
+- The `ReleaseNote` model lives at `app/Models/ReleaseNote.php`; the controller at `app/Http/Controllers/ReleaseNoteController.php`.
 </laravel-boost-guidelines>

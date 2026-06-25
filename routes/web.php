@@ -198,6 +198,14 @@ Route::middleware(['auth', 'verified', 'permission:manage-settings'])->prefix('s
     Route::resource('facilities', FacilityController::class)->only(['index', 'store', 'update', 'destroy']);
 });
 
+Route::middleware('auth')->get('/search', App\Http\Controllers\GlobalSearchController::class)->name('search');
+
+Route::middleware(['auth', 'role:admin'])->group(function () {
+    Route::post('/release-notes/{releaseNote}/read', [App\Http\Controllers\ReleaseNoteController::class, 'markAsRead'])->name('release-notes.read');
+    Route::post('/release-notes/read-all', [App\Http\Controllers\ReleaseNoteController::class, 'markAllAsRead'])->name('release-notes.read-all');
+    Route::post('/notifications/{notificationId}/read', [App\Http\Controllers\ReleaseNoteController::class, 'markNotificationAsRead'])->name('notifications.read');
+});
+
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
