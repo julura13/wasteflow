@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, usePage, router } from '@inertiajs/react';
+import { Dialog } from '@headlessui/react';
 import CommandPalette from '@/Components/CommandPalette';
 import {
     LayoutDashboard,
@@ -42,6 +43,7 @@ export default function DashboardLayout({ children }) {
     const [searchOpen, setSearchOpen] = useState(false);
     const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
     const [notificationsOpen, setNotificationsOpen] = useState(false);
+    const [selectedNote, setSelectedNote] = useState(null);
     const [isDark, setIsDark] = useState(false);
     const profileDropdownRef = useRef(null);
     const notificationsRef = useRef(null);
@@ -324,7 +326,11 @@ export default function DashboardLayout({ children }) {
                                         ) : (
                                             <div className="max-h-80 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700">
                                                 {bellNotifications.map((note) => (
-                                                    <div key={note.id} className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-750">
+                                                    <div
+                                                        key={note.id}
+                                                        className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-750 cursor-pointer"
+                                                        onClick={() => { setNotificationsOpen(false); setSelectedNote(note); }}
+                                                    >
                                                         <div className="flex-1 min-w-0">
                                                             <div className="flex items-center gap-2 mb-1">
                                                                 <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
@@ -347,7 +353,7 @@ export default function DashboardLayout({ children }) {
                                                         </div>
                                                         <button
                                                             type="button"
-                                                            onClick={() => router.post(note.read_url)}
+                                                            onClick={(e) => { e.stopPropagation(); router.post(note.read_url); }}
                                                             className="flex-shrink-0 mt-0.5 text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-300"
                                                             title="Dismiss"
                                                         >
@@ -425,6 +431,59 @@ export default function DashboardLayout({ children }) {
                 </main>
             </div>
         </div>
+
+        {/* Notification detail modal */}
+        <Dialog open={!!selectedNote} onClose={() => setSelectedNote(null)} className="relative z-50">
+            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" aria-hidden="true" />
+            <div className="fixed inset-0 flex items-center justify-center p-4">
+                <Dialog.Panel className="w-full max-w-md rounded-xl bg-white dark:bg-gray-900 shadow-2xl ring-1 ring-black/10 dark:ring-white/10">
+                    {selectedNote && (
+                        <>
+                            <div className="px-6 pt-6 pb-4">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                                        selectedNote.badge_type === 'feature' || selectedNote.badge_type === 'success'
+                                            ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
+                                            : selectedNote.badge_type === 'bugfix' || selectedNote.badge_type === 'error'
+                                            ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
+                                            : 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400'
+                                    }`}>
+                                        {selectedNote.badge_label}
+                                    </span>
+                                    {selectedNote.kind === 'release_note' && selectedNote.version && (
+                                        <span className="text-xs text-gray-400 dark:text-gray-500">v{selectedNote.version}</span>
+                                    )}
+                                </div>
+                                <Dialog.Title className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                                    {selectedNote.title}
+                                </Dialog.Title>
+                                {selectedNote.description && (
+                                    <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                                        {selectedNote.description}
+                                    </p>
+                                )}
+                            </div>
+                            <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100 dark:border-gray-800">
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedNote(null)}
+                                    className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+                                >
+                                    Close
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => { router.post(selectedNote.read_url); setSelectedNote(null); }}
+                                    className="px-3 py-1.5 text-sm rounded-md bg-primary-600 text-white hover:bg-primary-700"
+                                >
+                                    Mark as read
+                                </button>
+                            </div>
+                        </>
+                    )}
+                </Dialog.Panel>
+            </div>
+        </Dialog>
 
         <CommandPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
         </>
