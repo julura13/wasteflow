@@ -19,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
+            'impersonate' => \Lab404\Impersonate\Middleware\ProtectFromImpersonation::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -32,6 +32,7 @@ export default function DashboardLayout({ children }) {
     const { url, props } = usePage();
     const version = props.app?.version ?? '';
     const user = usePage().props.auth.user;
+    const impersonating = usePage().props.impersonating ?? false;
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
         try {
@@ -422,6 +423,19 @@ export default function DashboardLayout({ children }) {
                         </div>
                     </div>
                 </div>
+
+                {/* Impersonation banner */}
+                {impersonating && (
+                    <div className="bg-amber-400 text-amber-900 px-4 py-2 flex items-center justify-between text-sm font-medium print:hidden">
+                        <span>You are impersonating <strong>{user?.name}</strong> ({user?.email}). Actions taken here are real.</span>
+                        <button
+                            onClick={() => router.post('/users/impersonate/leave')}
+                            className="ml-4 px-3 py-1 rounded bg-amber-900 text-amber-50 hover:bg-amber-800 text-xs font-semibold"
+                        >
+                            Stop impersonating
+                        </button>
+                    </div>
+                )}
 
                 {/* Main content area */}
                 <main className="py-2">

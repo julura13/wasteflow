@@ -94,6 +94,13 @@ class ReleaseNotesSeeder extends Seeder
                 'description' => 'The Summary of Orders for Collection PDF now displays the full WasteFlow logo instead of the icon-only version.',
                 'released_at' => now(),
             ],
+            [
+                'version' => '0.4.0',
+                'type' => 'feature',
+                'title' => 'User impersonation for admins',
+                'description' => 'Admins can now impersonate any non-admin user from the Edit User page to test their access and view the app as them. A yellow banner is shown while impersonating with a one-click stop button.',
+                'released_at' => now(),
+            ],
         ];
 
         foreach ($notes as $note) {

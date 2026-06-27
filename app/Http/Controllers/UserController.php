@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
+use Lab404\Impersonate\Services\ImpersonateManager;
 use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
@@ -150,6 +151,38 @@ class UserController extends Controller
 
         return redirect()->route('users.index')
             ->with('success', 'User updated successfully.');
+    }
+
+    /**
+     * Begin impersonating the given user (admin only, cannot impersonate yourself).
+     */
+    public function impersonate(Request $request, User $user, ImpersonateManager $manager)
+    {
+        $admin = $request->user();
+
+        abort_if(! $admin->canImpersonate(), 403);
+        abort_if(! $user->canBeImpersonated(), 403);
+
+        $manager->take($admin, $user);
+
+        ActivityLog::log('user_impersonated', "Admin {$admin->email} started impersonating {$user->email}", $user, [
+            'admin_id' => $admin->id,
+            'impersonated_id' => $user->id,
+        ]);
+
+        return redirect()->route('dashboard');
+    }
+
+    /**
+     * Stop impersonating and restore the original admin session.
+     */
+    public function leaveImpersonation(ImpersonateManager $manager)
+    {
+        abort_if(! $manager->isImpersonating(), 403);
+
+        $manager->leave();
+
+        return redirect()->route('users.index');
     }
 
     /**

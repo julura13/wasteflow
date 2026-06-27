@@ -1,6 +1,6 @@
-import { Head, useForm, Link } from '@inertiajs/react';
+import { Head, useForm, Link, router, usePage } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, UserCheck } from 'lucide-react';
 
 function formatRoleLabel(name) {
     return name
@@ -10,6 +10,7 @@ function formatRoleLabel(name) {
 }
 
 export default function UsersEdit({ user, roles, companies }) {
+    const authUser = usePage().props.auth.user;
     const currentRoleNames = user?.roles?.map((r) => r.name) ?? [];
     const { data, setData, put, processing, errors } = useForm({
         name: user?.name ?? '',
@@ -36,7 +37,7 @@ export default function UsersEdit({ user, roles, companies }) {
         <DashboardLayout title="Edit user">
             <Head title="Edit user" />
 
-            <div className="mb-6">
+            <div className="mb-6 flex items-center justify-between">
                 <Link
                     href="/users"
                     className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
@@ -44,6 +45,17 @@ export default function UsersEdit({ user, roles, companies }) {
                     <ArrowLeft className="h-4 w-4 mr-1" />
                     Back to Users
                 </Link>
+
+                {authUser?.is_admin && authUser?.id !== user?.id && (
+                    <button
+                        type="button"
+                        onClick={() => router.post(`/users/${user.id}/impersonate`)}
+                        className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-md text-amber-800 bg-amber-100 hover:bg-amber-200 dark:text-amber-200 dark:bg-amber-900/40 dark:hover:bg-amber-900/60"
+                    >
+                        <UserCheck className="h-4 w-4 mr-2" />
+                        Impersonate user
+                    </button>
+                )}
             </div>
 
             <div className="bg-white dark:bg-gray-800 shadow rounded-lg">

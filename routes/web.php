@@ -183,7 +183,10 @@ Route::middleware(['auth', 'verified', 'permission:manage-users'])->prefix('user
     Route::get('/{user}/edit', [App\Http\Controllers\UserController::class, 'edit'])->name('edit');
     Route::put('/{user}', [App\Http\Controllers\UserController::class, 'update'])->name('update');
     Route::delete('/{user}', [App\Http\Controllers\UserController::class, 'destroy'])->name('destroy');
+    Route::post('/{user}/impersonate', [App\Http\Controllers\UserController::class, 'impersonate'])->name('impersonate');
 });
+
+Route::middleware(['auth'])->post('/users/impersonate/leave', [App\Http\Controllers\UserController::class, 'leaveImpersonation'])->name('users.impersonate.leave');
 
 Route::middleware(['auth', 'verified', 'permission:manage-settings'])->prefix('settings')->name('settings.')->group(function () {
     Route::get('/', function () {

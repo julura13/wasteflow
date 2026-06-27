@@ -6,6 +6,7 @@ use App\Models\ReleaseNote;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
+use Lab404\Impersonate\Services\ImpersonateManager;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -57,6 +58,7 @@ class HandleInertiaRequests extends Middleware
                     'permissions' => $user->getAllPermissions()->pluck('name'),
                 ] : null,
             ],
+            'impersonating' => fn () => app(ImpersonateManager::class)->isImpersonating(),
             'mapbox' => [
                 'access_token' => config('services.mapbox.access_token'),
             ],
