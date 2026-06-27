@@ -153,6 +153,44 @@ class UserController extends Controller
     }
 
     /**
+     * Begin impersonating the given user (admin only, cannot impersonate yourself).
+     */
+    public function impersonate(Request $request, User $user)
+    {
+        $admin = $request->user();
+
+        abort_if(! $admin->isAdmin(), 403);
+        abort_if($user->id === $admin->id, 403, 'You cannot impersonate yourself.');
+
+        $request->session()->put('impersonating_original_id', $admin->id);
+
+        auth()->login($user);
+
+        ActivityLog::log('user_impersonated', "Admin {$admin->email} started impersonating {$user->email}", $user, [
+            'admin_id' => $admin->id,
+            'impersonated_id' => $user->id,
+        ]);
+
+        return redirect()->route('dashboard');
+    }
+
+    /**
+     * Stop impersonating and restore the original admin session.
+     */
+    public function leaveImpersonation(Request $request)
+    {
+        $originalId = $request->session()->pull('impersonating_original_id');
+
+        abort_if(! $originalId, 403, 'No active impersonation session.');
+
+        $admin = User::findOrFail($originalId);
+
+        auth()->login($admin);
+
+        return redirect()->route('users.index');
+    }
+
+    /**
      * Soft-delete the specified user (not available for your own account).
      */
     public function destroy(Request $request, User $user)

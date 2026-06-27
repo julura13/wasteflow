@@ -57,6 +57,9 @@ class HandleInertiaRequests extends Middleware
                     'permissions' => $user->getAllPermissions()->pluck('name'),
                 ] : null,
             ],
+            'impersonation' => fn () => $request->session()->has('impersonating_original_id')
+                ? ['active' => true, 'original_id' => $request->session()->get('impersonating_original_id')]
+                : ['active' => false],
             'mapbox' => [
                 'access_token' => config('services.mapbox.access_token'),
             ],
