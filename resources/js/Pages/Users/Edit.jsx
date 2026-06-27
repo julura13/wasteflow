@@ -46,7 +46,7 @@ export default function UsersEdit({ user, roles, companies }) {
                     Back to Users
                 </Link>
 
-                {authUser?.is_admin && authUser?.id !== user?.id && (
+                {authUser?.is_admin && authUser?.id !== user?.id && !user?.roles?.some(r => r.name === 'admin') && (
                     <button
                         type="button"
                         onClick={() => router.post(`/users/${user.id}/impersonate`)}
