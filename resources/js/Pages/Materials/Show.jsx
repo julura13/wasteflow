@@ -62,20 +62,29 @@ export default function Show({ material }) {
                             <span className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 block mb-2">Usage History</span>
                             <div className="space-y-2">
                                 {material.order_waste_streams.map((stream) => (
-                                    <div key={stream.id} className="border border-gray-200 dark:border-gray-700 rounded-md p-3 text-sm text-gray-700 dark:text-gray-300">
-                                        <div className="flex justify-between">
-                                            <span>Order #{stream.order?.tracking_number ?? stream.order_id}</span>
+                                    <Link
+                                        key={stream.id}
+                                        href={`/orders/${stream.order_id}`}
+                                        className="block border border-gray-200 dark:border-gray-700 rounded-md p-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+                                    >
+                                        <div className="flex justify-between items-start">
+                                            <span className="font-medium text-primary-600 dark:text-primary-400">
+                                                Order #{stream.order?.tracking_number ?? stream.order_id}
+                                            </span>
                                             <div className="text-right">
-                                                <span>{stream.order?.site?.name ?? stream.order?.branch?.name ?? stream.order?.company?.name ?? 'Unknown'}</span>
-                                                <span className="block text-[10px] text-gray-400 dark:text-gray-500">
-                                                    {stream.order?.site?.name ? 'Site' : stream.order?.branch?.name ? 'Branch' : stream.order?.company?.name ? 'Company' : ''}
+                                                <span className="text-sm text-gray-700 dark:text-gray-300">
+                                                    {[
+                                                        stream.order?.company?.name,
+                                                        stream.order?.branch?.name,
+                                                        stream.order?.site?.name,
+                                                    ].filter(Boolean).join(' · ') || 'Unknown'}
                                                 </span>
                                             </div>
                                         </div>
                                         <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                            Nett Weight: {stream.nett_weight ?? '—'} | Quantity: {stream.quantity ?? '—'}
+                                            Nett Weight: {stream.nett_weight ?? '—'}
                                         </div>
-                                    </div>
+                                    </Link>
                                 ))}
                             </div>
                         </div>

@@ -80,6 +80,13 @@ class ReleaseNotesSeeder extends Seeder
                 'description' => 'The usage history on material pages now shows a small label (Site, Branch, or Company) beneath the location name, making it clear what level the order is linked to.',
                 'released_at' => now(),
             ],
+            [
+                'version' => '0.4.0',
+                'type' => 'improvement',
+                'title' => 'Material usage history now links to orders',
+                'description' => 'Each order in the material usage history is now clickable and navigates directly to the order detail page.',
+                'released_at' => now(),
+            ],
         ];
 
         foreach ($notes as $note) {
