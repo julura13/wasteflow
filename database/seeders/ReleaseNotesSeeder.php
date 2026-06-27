@@ -52,6 +52,20 @@ class ReleaseNotesSeeder extends Seeder
                 'description' => 'The waste stream previously called "Avoidance" has been renamed to "Circularity (Reuse)" to better reflect its purpose.',
                 'released_at' => now(),
             ],
+            [
+                'version' => '0.4.0',
+                'type' => 'bugfix',
+                'title' => 'Report totals fixed (Circularity Reuse)',
+                'description' => 'Fixed report diversion totals and Total Waste Processed being incorrect after the Avoidance → Circularity (Reuse) rename. Wood Pallets now correctly count toward diverted waste.',
+                'released_at' => now(),
+            ],
+            [
+                'version' => '0.4.0',
+                'type' => 'bugfix',
+                'title' => 'Material usage shows branch name',
+                'description' => 'Orders without a specific collection point (site) now display the branch name instead of "Unknown Site" on the material usage history.',
+                'released_at' => now(),
+            ],
         ];
 
         foreach ($notes as $note) {
