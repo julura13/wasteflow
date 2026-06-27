@@ -87,6 +87,13 @@ class ReleaseNotesSeeder extends Seeder
                 'description' => 'Each order in the material usage history is now clickable and navigates directly to the order detail page.',
                 'released_at' => now(),
             ],
+            [
+                'version' => '0.4.0',
+                'type' => 'improvement',
+                'title' => 'Updated logo on collection summary PDF',
+                'description' => 'The Summary of Orders for Collection PDF now displays the full WasteFlow logo instead of the icon-only version.',
+                'released_at' => now(),
+            ],
         ];
 
         foreach ($notes as $note) {
