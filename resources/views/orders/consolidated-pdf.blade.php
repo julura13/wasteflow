@@ -114,7 +114,7 @@
     <div class="header">
         <div class="header-top">
             <div class="header-logo">
-                <img src="{{ asset('images/wasteflow-logo.png') }}" alt="WasteFlow Logo">
+                <img src="{{ asset('images/logo-white-bg-dark-text.jpeg') }}" alt="WasteFlow Logo">
             </div>
             <div class="header-title">
                 <h1>Summary of Orders for Collection</h1>
