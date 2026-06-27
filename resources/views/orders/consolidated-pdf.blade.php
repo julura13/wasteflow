@@ -33,10 +33,8 @@
             width: auto;
         }
         .header-logo img {
-            max-height: 70px;
-            padding: 8px;
+            max-height: 120px;
             width: auto;
-            background-color: rgb(34, 74, 64);
         }
         .header-title {
             display: table-cell;
