@@ -65,7 +65,12 @@ export default function Show({ material }) {
                                     <div key={stream.id} className="border border-gray-200 dark:border-gray-700 rounded-md p-3 text-sm text-gray-700 dark:text-gray-300">
                                         <div className="flex justify-between">
                                             <span>Order #{stream.order?.tracking_number ?? stream.order_id}</span>
-                                            <span>{stream.order?.site?.name ?? stream.order?.branch?.name ?? 'Unknown Site'}</span>
+                                            <div className="text-right">
+                                                <span>{stream.order?.site?.name ?? stream.order?.branch?.name ?? stream.order?.company?.name ?? 'Unknown'}</span>
+                                                <span className="block text-[10px] text-gray-400 dark:text-gray-500">
+                                                    {stream.order?.site?.name ? 'Site' : stream.order?.branch?.name ? 'Branch' : stream.order?.company?.name ? 'Company' : ''}
+                                                </span>
+                                            </div>
                                         </div>
                                         <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                             Nett Weight: {stream.nett_weight ?? '—'} | Quantity: {stream.quantity ?? '—'}

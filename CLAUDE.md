@@ -342,6 +342,10 @@ Meilisearch must be installed on the Forge server. Two options:
 
 This application has a `release_notes` table that powers the in-app notification bell for admin users. Every time a feature is added, a bug is fixed, or a meaningful improvement is made, you MUST insert a corresponding `ReleaseNote` record.
 
+**CRITICAL: Adding a release note is a required final step — not optional. Never finish a task without inserting one. The user should never have to ask.**
+
+Also update `database/seeders/ReleaseNotesSeeder.php` with the same entry (using `firstOrCreate`) so it can be run on production after deployment.
+
 ## When to add a release note
 
 Add one whenever you:
@@ -350,6 +354,10 @@ Add one whenever you:
 - Make a notable improvement (performance, UX, reporting, etc.)
 
 ## How to add a release note
+
+At the end of your implementation, do both steps:
+
+**Step 1 — Insert locally via tinker:**
 
 At the end of your implementation, insert a row using Laravel tinker or a seeder. Use the current `app.version` from `config/app.php` as the version.
 
@@ -363,6 +371,17 @@ vendor/bin/sail artisan tinker --no-interaction <<'EOF'
     'released_at' => now(),
 ]);
 EOF
+```
+
+**Step 2 — Add to the seeder:**
+
+Add the same entry to `database/seeders/ReleaseNotesSeeder.php` using `firstOrCreate` so production can be seeded after deploy:
+
+```php
+ReleaseNote::firstOrCreate(
+    ['version' => '1.x.x', 'title' => 'Short title'],
+    ['type' => 'feature', 'description' => '...', 'released_at' => now()]
+);
 ```
 
 ## Types

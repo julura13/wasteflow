@@ -73,6 +73,13 @@ class ReleaseNotesSeeder extends Seeder
                 'description' => 'Clicking a notification now opens a modal with the full message instead of truncating the text. Use the × button to dismiss directly, or "Mark as read" from inside the modal.',
                 'released_at' => now(),
             ],
+            [
+                'version' => '0.4.0',
+                'type' => 'improvement',
+                'title' => 'Material usage shows location type',
+                'description' => 'The usage history on material pages now shows a small label (Site, Branch, or Company) beneath the location name, making it clear what level the order is linked to.',
+                'released_at' => now(),
+            ],
         ];
 
         foreach ($notes as $note) {
