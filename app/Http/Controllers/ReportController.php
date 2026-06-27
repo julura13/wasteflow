@@ -662,8 +662,12 @@ class ReportController extends Controller
         // Get organicsRecovered from grades
         $organicsRecovered = $grades['organicsRecovered'];
 
-        // Calculate totalIncomingWaste = generalWaste + organicsRecovered + recyclingRecovered
-        $totalIncomingWaste = round($grades['generalWaste'] + $organicsRecovered + $recyclingRecovered, 2);
+        // Calculate totalIncomingWaste = all disposal grades + all diverted (organics + recycling/reuse)
+        $totalIncomingWaste = round(
+            $grades['generalWaste'] + $grades['nonCompactableWaste'] + $grades['hazardousWaste'] +
+            $organicsRecovered + $recyclingRecovered,
+            2
+        );
 
         // Calculate divertedFromLandfill = (recyclingRecovered + organicsRecovered) / totalIncomingWaste * 100
         $divertedFromLandfill = 0;
@@ -849,7 +853,7 @@ class ReportController extends Controller
             if (! $summary->material || ! $summary->material->grade || ! $summary->material->classification) {
                 continue;
             }
-            if ($summary->material->classification->slug !== 'recycling') {
+            if (! in_array($summary->material->classification->slug, ['recycling', 'recovery'], true)) {
                 continue;
             }
             $name = $summary->material->grade->name;

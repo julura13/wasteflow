@@ -291,17 +291,16 @@ class OrderWasteStreamReportingService
                 continue;
             }
 
-            $classificationName = trim($summary->material->classification->name);
+            $slug = trim($summary->material->classification->slug);
             $weight = (float) $summary->total_weight;
-            $classificationNameLower = strtolower($classificationName);
 
-            if (in_array($classificationNameLower, ['disposed', 'disposal'], true)) {
+            if (in_array($slug, ['disposed', 'disposal'], true)) {
                 $totals['Disposal'] += $weight;
-            } elseif (in_array($classificationNameLower, ['recycling', 'recycle'], true)) {
+            } elseif (in_array($slug, ['recycling', 'recycle'], true)) {
                 $totals['Recycling'] += $weight;
-            } elseif (in_array($classificationNameLower, ['recovered', 'recovery'], true)) {
+            } elseif (in_array($slug, ['recovered', 'recovery'], true)) {
                 $totals['Recovery'] += $weight;
-            } elseif (in_array($classificationNameLower, ['avoidance', 'avoid'], true)) {
+            } elseif (in_array($slug, ['avoidance', 'avoid'], true)) {
                 $totals['Avoidance'] += $weight;
             }
         }

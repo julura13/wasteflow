@@ -31,7 +31,7 @@ class GlobalSearchController extends Controller
 
             $queries = collect($indexUids)
                 ->filter(fn ($uid) => $existingIndices->has($uid))
-                ->map(fn ($uid) => (new SearchQuery)->setIndexUid($uid)->setQuery($query)->setLimit(5))
+                ->map(fn ($uid) => (new SearchQuery)->setIndexUid($uid)->setQuery($query)->setLimit($uid === 'orders' ? 10 : 5))
                 ->values()
                 ->all();
 

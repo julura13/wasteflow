@@ -114,6 +114,7 @@ class MaterialController extends Controller
             'facility',
             'serviceProvider',
             'orderWasteStreams.order.site',
+            'orderWasteStreams.order.branch',
         ]);
 
         return Inertia::render('Materials/Show', [
