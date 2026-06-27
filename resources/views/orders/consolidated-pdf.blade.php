@@ -33,7 +33,7 @@
             width: auto;
         }
         .header-logo img {
-            max-height: 120px;
+            max-height: 160px;
             width: auto;
         }
         .header-title {
