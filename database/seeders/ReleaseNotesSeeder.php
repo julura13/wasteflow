@@ -108,6 +108,13 @@ class ReleaseNotesSeeder extends Seeder
                 'description' => 'Total Waste Processed now correctly shows Total Diverted + Total Disposal, matching the classification totals shown in the donut charts.',
                 'released_at' => now(),
             ],
+            [
+                'version' => '0.4.0',
+                'type' => 'improvement',
+                'title' => 'Updated logo on collection order form PDF',
+                'description' => 'The Waste Collection Order Form PDF now displays the full WasteFlow logo instead of the icon-only version.',
+                'released_at' => now(),
+            ],
         ];
 
         foreach ($notes as $note) {

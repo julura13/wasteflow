@@ -37,10 +37,8 @@
             width: auto;
         }
         .header-logo img {
-            max-height: 70px;
-            padding: 8px;
+            max-height: 100px;
             width: auto;
-            background-color: rgb(34, 74, 64);
         }
         .header-logo-text {
             max-height: 70px;
@@ -164,7 +162,7 @@
         <div class="header-top">
             <div class="header-logo">
                 @php
-                    $logoPath = public_path('images/logo.png');
+                    $logoPath = public_path('images/logo-white-bg-dark-text.jpeg');
                     if (file_exists($logoPath) && is_readable($logoPath)) {
                         $logoData = base64_encode(file_get_contents($logoPath));
                         $logoMime = mime_content_type($logoPath);
@@ -174,7 +172,7 @@
                     }
                 @endphp
                 @if($logoBase64)
-                    <img src="{{ $logoBase64 }}" alt="WasteFlow Logo" style="max-height: 70px; padding: 8px; width: auto; background-color: rgb(34, 74, 64);">
+                    <img src="{{ $logoBase64 }}" alt="WasteFlow Logo">
                 @else
                     <div class="header-logo-text">WasteFlow</div>
                 @endif
