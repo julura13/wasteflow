@@ -37,7 +37,7 @@
             width: auto;
         }
         .header-logo img {
-            max-height: 100px;
+            max-height: 150px;
             width: auto;
         }
         .header-logo-text {
