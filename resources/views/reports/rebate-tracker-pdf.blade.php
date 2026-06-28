@@ -137,7 +137,7 @@
 <body>
     @php
         $reportLogoSrc = null;
-        $logoPath = public_path('images/logo.png');
+        $logoPath = public_path('images/logo-white-bg-dark-text.jpeg');
         if (is_file($logoPath)) {
             $reportLogoSrc = 'data:'.mime_content_type($logoPath).';base64,'.base64_encode((string) file_get_contents($logoPath));
         }
