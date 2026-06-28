@@ -311,9 +311,7 @@
         $grades = $reportData['grades'] ?? [];
         $materialsCO2eTotals = $reportData['materialsCO2eTotals'] ?? [];
 
-        $gradeTotal = (float) ($grades['generalWaste'] ?? 0) + (float) ($grades['nonCompactableWaste'] ?? 0)
-            + (float) ($grades['hazardousWaste'] ?? 0) + (float) ($grades['organicsRecovered'] ?? 0)
-            + (float) ($ct['recycling']['total'] ?? 0);
+        $gradeTotal = (float) ($ct['total'] ?? 0);
 
         $pieLegendRows = array_values(array_filter(
             $reportData['wasteStreamTotals'] ?? [],

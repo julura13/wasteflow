@@ -431,11 +431,7 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                             <tr style={{ backgroundColor: '#c9dde8', fontWeight: 'bold' }}>
                                                 <td className="px-3 py-1 border border-gray-300">TOTAL WASTE PROCESSED</td>
                                                 <td className="px-3 py-1 border border-gray-300 text-right">
-                                                    {fmtN(
-                                                        (grades.generalWaste || 0) + (grades.nonCompactableWaste || 0)
-                                                        + (grades.hazardousWaste || 0) + (grades.organicsRecovered || 0)
-                                                        + (ct.recycling?.total || 0)
-                                                    )}
+                                                    {fmtN(ct.total ?? 0)}
                                                 </td>
                                             </tr>
                                         </tbody>

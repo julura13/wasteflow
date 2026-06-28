@@ -309,6 +309,7 @@ class OrderWasteStreamReportingService
         $divertedTotal = $totals['Avoidance'] + $totals['Recycling'] + $totals['Recovery'];
 
         return [
+            'total' => round($totalWeight, 2),
             'avoidance' => [
                 'total' => round($totals['Avoidance'], 2),
                 'percentage' => $totalWeight > 0 ? round(($totals['Avoidance'] / $totalWeight) * 100, 1) : 0,

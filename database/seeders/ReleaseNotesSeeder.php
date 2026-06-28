@@ -101,6 +101,13 @@ class ReleaseNotesSeeder extends Seeder
                 'description' => 'Admins can now impersonate any non-admin user from the Edit User page to test their access and view the app as them. A yellow banner is shown while impersonating with a one-click stop button.',
                 'released_at' => now(),
             ],
+            [
+                'version' => '0.4.0',
+                'type' => 'bugfix',
+                'title' => 'Resource Intelligence: Total Waste Processed corrected',
+                'description' => 'Total Waste Processed now correctly shows Total Diverted + Total Disposal, matching the classification totals shown in the donut charts.',
+                'released_at' => now(),
+            ],
         ];
 
         foreach ($notes as $note) {
