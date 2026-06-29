@@ -374,11 +374,11 @@ class DashboardController extends Controller
 
         $classificationTotals = $this->orderWasteStreamReporting->classificationTotalsFromSummaries($materialSummaries);
 
-        // Calculate environmental impact (shared with report and summary)
-        $categoryWeights = $this->wasteImpactCalculator->buildCategoryWeightsFromSummaries($materialSummaries);
-        $environmentalImpact = $this->wasteImpactCalculator->calculateImpactFromCategoryWeights($categoryWeights);
+        // Calculate environmental impact using the accurate carbon-key path (split plastics, garden waste included)
+        $carbonWeights = $this->wasteImpactCalculator->buildCarbonWeightsFromSummaries($materialSummaries);
+        $environmentalImpact = $this->wasteImpactCalculator->calculateImpactFromCarbonWeights($carbonWeights);
 
-        $landfillSpaceSaved = $this->getLandfillSpaceSavedForDashboard($categoryWeights);
+        $landfillSpaceSaved = $this->getLandfillSpaceSavedForDashboard(WasteImpactCalculator::toSimpleWeights($carbonWeights));
 
         return [
             'wasteStreamTotals' => $wasteStreamTotals,

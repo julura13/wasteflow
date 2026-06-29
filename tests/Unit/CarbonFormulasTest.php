@@ -1,7 +1,6 @@
 <?php
 
 use App\Services\CarbonCalculator;
-use App\Services\EnvironmentalImpactService;
 use App\Services\WasteImpactCalculator;
 
 test('CarbonCalculator wood row matches workbook (100 kg example)', function () {
@@ -69,8 +68,8 @@ test('WasteImpactCalculator lifecycle excludes other offsets', function () {
     expect($lifecycle)->toBe(370.28);
 });
 
-test('EnvironmentalImpactService lifecycle excludes other offsets', function () {
-    $service = new EnvironmentalImpactService;
+test('buildCarbonWeightsFromWasteStreams lifecycle with grade-split plastics', function () {
+    $calculator = new WasteImpactCalculator;
 
     $streams = collect([
         (object) [
@@ -131,9 +130,10 @@ test('EnvironmentalImpactService lifecycle excludes other offsets', function () 
         ],
     ]);
 
-    $impact = $service->calculateImpact($streams);
+    $carbonWeights = $calculator->buildCarbonWeightsFromWasteStreams($streams);
+    $lifecycle = $calculator->calculateLifecycleCarbonSaved($carbonWeights);
 
-    // lifecycle_saving must equal scope3 + landfill_avoidance only (no other_offsets)
-    // aluminium and steel landfill avoidance factors now 0, so -108 and -50 from old total
-    expect($impact['total_lifecycle_saving'])->toBe(420.36);
+    // Grade-split plastics: PPHD=35, PS=10, LDPE=13 vs old simple 'plastics=58 as PPHD'
+    // paper(85×1.28) + PPHD(35×2.08) + PS(10×3.05) + LDPE(13×2.06) + Al(12×10) + steel(25×2) + glass(6×0.33) + tetrapak(10×0.95)
+    expect($lifecycle)->toBe(420.36);
 });

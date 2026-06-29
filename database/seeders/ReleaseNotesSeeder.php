@@ -122,6 +122,13 @@ class ReleaseNotesSeeder extends Seeder
                 'description' => 'The grade table\'s "Organics Recovered" row has been replaced with "Total Recovery", which correctly includes all recovery materials (Organics, Wood, FOG Recovered, etc.). The Diversion Rate percentage is also now consistent with the donut chart.',
                 'released_at' => now(),
             ],
+            [
+                'version' => '0.4.1',
+                'type' => 'improvement',
+                'title' => 'Unified calculation engine',
+                'description' => 'All environmental impact metrics (carbon, energy, water, trees, landfill space) now flow through a single shared calculation engine. Duplicate category-mapping loops have been removed, plastic grades are split correctly (PP/HD, PS, LDPE) with a fallback for unrecognised grades, and an organics double-count bug has been fixed. Dashboard and report carbon figures now match.',
+                'released_at' => now(),
+            ],
         ];
 
         foreach ($notes as $note) {

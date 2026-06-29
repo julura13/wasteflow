@@ -888,43 +888,7 @@ class ReportController extends Controller
         }
 
         $summaries = $this->getMaterialSummaries($company, $branch, $site, $month, $year);
-
-        $weightsKg = [
-            'paper' => 0.0,
-            'plastics' => 0.0,
-            'aluminium' => 0.0,
-            'steel' => 0.0,
-            'glass' => 0.0,
-            'tetrapak' => 0.0,
-            'organics' => $organicsRecovered,
-            'wood' => 0.0,
-        ];
-
-        foreach ($summaries as $summary) {
-            if (! $summary->material || ! $summary->material->grade || ! $summary->material->wasteStream) {
-                continue;
-            }
-
-            $weight = (float) $summary->total_weight;
-            $wasteStreamName = trim($summary->material->wasteStream->name);
-            $gradeName = trim($summary->material->grade->name);
-
-            if ($gradeName === 'Tetrapak') {
-                $weightsKg['tetrapak'] += $weight;
-            } elseif ($wasteStreamName === 'Plastic') {
-                $weightsKg['plastics'] += $weight;
-            } elseif ($wasteStreamName === 'Paper') {
-                $weightsKg['paper'] += $weight;
-            } elseif ($wasteStreamName === 'Aluminium') {
-                $weightsKg['aluminium'] += $weight;
-            } elseif ($wasteStreamName === 'Metal' && in_array($gradeName, ['Heavy Steel', 'Light Steel', 'Light Steel Cans', 'Light Steel Drums'], true)) {
-                $weightsKg['steel'] += $weight;
-            } elseif ($wasteStreamName === 'Glass') {
-                $weightsKg['glass'] += $weight;
-            } elseif ($wasteStreamName === 'Wood') {
-                $weightsKg['wood'] += $weight;
-            }
-        }
+        $weightsKg = $this->wasteImpactCalculator->buildCategoryWeightsFromSummaries($summaries, $organicsRecovered);
 
         return $this->landfillSpaceCalculator->calculate($weightsKg);
     }
@@ -941,90 +905,7 @@ class ReportController extends Controller
         // Get material-level summaries
         $summaries = $this->getMaterialSummaries($company, $branch, $site, $month, $year);
 
-        // Initialize totals
-        $weights = [
-            'paper' => 0,
-            'plasticPPHD' => 0,
-            'plasticPS' => 0,
-            'plasticLDPE' => 0,
-            'aluminium' => 0,
-            'steel' => 0,
-            'glass' => 0,
-            'foodWaste' => $organicsRecovered, // Use organics recovered for food waste
-            'gardenWaste' => 0,
-            'batteries' => 0,
-            'electronics' => 0,
-            'tetrapak' => 0,
-            'wood' => 0,
-        ];
-
-        foreach ($summaries as $summary) {
-            if (! $summary->material || ! $summary->material->grade || ! $summary->material->wasteStream) {
-                continue;
-            }
-
-            $weight = (float) $summary->total_weight;
-            $wasteStreamName = trim($summary->material->wasteStream->name);
-            $gradeName = trim($summary->material->grade->name);
-
-            // Tetrapak: grade name = "Tetrapak" (separate from paper)
-            if ($gradeName === 'Tetrapak') {
-                $weights['tetrapak'] += $weight;
-            }
-            // Paper: waste stream = "Paper" (excluding Tetrapak)
-            elseif ($wasteStreamName === 'Paper' && $gradeName !== 'Tetrapak') {
-                $weights['paper'] += $weight;
-            }
-            // Plastic PP / HD: HD grades and PP grades
-            elseif ($wasteStreamName === 'Plastic' && (
-                strpos($gradeName, 'HD') === 0 ||
-                $gradeName === 'PP' ||
-                $gradeName === 'PP Caps'
-            )) {
-                $weights['plasticPPHD'] += $weight;
-            }
-            // Plastic PS (Polystyrene): EPS/XPS
-            elseif ($wasteStreamName === 'Plastic' && ($gradeName === 'EPS/XPS' || $gradeName === 'XPS')) {
-                $weights['plasticPS'] += $weight;
-            }
-            // Plastic LDPE Film: LD grades
-            elseif ($wasteStreamName === 'Plastic' && strpos($gradeName, 'LD') === 0) {
-                $weights['plasticLDPE'] += $weight;
-            }
-            // Aluminium: waste stream = "Aluminium"
-            elseif ($wasteStreamName === 'Aluminium') {
-                $weights['aluminium'] += $weight;
-            }
-            // Steel: waste stream = "Metal" with steel grades
-            elseif ($wasteStreamName === 'Metal' && (
-                $gradeName === 'Heavy Steel' ||
-                $gradeName === 'Light Steel' ||
-                $gradeName === 'Light Steel Cans' ||
-                $gradeName === 'Light Steel Drums'
-            )) {
-                $weights['steel'] += $weight;
-            }
-            // Glass: waste stream = "Glass"
-            elseif ($wasteStreamName === 'Glass') {
-                $weights['glass'] += $weight;
-            }
-            // Garden Waste: waste stream = "Garden Waste"
-            elseif ($wasteStreamName === 'Garden Waste') {
-                $weights['gardenWaste'] += $weight;
-            }
-            // Batteries: waste stream = "Batteries" (if it exists)
-            elseif ($wasteStreamName === 'Batteries') {
-                $weights['batteries'] += $weight;
-            }
-            // Electronics (E-waste): waste stream = "Electronics" or "E-waste" (if it exists)
-            elseif (in_array($wasteStreamName, ['Electronics', 'E-waste', 'Electronics (E-waste)'])) {
-                $weights['electronics'] += $weight;
-            }
-            // Wood (Timber / Pallets): waste stream = "Wood"
-            elseif ($wasteStreamName === 'Wood') {
-                $weights['wood'] += $weight;
-            }
-        }
+        $weights = $this->wasteImpactCalculator->buildCarbonWeightsFromSummaries($summaries, $organicsRecovered);
 
         $carbonData = $this->carbonCalculator->calculateMaterialsCO2e($weights);
 
@@ -1084,8 +965,8 @@ class ReportController extends Controller
         }
 
         $summaries = $this->getMaterialSummaries($company, $branch, $site, $month, $year);
-        $categoryWeights = $this->wasteImpactCalculator->buildCategoryWeightsFromSummaries($summaries, $organicsRecovered);
-        $impact = $this->wasteImpactCalculator->calculateImpactFromCategoryWeights($categoryWeights);
+        $carbonWeights = $this->wasteImpactCalculator->buildCarbonWeightsFromSummaries($summaries, $organicsRecovered);
+        $impact = $this->wasteImpactCalculator->calculateImpactFromCarbonWeights($carbonWeights);
 
         return [
             'treesSaved' => $impact['treesSaved'],
@@ -1148,62 +1029,7 @@ class ReportController extends Controller
 
         // Get material-level summaries
         $summaries = $this->getMaterialSummaries($company, $branch, $site, $month, $year);
-
-        // Initialize category weights
-        $categoryWeights = [
-            'paper' => 0,
-            'plastics' => 0,
-            'aluminium' => 0,
-            'organics' => $organicsRecovered,
-            'tetrapak' => 0,
-            'steel' => 0,
-            'glass' => 0,
-            'wood' => 0,
-        ];
-
-        foreach ($summaries as $summary) {
-            if (! $summary->material || ! $summary->material->grade || ! $summary->material->wasteStream) {
-                continue;
-            }
-
-            $weight = (float) $summary->total_weight;
-            $wasteStreamName = trim($summary->material->wasteStream->name);
-            $gradeName = trim($summary->material->grade->name);
-
-            // Tetrapak: grade name = "Tetrapak" (separate from paper)
-            if ($gradeName === 'Tetrapak') {
-                $categoryWeights['tetrapak'] += $weight;
-            }
-            // Paper: waste stream = "Paper" (excluding Tetrapak)
-            elseif ($wasteStreamName === 'Paper' && $gradeName !== 'Tetrapak') {
-                $categoryWeights['paper'] += $weight;
-            }
-            // Plastics: waste stream = "Plastic"
-            elseif ($wasteStreamName === 'Plastic') {
-                $categoryWeights['plastics'] += $weight;
-            }
-            // Aluminium: waste stream = "Aluminium"
-            elseif ($wasteStreamName === 'Aluminium') {
-                $categoryWeights['aluminium'] += $weight;
-            }
-            // Steel: waste stream = "Metal" with steel grades
-            elseif ($wasteStreamName === 'Metal' && (
-                $gradeName === 'Heavy Steel' ||
-                $gradeName === 'Light Steel' ||
-                $gradeName === 'Light Steel Cans' ||
-                $gradeName === 'Light Steel Drums'
-            )) {
-                $categoryWeights['steel'] += $weight;
-            }
-            // Glass: waste stream = "Glass"
-            elseif ($wasteStreamName === 'Glass') {
-                $categoryWeights['glass'] += $weight;
-            }
-            // Wood: waste stream = "Wood"
-            elseif ($wasteStreamName === 'Wood') {
-                $categoryWeights['wood'] += $weight;
-            }
-        }
+        $categoryWeights = $this->wasteImpactCalculator->buildCategoryWeightsFromSummaries($summaries, $organicsRecovered);
 
         // Calculate total for percentage calculation
         $totalWeight = array_sum($categoryWeights);
