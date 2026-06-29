@@ -420,7 +420,7 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                                 { label: 'General Waste', val: grades.generalWaste },
                                                 { label: 'Non Compactable Waste', val: grades.nonCompactableWaste },
                                                 { label: 'Hazardous Waste', val: grades.hazardousWaste },
-                                                { label: 'Organics Recovered', val: grades.organicsRecovered },
+                                                { label: 'Total Recovery', val: ct.recovery?.total ?? 0 },
                                                 { label: 'Total Recycling', val: ct.recycling?.total ?? 0 },
                                             ].map((r, i) => (
                                                 <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>

@@ -115,6 +115,13 @@ class ReleaseNotesSeeder extends Seeder
                 'description' => 'The Waste Collection Order Form PDF now displays the full WasteFlow logo instead of the icon-only version.',
                 'released_at' => now(),
             ],
+            [
+                'version' => '0.4.0',
+                'type' => 'bugfix',
+                'title' => 'Resource Intelligence: Wood and FOG Recovered now included',
+                'description' => 'The grade table\'s "Organics Recovered" row has been replaced with "Total Recovery", which correctly includes all recovery materials (Organics, Wood, FOG Recovered, etc.). The Diversion Rate percentage is also now consistent with the donut chart.',
+                'released_at' => now(),
+            ],
         ];
 
         foreach ($notes as $note) {

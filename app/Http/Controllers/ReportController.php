@@ -659,21 +659,12 @@ class ReportController extends Controller
         }
         $recyclingRecovered = round($recyclingRecovered, 2);
 
-        // Get organicsRecovered from grades
+        // organicsRecovered is kept as organic-waste-only for CO2e, landfill space, and environmental impact calculations
         $organicsRecovered = $grades['organicsRecovered'];
 
-        // Calculate totalIncomingWaste = all disposal grades + all diverted (organics + recycling/reuse)
-        $totalIncomingWaste = round(
-            $grades['generalWaste'] + $grades['nonCompactableWaste'] + $grades['hazardousWaste'] +
-            $organicsRecovered + $recyclingRecovered,
-            2
-        );
-
-        // Calculate divertedFromLandfill = (recyclingRecovered + organicsRecovered) / totalIncomingWaste * 100
-        $divertedFromLandfill = 0;
-        if ($totalIncomingWaste > 0) {
-            $divertedFromLandfill = round(($recyclingRecovered + $organicsRecovered) / $totalIncomingWaste * 100, 2);
-        }
+        // Use classification totals as the single source of truth for aggregate figures
+        $totalIncomingWaste = $classificationTotals['total'];
+        $divertedFromLandfill = (float) ($classificationTotals['diverted']['percentage'] ?? 0);
 
         // Calculate landfill space saved breakdown
         $landfillSpaceSavedData = $this->getLandfillSpaceSaved($company, $branch, $site, $month, $year, $organicsRecovered);
