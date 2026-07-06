@@ -298,9 +298,10 @@ class OrderWasteStreamReportingService
                 $totals['Disposal'] += $weight;
             } elseif (in_array($slug, ['recycling', 'recycle'], true)) {
                 $totals['Recycling'] += $weight;
-            } elseif (in_array($slug, ['recovered', 'recovery'], true)) {
+            } elseif ($slug === 'recovered') {
                 $totals['Recovery'] += $weight;
-            } elseif (in_array($slug, ['avoidance', 'avoid'], true)) {
+            } elseif (in_array($slug, ['recovery', 'avoidance', 'avoid'], true)) {
+                // 'recovery' is the slug for the "Circularity (Reuse)" classification
                 $totals['Avoidance'] += $weight;
             }
         }

@@ -416,11 +416,33 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                             </tr>
                                         </thead>
                                         <tbody>
+                                            {/* WASTE TO LANDFILL */}
+                                            <tr>
+                                                <td colSpan={2} className="px-3 py-1 border border-gray-200 text-center font-bold" style={{ backgroundColor: NAVY, color: 'white' }}>WASTE TO LANDFILL</td>
+                                            </tr>
                                             {[
                                                 { label: 'General Waste', val: grades.generalWaste },
                                                 { label: 'Non Compactable Waste', val: grades.nonCompactableWaste },
                                                 { label: 'Hazardous Waste', val: grades.hazardousWaste },
-                                                { label: 'Total Recovery', val: ct.recovery?.total ?? 0 },
+                                            ].map((r, i) => (
+                                                <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                                    <td className="px-3 py-1 border border-gray-200">{r.label}</td>
+                                                    <td className="px-3 py-1 border border-gray-200 text-right">{fmtN(r.val)}</td>
+                                                </tr>
+                                            ))}
+                                            <tr style={{ fontWeight: 'bold' }} className="bg-white">
+                                                <td className="px-3 py-1 border border-gray-200">Total Waste to Landfill</td>
+                                                <td className="px-3 py-1 border border-gray-200 text-right">{fmtN(ct.disposal?.total ?? 0)}</td>
+                                            </tr>
+
+                                            {/* WASTE DIVERTED */}
+                                            <tr>
+                                                <td colSpan={2} className="px-3 py-1 border border-gray-200 text-center font-bold" style={{ backgroundColor: NAVY, color: 'white' }}>WASTE DIVERTED (All Streams)</td>
+                                            </tr>
+                                            {[
+                                                { label: 'Organics Recovery', val: grades.organicsRecovered ?? 0 },
+                                                { label: 'Material Recovery', val: grades.materialRecovery ?? 0 },
+                                                { label: 'Circularity (Reuse)', val: ct.avoidance?.total ?? 0 },
                                                 { label: 'Total Recycling', val: ct.recycling?.total ?? 0 },
                                             ].map((r, i) => (
                                                 <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
@@ -428,14 +450,22 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                                     <td className="px-3 py-1 border border-gray-200 text-right">{fmtN(r.val)}</td>
                                                 </tr>
                                             ))}
+                                            <tr style={{ fontWeight: 'bold' }} className="bg-white">
+                                                <td className="px-3 py-1 border border-gray-200">Total Waste Diverted</td>
+                                                <td className="px-3 py-1 border border-gray-200 text-right">{fmtN(ct.diverted?.total ?? 0)}</td>
+                                            </tr>
+
                                             <tr style={{ backgroundColor: '#c9dde8', fontWeight: 'bold' }}>
-                                                <td className="px-3 py-1 border border-gray-300">TOTAL WASTE PROCESSED</td>
+                                                <td className="px-3 py-1 border border-gray-300">TOTAL WASTE MANAGED</td>
                                                 <td className="px-3 py-1 border border-gray-300 text-right">
                                                     {fmtN(ct.total ?? 0)}
                                                 </td>
                                             </tr>
                                         </tbody>
                                     </table>
+                                    <p className="text-gray-400 mt-1" style={{ fontSize: '10px', lineHeight: '1.4' }}>
+                                        All diversion streams are mutually exclusive and represent distinct treatment pathways (recycling, organics, recovery, and reuse).
+                                    </p>
                                 </div>
                                 <div>
                                     <SectionHeader>RECYCLING RECOVERED</SectionHeader>

@@ -124,6 +124,13 @@ class ReleaseNotesSeeder extends Seeder
             ],
             [
                 'version' => '0.4.1',
+                'type' => 'bugfix',
+                'title' => 'Circularity (Reuse) now shows correctly in reports',
+                'description' => 'Fixed a bug where Circularity (Reuse) weight was being counted as Material Recovery. The report table now shows separate rows for Organics Recovery, Material Recovery, Circularity (Reuse), and Total Recycling under a Waste Diverted section, with a TOTAL WASTE MANAGED grand total.',
+                'released_at' => now(),
+            ],
+            [
+                'version' => '0.4.1',
                 'type' => 'improvement',
                 'title' => 'Unified calculation engine',
                 'description' => 'All environmental impact metrics (carbon, energy, water, trees, landfill space) now flow through a single shared calculation engine. Duplicate category-mapping loops have been removed, plastic grades are split correctly (PP/HD, PS, LDPE) with a fallback for unrecognised grades, and an organics double-count bug has been fixed. Dashboard and report carbon figures now match.',

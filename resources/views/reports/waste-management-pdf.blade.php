@@ -488,6 +488,10 @@
                 </tr>
             </thead>
             <tbody>
+                {{-- WASTE TO LANDFILL --}}
+                <tr>
+                    <td colspan="2" style="text-align:center; font-weight:bold; font-size:8px; background:#1F3A5F; color:#fff; padding:4px 6px; border:1px solid #1F3A5F;">WASTE TO LANDFILL</td>
+                </tr>
                 <tr>
                     <td>General Waste</td>
                     <td class="text-right">{{ number_format($grades['generalWaste'] ?? 0, 2) }}</td>
@@ -500,20 +504,43 @@
                     <td>Hazardous Waste</td>
                     <td class="text-right">{{ number_format($grades['hazardousWaste'] ?? 0, 2) }}</td>
                 </tr>
+                <tr style="font-weight:bold;">
+                    <td>Total Waste to Landfill</td>
+                    <td class="text-right">{{ number_format($ct['disposal']['total'] ?? 0, 2) }}</td>
+                </tr>
+
+                {{-- WASTE DIVERTED --}}
                 <tr>
-                    <td>Total Recovery</td>
-                    <td class="text-right">{{ number_format($ct['recovery']['total'] ?? 0, 2) }}</td>
+                    <td colspan="2" style="text-align:center; font-weight:bold; font-size:8px; background:#1F3A5F; color:#fff; padding:4px 6px; border:1px solid #1F3A5F;">WASTE DIVERTED (All Streams)</td>
+                </tr>
+                <tr>
+                    <td>Organics Recovery</td>
+                    <td class="text-right">{{ number_format($grades['organicsRecovered'] ?? 0, 2) }}</td>
+                </tr>
+                <tr>
+                    <td>Material Recovery</td>
+                    <td class="text-right">{{ number_format($grades['materialRecovery'] ?? 0, 2) }}</td>
+                </tr>
+                <tr>
+                    <td>Circularity (Reuse)</td>
+                    <td class="text-right">{{ number_format($ct['avoidance']['total'] ?? 0, 2) }}</td>
                 </tr>
                 <tr>
                     <td>Total Recycling</td>
                     <td class="text-right">{{ number_format($ct['recycling']['total'] ?? 0, 2) }}</td>
                 </tr>
+                <tr style="font-weight:bold;">
+                    <td>Total Waste Diverted</td>
+                    <td class="text-right">{{ number_format($ct['diverted']['total'] ?? 0, 2) }}</td>
+                </tr>
+
                 <tr class="total-row">
-                    <td>TOTAL WASTE PROCESSED</td>
+                    <td>TOTAL WASTE MANAGED</td>
                     <td class="text-right">{{ number_format($gradeTotal, 2) }}</td>
                 </tr>
             </tbody>
         </table>
+        <p style="font-size:6.5px; color:#6b7280; margin-top:3px; line-height:1.4;">All diversion streams are mutually exclusive and represent distinct treatment pathways (recycling, organics, recovery, and reuse).</p>
 
         <div style="margin-top:4px;">
             <div class="section-title-navy">RECYCLING RECOVERED</div>

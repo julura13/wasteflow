@@ -662,6 +662,9 @@ class ReportController extends Controller
         // organicsRecovered is kept as organic-waste-only for CO2e, landfill space, and environmental impact calculations
         $organicsRecovered = $grades['organicsRecovered'];
 
+        // materialRecovery = all "Recovered" classified weight minus the organic sub-stream
+        $grades['materialRecovery'] = max(0.0, round(($classificationTotals['recovery']['total'] ?? 0) - $organicsRecovered, 2));
+
         // Use classification totals as the single source of truth for aggregate figures
         $totalIncomingWaste = $classificationTotals['total'];
         $divertedFromLandfill = (float) ($classificationTotals['diverted']['percentage'] ?? 0);
