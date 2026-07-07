@@ -150,6 +150,20 @@ class ReleaseNotesSeeder extends Seeder
                 'description' => 'Each role in Roles & Permissions now has a plain-English description of what it grants. Cleaned up a few duplicate/unused permissions and made sure every permission is grouped into a section.',
                 'released_at' => now(),
             ],
+            [
+                'version' => '0.4.1',
+                'type' => 'improvement',
+                'title' => 'Live search on Users page',
+                'description' => 'Searching on the Users page now updates the list as you type instead of requiring a Filter click, and also matches against company name.',
+                'released_at' => now(),
+            ],
+            [
+                'version' => '0.4.1',
+                'type' => 'bugfix',
+                'title' => 'Roles table display fixed',
+                'description' => 'Fixed role descriptions visually overlapping into the Permissions column on the Roles page, and trimmed the permission chips shown per role to 3 with a "+N more" indicator.',
+                'released_at' => now(),
+            ],
         ];
 
         foreach ($notes as $note) {
