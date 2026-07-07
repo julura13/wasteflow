@@ -114,6 +114,18 @@ Route::middleware(['auth', 'verified', "permission:{$ordersPermission}"])->prefi
     Route::delete('/{media}', [App\Http\Controllers\MediaController::class, 'destroy'])->name('destroy');
 });
 
+// Documents (viewable by all authenticated users; upload/edit/delete restricted to manage-documents)
+Route::middleware(['auth', 'verified'])->prefix('documents')->name('documents.')->group(function () {
+    Route::get('/', [App\Http\Controllers\DocumentController::class, 'index'])->name('index');
+    Route::get('/{document}/download', [App\Http\Controllers\DocumentController::class, 'download'])->name('download');
+
+    Route::middleware(['permission:manage-documents'])->group(function () {
+        Route::post('/', [App\Http\Controllers\DocumentController::class, 'store'])->name('store');
+        Route::put('/{document}', [App\Http\Controllers\DocumentController::class, 'update'])->name('update');
+        Route::delete('/{document}', [App\Http\Controllers\DocumentController::class, 'destroy'])->name('destroy');
+    });
+});
+
 // Unauthenticated print-preview used by Browsershot — auth via short-lived cache token
 Route::get('/reports/resource-intelligence/print/{token}', [App\Http\Controllers\ReportController::class, 'resourceIntelligencePrintPreview'])
     ->name('reports.resource-intelligence.print-preview');

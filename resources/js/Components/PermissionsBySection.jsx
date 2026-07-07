@@ -12,8 +12,6 @@ const PERMISSION_SECTIONS = [
         title: 'Orders',
         permissionNames: [
             'manage-waste-collections',
-            'view-orders',
-            'create-orders',
             'orders-view',
             'orders-create',
             'orders-schedule',
@@ -24,6 +22,11 @@ const PERMISSION_SECTIONS = [
             'orders-capture-weights',
             'orders-finalize',
         ],
+    },
+    {
+        id: 'recurring-orders',
+        title: 'Recurring Orders',
+        permissionNames: ['manage-recurring-orders'],
     },
     {
         id: 'reports',
@@ -54,7 +57,7 @@ const PERMISSION_SECTIONS = [
     {
         id: 'roles',
         title: 'Roles',
-        permissionNames: ['manage-roles', 'manage-permissions'],
+        permissionNames: ['manage-roles'],
     },
     {
         id: 'service-providers',
@@ -70,6 +73,11 @@ const PERMISSION_SECTIONS = [
         id: 'settings',
         title: 'Settings',
         permissionNames: ['manage-settings'],
+    },
+    {
+        id: 'documents',
+        title: 'Documents',
+        permissionNames: ['manage-documents'],
     },
 ];
 

@@ -136,6 +136,20 @@ class ReleaseNotesSeeder extends Seeder
                 'description' => 'All environmental impact metrics (carbon, energy, water, trees, landfill space) now flow through a single shared calculation engine. Duplicate category-mapping loops have been removed, plastic grades are split correctly (PP/HD, PS, LDPE) with a fallback for unrecognised grades, and an organics double-count bug has been fixed. Dashboard and report carbon figures now match.',
                 'released_at' => now(),
             ],
+            [
+                'version' => '0.4.1',
+                'type' => 'feature',
+                'title' => 'Document Library',
+                'description' => 'Admins can now upload shared documents (title, description, and file) from the new Documents section in the sidebar. Everyone can view and download them, and a badge marks documents you have not opened yet.',
+                'released_at' => now(),
+            ],
+            [
+                'version' => '0.4.1',
+                'type' => 'improvement',
+                'title' => 'Roles now show descriptions',
+                'description' => 'Each role in Roles & Permissions now has a plain-English description of what it grants. Cleaned up a few duplicate/unused permissions and made sure every permission is grouped into a section.',
+                'released_at' => now(),
+            ],
         ];
 
         foreach ($notes as $note) {

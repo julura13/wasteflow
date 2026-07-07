@@ -2,8 +2,8 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import DataTable from '@/Components/Dashboard/DataTable';
 import Modal from '@/Components/Modal';
-import { useMemo, useState, useEffect } from 'react';
-import { Plus, Edit, Search, Filter, CheckCircle, X, Trash2, AlertTriangle } from 'lucide-react';
+import { useMemo, useState, useEffect, useRef } from 'react';
+import { Plus, Edit, Search, CheckCircle, X, Trash2, AlertTriangle } from 'lucide-react';
 
 function formatRoleName(name) {
     return name
@@ -39,6 +39,28 @@ export default function UsersIndex({ users, filters }) {
     const [activeFilter, setActiveFilter] = useState(
         filters?.active !== undefined && filters?.active !== '' ? String(filters.active) : ''
     );
+    const debounceRef = useRef(null);
+    const isFirstRender = useRef(true);
+
+    // Live search: debounce as the user types/changes the status filter, instead of requiring a manual submit.
+    useEffect(() => {
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+            return;
+        }
+
+        clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(() => {
+            router.get('/users', { search: search || undefined, active: activeFilter || undefined }, {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+                only: ['users', 'filters'],
+            });
+        }, 350);
+
+        return () => clearTimeout(debounceRef.current);
+    }, [search, activeFilter]);
 
     const canDeleteUser = (u) =>
         auth?.user?.is_admin === true && auth?.user?.id !== u.id;
@@ -177,11 +199,8 @@ export default function UsersIndex({ users, filters }) {
     );
 
     const handleSearch = (e) => {
+        // Live search already keeps the list in sync as you type; this just avoids a page reload on Enter.
         e.preventDefault();
-        router.get('/users', { search: search || undefined, active: activeFilter || undefined }, {
-            preserveState: true,
-            replace: true,
-        });
     };
 
     return (
@@ -263,7 +282,7 @@ export default function UsersIndex({ users, filters }) {
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                                 className="pl-10 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm dark:bg-gray-700 dark:text-gray-100"
-                                placeholder="Name or email..."
+                                placeholder="Name, email, or company..."
                             />
                         </div>
                     </div>
@@ -285,13 +304,6 @@ export default function UsersIndex({ users, filters }) {
                             <option value="0">Inactive</option>
                         </select>
                     </div>
-                    <button
-                        type="submit"
-                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 dark:focus:ring-offset-gray-800"
-                    >
-                        <Filter className="h-4 w-4 mr-2" />
-                        Filter
-                    </button>
                 </form>
             </div>
 

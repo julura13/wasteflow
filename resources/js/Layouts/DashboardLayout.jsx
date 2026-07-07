@@ -19,6 +19,7 @@ import {
     ChevronDown,
     ChevronLeft,
     ChevronRight,
+    FolderOpen,
     Truck,
     ShoppingBag,
     Sun,
@@ -49,6 +50,7 @@ export default function DashboardLayout({ children }) {
     const profileDropdownRef = useRef(null);
     const notificationsRef = useRef(null);
     const bellNotifications = usePage().props.bellNotifications ?? [];
+    const hasUnseenDocuments = usePage().props.hasUnseenDocuments ?? false;
 
     // Open command palette with ⌘K / Ctrl+K
     useEffect(() => {
@@ -158,7 +160,7 @@ export default function DashboardLayout({ children }) {
                             <X className="h-6 w-6" />
                         </button>
                     </div>
-                    <nav className="flex-1 px-4 py-4">
+                    <nav className="flex-1 px-4 py-4 overflow-y-auto">
                         <ul className="space-y-2">
                             {navigation.map((item) => {
                                 const isCurrent = url.startsWith(item.href);
@@ -184,6 +186,26 @@ export default function DashboardLayout({ children }) {
                             })}
                         </ul>
                     </nav>
+                    <div className="shrink-0 border-t border-gray-200 dark:border-gray-700 p-2">
+                        <Link
+                            href="/documents"
+                            className={`group relative flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                                url.startsWith('/documents')
+                                    ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
+                                    : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'
+                            }`}
+                        >
+                            <FolderOpen
+                                className={`mr-3 h-5 w-5 ${
+                                    url.startsWith('/documents') ? 'text-blue-500' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'
+                                }`}
+                            />
+                            Documents
+                            {hasUnseenDocuments && (
+                                <span className="ml-auto h-2 w-2 rounded-full bg-primary-500" />
+                            )}
+                        </Link>
+                    </div>
                 </div>
             </div>
 
@@ -233,23 +255,52 @@ export default function DashboardLayout({ children }) {
                             })}
                         </ul>
                     </nav>
-                    <div className="shrink-0 border-t border-gray-200 dark:border-gray-700 p-2">
-                        <button
-                            type="button"
-                            onClick={() => setSidebarCollapsed((c) => !c)}
-                            className="flex w-full items-center justify-center rounded-lg px-2 py-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200"
-                            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                            aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                        >
-                            {sidebarCollapsed ? (
-                                <ChevronRight className="h-5 w-5" />
-                            ) : (
-                                <>
-                                    <ChevronLeft className="h-5 w-5 mr-2" />
-                                    <span className="text-sm">Collapse</span>
-                                </>
-                            )}
-                        </button>
+                    <div className="shrink-0">
+                        <div className="border-t border-gray-200 dark:border-gray-700 p-2">
+                            <Link
+                                href="/documents"
+                                title={sidebarCollapsed ? 'Documents' : undefined}
+                                className={`group relative flex items-center rounded-lg text-sm font-medium transition-colors ${
+                                    sidebarCollapsed ? 'justify-center px-2 py-2' : 'px-3 py-2'
+                                } ${
+                                    url.startsWith('/documents')
+                                        ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
+                                        : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'
+                                }`}
+                            >
+                                <FolderOpen
+                                    className={`h-5 w-5 shrink-0 ${sidebarCollapsed ? '' : 'mr-3'} ${
+                                        url.startsWith('/documents') ? 'text-blue-500' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'
+                                    }`}
+                                />
+                                {!sidebarCollapsed && <span className="truncate">Documents</span>}
+                                {hasUnseenDocuments && (
+                                    <span
+                                        className={`absolute h-2 w-2 rounded-full bg-primary-500 ${
+                                            sidebarCollapsed ? 'top-1.5 right-1.5' : 'right-3 top-1/2 -translate-y-1/2'
+                                        }`}
+                                    />
+                                )}
+                            </Link>
+                        </div>
+                        <div className="border-t border-gray-200 dark:border-gray-700 p-2">
+                            <button
+                                type="button"
+                                onClick={() => setSidebarCollapsed((c) => !c)}
+                                className="flex w-full items-center justify-center rounded-lg px-2 py-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+                                title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                                aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                            >
+                                {sidebarCollapsed ? (
+                                    <ChevronRight className="h-5 w-5" />
+                                ) : (
+                                    <>
+                                        <ChevronLeft className="h-5 w-5 mr-2" />
+                                        <span className="text-sm">Collapse</span>
+                                    </>
+                                )}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

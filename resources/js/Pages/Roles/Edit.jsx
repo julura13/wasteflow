@@ -13,6 +13,7 @@ function formatLabel(name) {
 export default function RolesEdit({ role, permissions }) {
     const { data, setData, put, processing, errors } = useForm({
         name: role?.name ?? '',
+        description: role?.description ?? '',
         permissions: role?.permissions ?? [],
     });
 
@@ -68,6 +69,26 @@ export default function RolesEdit({ role, permissions }) {
                             />
                             {errors.name && (
                                 <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.name}</p>
+                            )}
+                        </div>
+
+                        <div>
+                            <label
+                                htmlFor="description"
+                                className="block text-sm font-medium text-gray-700 dark:text-gray-200"
+                            >
+                                Description
+                            </label>
+                            <textarea
+                                id="description"
+                                value={data.description}
+                                onChange={(e) => setData('description', e.target.value)}
+                                rows={2}
+                                placeholder="What is this role for? (optional)"
+                                className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm dark:bg-gray-700 dark:text-gray-100"
+                            />
+                            {errors.description && (
+                                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.description}</p>
                             )}
                         </div>
 

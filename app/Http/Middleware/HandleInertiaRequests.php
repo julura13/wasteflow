@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Document;
 use App\Models\ReleaseNote;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -65,6 +66,9 @@ class HandleInertiaRequests extends Middleware
             'bellNotifications' => fn () => $user && $user->isAdmin()
                 ? $this->bellNotifications($user)
                 : [],
+            'hasUnseenDocuments' => fn () => $user
+                ? Document::query()->unseenByUser($user->id)->exists()
+                : false,
         ];
     }
 

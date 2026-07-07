@@ -21,6 +21,7 @@ class RoleController extends Controller
             ->map(fn (Role $role) => [
                 'id' => $role->id,
                 'name' => $role->name,
+                'description' => $role->description,
                 'permissions' => $role->permissions->pluck('name'),
                 'permissions_count' => $role->permissions->count(),
             ]);
@@ -49,11 +50,16 @@ class RoleController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:roles,name',
+            'description' => 'nullable|string|max:1000',
             'permissions' => 'array',
             'permissions.*' => 'string|exists:permissions,name',
         ]);
 
-        $role = Role::create(['name' => $validated['name'], 'guard_name' => 'web']);
+        $role = Role::create([
+            'name' => $validated['name'],
+            'description' => $validated['description'] ?? null,
+            'guard_name' => 'web',
+        ]);
 
         if (! empty($validated['permissions'])) {
             $role->syncPermissions($validated['permissions']);
@@ -77,6 +83,7 @@ class RoleController extends Controller
             'role' => [
                 'id' => $role->id,
                 'name' => $role->name,
+                'description' => $role->description,
                 'permissions' => $role->permissions->pluck('name')->values()->all(),
             ],
             'permissions' => $permissions,
@@ -90,11 +97,15 @@ class RoleController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:roles,name,'.$role->id,
+            'description' => 'nullable|string|max:1000',
             'permissions' => 'array',
             'permissions.*' => 'string|exists:permissions,name',
         ]);
 
-        $role->update(['name' => $validated['name']]);
+        $role->update([
+            'name' => $validated['name'],
+            'description' => $validated['description'] ?? null,
+        ]);
 
         $role->syncPermissions($validated['permissions'] ?? []);
 

@@ -31,13 +31,18 @@ export default function RolesIndex({ roles }) {
                 cell: ({ row }) => {
                     const r = row.original;
                     return (
-                        <div className="flex items-center">
+                        <div className="flex items-start whitespace-normal">
                             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary-600 dark:text-primary-300 shrink-0">
                                 <Shield className="h-4 w-4" />
                             </div>
-                            <span className="ml-3 font-medium text-gray-900 dark:text-gray-100">
-                                {formatLabel(r.name)}
-                            </span>
+                            <div className="ml-3">
+                                <span className="font-medium text-gray-900 dark:text-gray-100">
+                                    {formatLabel(r.name)}
+                                </span>
+                                {r.description && (
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 max-w-xs whitespace-normal">{r.description}</p>
+                                )}
+                            </div>
                         </div>
                     );
                 },
@@ -54,8 +59,8 @@ export default function RolesIndex({ roles }) {
                         );
                     }
                     return (
-                        <div className="flex flex-wrap gap-1 max-w-md">
-                            {perms.slice(0, 8).map((name) => (
+                        <div className="flex flex-wrap items-center gap-1 max-w-md whitespace-normal">
+                            {perms.slice(0, 3).map((name) => (
                                 <span
                                     key={name}
                                     className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
@@ -63,9 +68,9 @@ export default function RolesIndex({ roles }) {
                                     {formatLabel(name)}
                                 </span>
                             ))}
-                            {perms.length > 8 && (
+                            {perms.length > 3 && (
                                 <span className="text-xs text-gray-500 dark:text-gray-400">
-                                    +{perms.length - 8} more
+                                    +{perms.length - 3} more
                                 </span>
                             )}
                         </div>
