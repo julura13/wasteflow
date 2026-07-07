@@ -164,6 +164,13 @@ class ReleaseNotesSeeder extends Seeder
                 'description' => 'Fixed role descriptions visually overlapping into the Permissions column on the Roles page, and trimmed the permission chips shown per role to 3 with a "+N more" indicator.',
                 'released_at' => now(),
             ],
+            [
+                'version' => '0.4.1',
+                'type' => 'improvement',
+                'title' => 'Hide deleted recurring orders by default',
+                'description' => 'The Recurring Orders list now hides deleted templates by default. Tick "Show deleted records" to bring them back into view, with a Restore action still available for each.',
+                'released_at' => now(),
+            ],
         ];
 
         foreach ($notes as $note) {

@@ -6,10 +6,20 @@ import { useState, useEffect } from 'react';
 
 const DAY_ABBREV = { monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu', friday: 'Fri', saturday: 'Sat', sunday: 'Sun' };
 
-export default function RecurringOrdersIndex({ recurringOrders = [] }) {
+export default function RecurringOrdersIndex({ recurringOrders = [], filters = {} }) {
     const { flash } = usePage().props;
     const [showSuccess, setShowSuccess] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState(null);
+    const [showDeleted, setShowDeleted] = useState(Boolean(filters?.show_deleted));
+
+    const toggleShowDeleted = (checked) => {
+        setShowDeleted(checked);
+        router.get(route('recurring-orders.index'), { show_deleted: checked || undefined }, {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+        });
+    };
 
     useEffect(() => {
         if (flash?.success) {
@@ -59,6 +69,18 @@ export default function RecurringOrdersIndex({ recurringOrders = [] }) {
                     <Plus className="h-4 w-4 mr-2" />
                     Add Recurring Order
                 </Link>
+            </div>
+
+            <div className="mb-4 flex items-center justify-end">
+                <label className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                    <input
+                        type="checkbox"
+                        checked={showDeleted}
+                        onChange={(e) => toggleShowDeleted(e.target.checked)}
+                        className="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500"
+                    />
+                    Show deleted records
+                </label>
             </div>
 
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden border border-gray-200 dark:border-gray-700">

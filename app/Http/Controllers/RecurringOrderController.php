@@ -19,14 +19,17 @@ class RecurringOrderController extends Controller
     {
         abort_unless($request->user()->can('manage-recurring-orders'), 403);
 
+        $showDeleted = $request->boolean('show_deleted');
+
         $recurringOrders = RecurringOrder::with(['company', 'branch', 'site', 'serviceProvider'])
-            ->withTrashed()
+            ->when($showDeleted, fn ($query) => $query->withTrashed())
             ->orderByDesc('created_at')
             ->get()
             ->map(fn ($r) => $this->formatForIndex($r));
 
         return Inertia::render('RecurringOrders/Index', [
             'recurringOrders' => $recurringOrders,
+            'filters' => ['show_deleted' => $showDeleted],
         ]);
     }
 
