@@ -171,6 +171,13 @@ class ReleaseNotesSeeder extends Seeder
                 'description' => 'The Recurring Orders list now hides deleted templates by default. Tick "Show deleted records" to bring them back into view, with a Restore action still available for each.',
                 'released_at' => now(),
             ],
+            [
+                'version' => '0.4.1',
+                'type' => 'feature',
+                'title' => 'View documents inline',
+                'description' => 'Added a "View" button on the Documents library to open files in a new tab for preview, alongside the existing Download option.',
+                'released_at' => now(),
+            ],
         ];
 
         foreach ($notes as $note) {

@@ -78,6 +78,27 @@ it('allows any authenticated user to download a document', function () {
         ->assertSuccessful();
 });
 
+it('allows any authenticated user to view a document inline', function () {
+    $client = User::factory()->create();
+    $client->assignRole('client');
+
+    $file = UploadedFile::fake()->create('policy.pdf', 100);
+    $path = $file->storeAs('documents', 'test.pdf', 'local');
+
+    $document = Document::factory()->create([
+        'disk' => 'local',
+        'path' => $path,
+        'original_name' => 'policy.pdf',
+        'mime_type' => 'application/pdf',
+    ]);
+
+    $this->actingAs($client)
+        ->get("/documents/{$document->id}/view")
+        ->assertSuccessful()
+        ->assertHeader('Content-Type', 'application/pdf')
+        ->assertHeader('Content-Disposition', 'inline; filename=policy.pdf');
+});
+
 it('forbids non-admins from updating or deleting a document', function () {
     $client = User::factory()->create();
     $client->assignRole('client');

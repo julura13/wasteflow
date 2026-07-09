@@ -149,4 +149,20 @@ class DocumentController extends Controller
 
         return $disk->download($document->path, $document->original_name);
     }
+
+    /**
+     * View a document file inline in the browser.
+     */
+    public function view(Document $document)
+    {
+        $disk = Storage::disk($document->disk);
+
+        if (! $disk->exists($document->path)) {
+            abort(404, 'File not found.');
+        }
+
+        return $disk->response($document->path, $document->original_name, [
+            'Content-Type' => $document->mime_type,
+        ]);
+    }
 }

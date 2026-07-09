@@ -8,7 +8,7 @@ import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
-import { Plus, Edit2, Trash2, Download, FileText } from 'lucide-react';
+import { Plus, Edit2, Trash2, Download, Eye, FileText } from 'lucide-react';
 
 export default function DocumentsIndex({ documents }) {
     const { auth } = usePage().props;
@@ -126,6 +126,15 @@ export default function DocumentsIndex({ documents }) {
             header: 'Actions',
             cell: ({ row }) => (
                 <div className="flex items-center space-x-3">
+                    <a
+                        href={`/documents/${row.original.id}/view`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary-600 hover:text-primary-800 dark:text-primary-400"
+                        title="View"
+                    >
+                        <Eye className="h-4 w-4" />
+                    </a>
                     <a
                         href={`/documents/${row.original.id}/download`}
                         className="text-primary-600 hover:text-primary-800 dark:text-primary-400"

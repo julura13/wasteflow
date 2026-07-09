@@ -117,6 +117,7 @@ Route::middleware(['auth', 'verified', "permission:{$ordersPermission}"])->prefi
 // Documents (viewable by all authenticated users; upload/edit/delete restricted to manage-documents)
 Route::middleware(['auth', 'verified'])->prefix('documents')->name('documents.')->group(function () {
     Route::get('/', [App\Http\Controllers\DocumentController::class, 'index'])->name('index');
+    Route::get('/{document}/view', [App\Http\Controllers\DocumentController::class, 'view'])->name('view');
     Route::get('/{document}/download', [App\Http\Controllers\DocumentController::class, 'download'])->name('download');
 
     Route::middleware(['permission:manage-documents'])->group(function () {
