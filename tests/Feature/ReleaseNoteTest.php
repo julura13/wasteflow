@@ -175,6 +175,27 @@ it('does not duplicate a read record when marking the same note twice', function
     expect(ReleaseNoteRead::where('release_note_id', $note->id)->where('user_id', $admin->id)->count())->toBe(1);
 });
 
+it('shows the full release notes history grouped by version to any authenticated user', function () {
+    $user = User::factory()->create();
+    $user->assignRole('company_user');
+
+    ReleaseNote::insert([
+        ['version' => '1.8.0', 'type' => 'feature', 'title' => 'Newer feature', 'description' => 'Newer.', 'released_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+        ['version' => '1.8.0', 'type' => 'bugfix', 'title' => 'Newer fix', 'description' => 'Also newer.', 'released_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+        ['version' => '0.4.1', 'type' => 'improvement', 'title' => 'Older improvement', 'description' => 'Older.', 'released_at' => now()->subDay(), 'created_at' => now()->subDay(), 'updated_at' => now()->subDay()],
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('release-notes.index'))
+        ->assertInertia(fn ($page) => $page
+            ->component('ReleaseNotes/Index')
+            ->has('versions', 2)
+            ->where('versions.0.version', '1.8.0')
+            ->has('versions.0.notes', 2)
+            ->where('versions.1.version', '0.4.1')
+        );
+});
+
 it('returns forbidden for non-admin users trying to mark notes as read', function () {
     $user = User::factory()->create();
     $user->assignRole('company_user');

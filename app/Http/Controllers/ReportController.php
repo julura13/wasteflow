@@ -12,6 +12,7 @@ use App\Services\CarbonCalculator;
 use App\Services\CustomerOrderFrequencyReportService;
 use App\Services\LandfillSpaceCalculator;
 use App\Services\LifecycleCarbonEquivalency;
+use App\Services\ManagementReportService;
 use App\Services\OrderWasteStreamReportingService;
 use App\Services\WasteImpactCalculator;
 use App\Services\WasteManagementReportPdfGenerator;
@@ -25,6 +26,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class ReportController extends Controller
@@ -47,6 +49,8 @@ class ReportController extends Controller
 
     protected WasteManagementReportPdfGenerator $wasteManagementReportPdfGenerator;
 
+    protected ManagementReportService $managementReport;
+
     public function __construct(
         WasteImpactCalculator $wasteImpactCalculator,
         CarbonCalculator $carbonCalculator,
@@ -56,6 +60,7 @@ class ReportController extends Controller
         OrderWasteStreamReportingService $orderWasteStreamReporting,
         CustomerOrderFrequencyReportService $customerOrderFrequencyReport,
         WasteManagementReportPdfGenerator $wasteManagementReportPdfGenerator,
+        ManagementReportService $managementReport,
     ) {
         $this->wasteImpactCalculator = $wasteImpactCalculator;
         $this->carbonCalculator = $carbonCalculator;
@@ -65,6 +70,7 @@ class ReportController extends Controller
         $this->orderWasteStreamReporting = $orderWasteStreamReporting;
         $this->customerOrderFrequencyReport = $customerOrderFrequencyReport;
         $this->wasteManagementReportPdfGenerator = $wasteManagementReportPdfGenerator;
+        $this->managementReport = $managementReport;
     }
 
     /**
@@ -172,11 +178,113 @@ class ReportController extends Controller
     }
 
     /**
+     * Management report: total waste diverted % and container-type totals, one row per client, for a single month.
+     */
+    public function managementReport(Request $request)
+    {
+        [$month, $year, $rows] = $this->managementReportPayload($request);
+
+        return Inertia::render('Reports/ManagementReport', [
+            'rows' => $rows,
+            'month' => $month,
+            'year' => $year,
+        ]);
+    }
+
+    /**
+     * CSV export for the management report (same scope and month as the on-screen report).
+     */
+    public function managementReportExport(Request $request)
+    {
+        [$month, $year, $rows] = $this->managementReportPayload($request);
+
+        $filename = 'management_report_'.sprintf('%04d-%02d', $year, $month).'.csv';
+
+        return response()->streamDownload(function () use ($rows) {
+            $out = fopen('php://output', 'w');
+            fputcsv($out, [
+                'Customer',
+                'Total waste diverted %',
+                'Total waste managed (kg)',
+                'Container totals',
+            ]);
+            foreach ($rows as $row) {
+                $containerSummary = collect($row['container_totals'])
+                    ->map(fn ($c) => $c['name'].': '.$c['quantity'])
+                    ->implode(', ');
+
+                fputcsv($out, [
+                    $row['company_name'],
+                    $row['total_waste_diverted_percentage'],
+                    $row['total_waste_managed_kg'],
+                    $containerSummary,
+                ]);
+            }
+            fclose($out);
+        }, $filename, [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+        ]);
+    }
+
+    /**
+     * PDF export for the management report (same scope and month as the on-screen report).
+     */
+    public function managementReportExportPdf(Request $request)
+    {
+        [$month, $year, $rows] = $this->managementReportPayload($request);
+
+        $options = new Options;
+        $options->set('isHtml5ParserEnabled', true);
+        $options->set('isRemoteEnabled', true);
+        $options->set('defaultFont', 'DejaVu Sans');
+
+        $dompdf = new Dompdf($options);
+        $html = view('reports.management-report-pdf', [
+            'rows' => $rows,
+            'month' => $month,
+            'year' => $year,
+        ])->render();
+
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'landscape');
+        $dompdf->render();
+
+        $filename = 'management_report_'.sprintf('%04d-%02d', $year, $month).'.pdf';
+
+        return response()->streamDownload(function () use ($dompdf) {
+            echo $dompdf->output();
+        }, $filename, [
+            'Content-Type' => 'application/pdf',
+        ]);
+    }
+
+    /**
+     * @return array{0: int, 1: int, 2: list<array<string, mixed>>}
+     */
+    private function managementReportPayload(Request $request): array
+    {
+        $validated = $request->validate([
+            'month' => ['sometimes', 'integer', 'min:1', 'max:12'],
+            'year' => ['sometimes', 'integer', 'min:2020', 'max:2100'],
+        ]);
+        $month = (int) ($validated['month'] ?? now()->month);
+        $year = (int) ($validated['year'] ?? now()->year);
+
+        $companies = $this->scopeCompaniesForUser();
+        $rows = $this->managementReport->buildForCompanies($companies, $month, $year);
+
+        return [$month, $year, $rows];
+    }
+
+    /**
      * Waste management report filter form (PDF is generated asynchronously).
      */
     public function wasteManagement(Request $request)
     {
         $companies = $this->scopeCompaniesForUser();
+        $month = (int) ($request->input('month') ?? date('m'));
+        $year = (int) ($request->input('year') ?? date('Y'));
 
         return Inertia::render('Reports/WasteManagement', [
             'companies' => $companies,
@@ -184,8 +292,10 @@ class ReportController extends Controller
                 'company_id' => $request->input('company_id') ?? '',
                 'branch_id' => $request->input('branch_id') ?? '',
                 'site_id' => $request->input('site_id') ?? '',
-                'month' => (int) ($request->input('month') ?? date('m')),
-                'year' => (int) ($request->input('year') ?? date('Y')),
+                'month' => $month,
+                'year' => $year,
+                'to_month' => (int) ($request->input('to_month') ?? $month),
+                'to_year' => (int) ($request->input('to_year') ?? $year),
             ],
         ]);
     }
@@ -206,20 +316,30 @@ class ReportController extends Controller
             'site_id' => ['nullable', 'integer', 'exists:sites,id'],
             'month' => ['required', 'integer', 'min:1', 'max:12'],
             'year' => ['required', 'integer', 'min:2000', 'max:2100'],
+            'to_month' => ['nullable', 'integer', 'min:1', 'max:12'],
+            'to_year' => ['nullable', 'integer', 'min:2000', 'max:2100'],
         ]);
 
         $companyId = (int) $validated['company_id'];
         $branchId = isset($validated['branch_id']) && $validated['branch_id'] !== null ? (int) $validated['branch_id'] : null;
         $siteId = isset($validated['site_id']) && $validated['site_id'] !== null ? (int) $validated['site_id'] : null;
+        $month = (int) $validated['month'];
+        $year = (int) $validated['year'];
+        $toMonth = (int) ($validated['to_month'] ?? $month);
+        $toYear = (int) ($validated['to_year'] ?? $year);
+
+        if (($toYear * 12 + $toMonth) < ($year * 12 + $month)) {
+            throw ValidationException::withMessages([
+                'to_month' => 'The end of the reporting period must not be before the start.',
+            ]);
+        }
 
         [$companyId, $branchId, $siteId] = $this->enforceCompanyScope($companyId, $branchId, $siteId);
 
         $uuid = (string) Str::uuid();
-        $filename = sprintf(
-            'WasteFlow_Resource_Intelligence_Report_%d-%02d.pdf',
-            (int) $validated['year'],
-            (int) $validated['month'],
-        );
+        $filename = $month === $toMonth && $year === $toYear
+            ? sprintf('WasteFlow_Resource_Intelligence_Report_%d-%02d.pdf', $year, $month)
+            : sprintf('WasteFlow_Resource_Intelligence_Report_%d-%02d_to_%d-%02d.pdf', $year, $month, $toYear, $toMonth);
 
         $export = WasteManagementReportExport::query()->create([
             'uuid' => $uuid,
@@ -231,8 +351,10 @@ class ReportController extends Controller
                 'company_id' => $companyId,
                 'branch_id' => $branchId,
                 'site_id' => $siteId,
-                'month' => (int) $validated['month'],
-                'year' => (int) $validated['year'],
+                'month' => $month,
+                'year' => $year,
+                'to_month' => $toMonth,
+                'to_year' => $toYear,
             ],
             'expires_at' => now()->addDay(),
         ]);
@@ -292,6 +414,8 @@ class ReportController extends Controller
         $siteId = $filters['site_id'] ?? null;
         $month = (int) ($filters['month'] ?? date('m'));
         $year = (int) ($filters['year'] ?? date('Y'));
+        $toMonth = (int) ($filters['to_month'] ?? $month);
+        $toYear = (int) ($filters['to_year'] ?? $year);
 
         [$companyId, $branchId, $siteId] = $this->enforceCompanyScopeForUser($user, $companyId ? (int) $companyId : null, $branchId ? (int) $branchId : null, $siteId ? (int) $siteId : null);
 
@@ -299,7 +423,7 @@ class ReportController extends Controller
         $branch = $branchId ? Branch::with('company')->find($branchId) : null;
         $site = $siteId ? Site::with('branch.company')->find($siteId) : null;
 
-        [$pdfFilename, $binary] = $this->buildWasteManagementPdfBinary($company, $branch, $site, $month, $year, $user);
+        [$pdfFilename, $binary] = $this->buildWasteManagementPdfBinary($company, $branch, $site, $month, $year, $toMonth, $toYear, $user);
 
         $relativePath = 'waste-management-reports/'.$export->uuid.'.pdf';
         Storage::disk($export->disk)->put($relativePath, $binary);
@@ -331,7 +455,15 @@ class ReportController extends Controller
         $branch = $filters['branch_id'] ? Branch::with('company')->find($filters['branch_id']) : null;
         $site = $filters['site_id'] ? Site::with('branch.company')->find($filters['site_id']) : null;
 
-        $reportData = $this->getReportData($company, $branch, $site, (int) $filters['month'], (int) $filters['year']);
+        $reportData = $this->getReportData(
+            $company,
+            $branch,
+            $site,
+            (int) $filters['month'],
+            (int) $filters['year'],
+            (int) ($filters['to_month'] ?? $filters['month']),
+            (int) ($filters['to_year'] ?? $filters['year']),
+        );
 
         return Inertia::render('Reports/ResourceIntelligence', [
             'reportData' => $reportData,
@@ -344,7 +476,7 @@ class ReportController extends Controller
     /**
      * @return array{0: string, 1: string} Filename and raw PDF bytes
      */
-    private function buildWasteManagementPdfBinary(?Company $company, ?Branch $branch, ?Site $site, int $month, int $year, User $user): array
+    private function buildWasteManagementPdfBinary(?Company $company, ?Branch $branch, ?Site $site, int $month, int $year, int $toMonth, int $toYear, User $user): array
     {
         $token = (string) Str::uuid();
         cache()->put('ri_pdf_print_'.$token, [
@@ -355,12 +487,16 @@ class ReportController extends Controller
                 'site_id' => $site?->id,
                 'month' => $month,
                 'year' => $year,
+                'to_month' => $toMonth,
+                'to_year' => $toYear,
             ],
         ], now()->addMinutes(10));
 
         $previewUrl = route('reports.resource-intelligence.print-preview', ['token' => $token]);
 
-        $filename = sprintf('WasteFlow_Resource_Intelligence_Report_%04d-%02d.pdf', $year, $month);
+        $filename = $month === $toMonth && $year === $toYear
+            ? sprintf('WasteFlow_Resource_Intelligence_Report_%04d-%02d.pdf', $year, $month)
+            : sprintf('WasteFlow_Resource_Intelligence_Report_%04d-%02d_to_%04d-%02d.pdf', $year, $month, $toYear, $toMonth);
 
         return [$filename, $this->wasteManagementReportPdfGenerator->generateFromUrl($previewUrl)];
     }
@@ -375,6 +511,16 @@ class ReportController extends Controller
         $siteId = $request->input('site_id') ? (int) $request->input('site_id') : null;
         $month = (int) ($request->input('month', (int) date('m')));
         $year = (int) ($request->input('year', (int) date('Y')));
+        $toMonth = $request->filled('to_month') ? (int) $request->input('to_month') : $month;
+        $toYear = $request->filled('to_year') ? (int) $request->input('to_year') : $year;
+
+        // Guard against a hand-edited/stale URL with an inverted range (the UI itself
+        // already clamps this before submitting) - fall back to a single-month report
+        // for "from" rather than silently rendering an empty one.
+        if (($toYear * 12 + $toMonth) < ($year * 12 + $month)) {
+            $toMonth = $month;
+            $toYear = $year;
+        }
 
         [$companyId, $branchId, $siteId] = $this->enforceCompanyScope($companyId, $branchId, $siteId);
 
@@ -382,7 +528,7 @@ class ReportController extends Controller
         $branch = $branchId ? Branch::with('company')->find($branchId) : null;
         $site = $siteId ? Site::with('branch.company')->find($siteId) : null;
 
-        $reportData = $this->getReportData($company, $branch, $site, $month, $year);
+        $reportData = $this->getReportData($company, $branch, $site, $month, $year, $toMonth, $toYear);
         $companies = $this->scopeCompaniesForUser();
 
         return Inertia::render('Reports/ResourceIntelligence', [
@@ -394,6 +540,8 @@ class ReportController extends Controller
                 'site_id' => $siteId,
                 'month' => $month,
                 'year' => $year,
+                'to_month' => $toMonth,
+                'to_year' => $toYear,
             ],
         ]);
     }
@@ -417,7 +565,7 @@ class ReportController extends Controller
         $branch = $branchId ? Branch::find($branchId) : null;
         $site = $siteId ? Site::find($siteId) : null;
 
-        $reportData = $this->getReportData($company, $branch, $site, (int) $month, (int) $year);
+        $reportData = $this->getReportData($company, $branch, $site, (int) $month, (int) $year, (int) $month, (int) $year);
 
         return Inertia::render('Reports/WasteManagementSummary', [
             'reportData' => $reportData,
@@ -590,10 +738,15 @@ class ReportController extends Controller
     }
 
     /**
-     * Get report data for waste management report
+     * Get report data for waste management report. The reporting period runs from the
+     * first day of $fromMonth/$fromYear to the last day of $toMonth/$toYear (inclusive).
+     * $toMonth/$toYear default to $fromMonth/$fromYear, giving a single-month report.
      */
-    private function getReportData(?Company $company = null, ?Branch $branch = null, ?Site $site = null, ?int $month = null, ?int $year = null): array
+    private function getReportData(?Company $company = null, ?Branch $branch = null, ?Site $site = null, ?int $fromMonth = null, ?int $fromYear = null, ?int $toMonth = null, ?int $toYear = null): array
     {
+        $toMonth ??= $fromMonth;
+        $toYear ??= $fromYear;
+
         // Determine the company name for display
         $companyName = 'XXXX';
         if ($site && $site->branch && $site->branch->company) {
@@ -624,13 +777,17 @@ class ReportController extends Controller
             ];
         }
 
-        // Report period label and short date tag (yyyy/mm/dd; first day of month for tag)
+        // Report period label and short date tag (yyyy/mm/dd; first day of $fromMonth for tag)
         $reportDate = 'XXXX';
         $reportingPeriodLabel = 'Reporting period';
-        if ($month && $year) {
-            $start = Carbon::createFromDate($year, $month, 1);
-            $lastDay = cal_days_in_month(CAL_GREGORIAN, $month, $year);
-            $end = Carbon::createFromDate($year, $month, $lastDay);
+        $startDate = null;
+        $endDate = null;
+        if ($fromMonth && $fromYear && $toMonth && $toYear) {
+            $start = Carbon::createFromDate($fromYear, $fromMonth, 1);
+            $lastDay = cal_days_in_month(CAL_GREGORIAN, $toMonth, $toYear);
+            $end = Carbon::createFromDate($toYear, $toMonth, $lastDay);
+            $startDate = $start->format('Y-m-d');
+            $endDate = $end->format('Y-m-d');
             $reportDate = $start->format(DisplayDate::CALENDAR);
             $reportingPeriodLabel = sprintf(
                 'Reporting period (%s to %s)',
@@ -639,14 +796,14 @@ class ReportController extends Controller
             );
         }
 
-        $materialSummaries = ((! $company && ! $branch && ! $site) || ! $month || ! $year)
+        $materialSummaries = ((! $company && ! $branch && ! $site) || ! $startDate || ! $endDate)
             ? collect()
-            : $this->getMaterialSummaries($company, $branch, $site, $month, $year);
+            : $this->getMaterialSummaries($company, $branch, $site, $startDate, $endDate);
 
         $wasteStreamTotals = $this->orderWasteStreamReporting->wasteStreamTotalsFromSummaries($materialSummaries);
         $classificationTotals = $this->orderWasteStreamReporting->classificationTotalsFromSummaries($materialSummaries);
 
-        $grades = $this->getGrades($company, $branch, $site, $month, $year);
+        $grades = $this->getGrades($company, $branch, $site, $startDate, $endDate);
         [$recyclingCommodities, $recyclingCommodities2] = $this->getRecyclingCommodities($materialSummaries);
 
         // Calculate recyclingRecovered = sum of all recycling weights
@@ -670,16 +827,16 @@ class ReportController extends Controller
         $divertedFromLandfill = (float) ($classificationTotals['diverted']['percentage'] ?? 0);
 
         // Calculate landfill space saved breakdown
-        $landfillSpaceSavedData = $this->getLandfillSpaceSaved($company, $branch, $site, $month, $year, $organicsRecovered);
+        $landfillSpaceSavedData = $this->getLandfillSpaceSaved($company, $branch, $site, $startDate, $endDate, $organicsRecovered);
         $landfillSpaceSaved = $landfillSpaceSavedData['total'];
 
         // Calculate materials CO2e
-        $materialsCO2eData = $this->getMaterialsCO2e($company, $branch, $site, $month, $year, $organicsRecovered);
+        $materialsCO2eData = $this->getMaterialsCO2e($company, $branch, $site, $startDate, $endDate, $organicsRecovered);
         $materialsCO2e = $materialsCO2eData['materials'];
         $materialsCO2eTotals = $materialsCO2eData['totals'];
 
         // Calculate environmental impact (trees, energy, water, dashboard-style CO₂e + equivalencies)
-        $environmentalImpact = $this->getEnvironmentalImpact($company, $branch, $site, $month, $year, $organicsRecovered);
+        $environmentalImpact = $this->getEnvironmentalImpact($company, $branch, $site, $startDate, $endDate, $organicsRecovered);
 
         // Align all carbon metrics with materials table lifecycle total (split plastics)
         $lifecycleKg = (float) ($materialsCO2eTotals['lifecycleSaving'] ?? 0);
@@ -689,6 +846,10 @@ class ReportController extends Controller
         $environmentalImpact['transportEquivalentKm'] = $reportEquivalency['transportEquivalentKm'];
         $environmentalImpact['fuelEquivalentLitresPetrol'] = $reportEquivalency['fuelEquivalentLitresPetrol'];
         $environmentalImpact['carsOffRoadAnnualEquivalent'] = $reportEquivalency['carsOffRoadAnnualEquivalent'];
+
+        // Jan-Dec trend data for the monthly report's line graphs (same year as the start of the reporting period).
+        $gradeSummaryByYear = $fromYear ? $this->orderWasteStreamReporting->gradeSummaryForYear($company, $branch, $site, $fromYear) : [];
+        $wasteManagementTrendByYear = $fromYear ? $this->orderWasteStreamReporting->classificationTotalsByMonthForYear($company, $branch, $site, $fromYear) : [];
 
         return [
             'companyName' => $companyName,
@@ -715,31 +876,29 @@ class ReportController extends Controller
             'materialsCO2eTotals' => $materialsCO2eTotals,
             'carbonEmissionsAvoided' => $this->calculateCarbonEmissionsAvoided($materialsCO2eTotals),
             'cumulativeImpact' => $this->calculateCumulativeImpact($environmentalImpact, $materialsCO2eTotals),
-            'recyclingBreakdown' => $this->calculateRecyclingBreakdown($company, $branch, $site, $month, $year, $organicsRecovered, $recyclingRecovered),
+            'recyclingBreakdown' => $this->calculateRecyclingBreakdown($company, $branch, $site, $startDate, $endDate, $organicsRecovered, $recyclingRecovered),
+            'gradeSummaryByYear' => $gradeSummaryByYear,
+            'wasteManagementTrendByYear' => $wasteManagementTrendByYear,
         ];
     }
 
     /**
-     * Material-level weights for the calendar month from finalized order waste streams (single source of truth with dashboard).
+     * Material-level weights for the reporting date range from finalized order waste streams (single source of truth with dashboard).
      *
      * @return \Illuminate\Support\Collection<int, object{material_id: int, total_weight: float, material: \App\Models\Material}>
      */
-    private function getMaterialSummaries(?Company $company = null, ?Branch $branch = null, ?Site $site = null, ?int $month = null, ?int $year = null)
+    private function getMaterialSummaries(?Company $company = null, ?Branch $branch = null, ?Site $site = null, ?string $startDate = null, ?string $endDate = null)
     {
-        if ((! $company && ! $branch && ! $site) || ! $month || ! $year) {
+        if ((! $company && ! $branch && ! $site) || ! $startDate || ! $endDate) {
             return collect([]);
         }
-
-        $start = Carbon::createFromDate($year, $month, 1)->format('Y-m-d');
-        $lastDay = cal_days_in_month(CAL_GREGORIAN, $month, $year);
-        $end = Carbon::createFromDate($year, $month, $lastDay)->format('Y-m-d');
 
         return $this->orderWasteStreamReporting->materialWeightAggregatesForDateRange(
             $company,
             $branch,
             $site,
-            $start,
-            $end
+            $startDate,
+            $endDate
         );
     }
 
@@ -774,9 +933,9 @@ class ReportController extends Controller
     /**
      * Get grades (generalWaste, nonCompactableWaste, hazardousWaste, organicsRecovered) from pre-calculated summaries
      */
-    private function getGrades(?Company $company = null, ?Branch $branch = null, ?Site $site = null, ?int $month = null, ?int $year = null): array
+    private function getGrades(?Company $company = null, ?Branch $branch = null, ?Site $site = null, ?string $startDate = null, ?string $endDate = null): array
     {
-        if ((! $company && ! $branch && ! $site) || ! $month || ! $year) {
+        if ((! $company && ! $branch && ! $site) || ! $startDate || ! $endDate) {
             return [
                 'generalWaste' => 0,
                 'nonCompactableWaste' => 0,
@@ -786,7 +945,7 @@ class ReportController extends Controller
         }
 
         // Get material-level summaries
-        $summaries = $this->getMaterialSummaries($company, $branch, $site, $month, $year);
+        $summaries = $this->getMaterialSummaries($company, $branch, $site, $startDate, $endDate);
 
         $grades = [
             'generalWaste' => 0,
@@ -873,7 +1032,7 @@ class ReportController extends Controller
     /**
      * Calculate landfill space saved breakdown from pre-calculated summaries
      */
-    private function getLandfillSpaceSaved(?Company $company = null, ?Branch $branch = null, ?Site $site = null, ?int $month = null, ?int $year = null, float $organicsRecovered = 0): array
+    private function getLandfillSpaceSaved(?Company $company = null, ?Branch $branch = null, ?Site $site = null, ?string $startDate = null, ?string $endDate = null, float $organicsRecovered = 0): array
     {
         $zeroWeights = [
             'paper' => 0.0,
@@ -886,11 +1045,11 @@ class ReportController extends Controller
             'wood' => 0.0,
         ];
 
-        if ((! $company && ! $branch && ! $site) || ! $month || ! $year) {
+        if ((! $company && ! $branch && ! $site) || ! $startDate || ! $endDate) {
             return $this->landfillSpaceCalculator->calculate($zeroWeights);
         }
 
-        $summaries = $this->getMaterialSummaries($company, $branch, $site, $month, $year);
+        $summaries = $this->getMaterialSummaries($company, $branch, $site, $startDate, $endDate);
         $weightsKg = $this->wasteImpactCalculator->buildCategoryWeightsFromSummaries($summaries, $organicsRecovered);
 
         return $this->landfillSpaceCalculator->calculate($weightsKg);
@@ -899,14 +1058,14 @@ class ReportController extends Controller
     /**
      * Calculate materials CO2e with weights and emission factors from pre-calculated summaries
      */
-    private function getMaterialsCO2e(?Company $company = null, ?Branch $branch = null, ?Site $site = null, ?int $month = null, ?int $year = null, float $organicsRecovered = 0): array
+    private function getMaterialsCO2e(?Company $company = null, ?Branch $branch = null, ?Site $site = null, ?string $startDate = null, ?string $endDate = null, float $organicsRecovered = 0): array
     {
-        if ((! $company && ! $branch && ! $site) || ! $month || ! $year) {
+        if ((! $company && ! $branch && ! $site) || ! $startDate || ! $endDate) {
             return $this->getEmptyMaterialsCO2e();
         }
 
         // Get material-level summaries
-        $summaries = $this->getMaterialSummaries($company, $branch, $site, $month, $year);
+        $summaries = $this->getMaterialSummaries($company, $branch, $site, $startDate, $endDate);
 
         $weights = $this->wasteImpactCalculator->buildCarbonWeightsFromSummaries($summaries, $organicsRecovered);
 
@@ -952,12 +1111,14 @@ class ReportController extends Controller
     /**
      * Calculate environmental impact (trees saved, energy saved, water saved) using shared WasteImpactCalculator.
      */
-    private function getEnvironmentalImpact(?Company $company = null, ?Branch $branch = null, ?Site $site = null, ?int $month = null, ?int $year = null, float $organicsRecovered = 0): array
+    private function getEnvironmentalImpact(?Company $company = null, ?Branch $branch = null, ?Site $site = null, ?string $startDate = null, ?string $endDate = null, float $organicsRecovered = 0): array
     {
-        if ((! $company && ! $branch && ! $site) || ! $month || ! $year) {
+        if ((! $company && ! $branch && ! $site) || ! $startDate || ! $endDate) {
             return [
                 'treesSaved' => 0,
                 'energySaved' => 0,
+                'barrelsOfOilSaved' => 0,
+                'homesPoweredOneMonth' => 0,
                 'waterSaved' => 0,
                 'co2Saved' => 0,
                 'electricityEquivalentKwhSaGrid' => 0,
@@ -967,13 +1128,15 @@ class ReportController extends Controller
             ];
         }
 
-        $summaries = $this->getMaterialSummaries($company, $branch, $site, $month, $year);
+        $summaries = $this->getMaterialSummaries($company, $branch, $site, $startDate, $endDate);
         $carbonWeights = $this->wasteImpactCalculator->buildCarbonWeightsFromSummaries($summaries, $organicsRecovered);
         $impact = $this->wasteImpactCalculator->calculateImpactFromCarbonWeights($carbonWeights);
 
         return [
             'treesSaved' => $impact['treesSaved'],
             'energySaved' => $impact['energySaved'],
+            'barrelsOfOilSaved' => $impact['barrelsOfOilSaved'],
+            'homesPoweredOneMonth' => $impact['homesPoweredOneMonth'],
             'waterSaved' => $impact['waterSaved'],
             'co2Saved' => $impact['co2Saved'],
             'electricityEquivalentKwhSaGrid' => $impact['electricityEquivalentKwhSaGrid'],
@@ -1015,9 +1178,9 @@ class ReportController extends Controller
     /**
      * Calculate recycling breakdown percentages from pre-calculated summaries
      */
-    private function calculateRecyclingBreakdown(?Company $company = null, ?Branch $branch = null, ?Site $site = null, ?int $month = null, ?int $year = null, float $organicsRecovered = 0, float $recyclingRecovered = 0): array
+    private function calculateRecyclingBreakdown(?Company $company = null, ?Branch $branch = null, ?Site $site = null, ?string $startDate = null, ?string $endDate = null, float $organicsRecovered = 0, float $recyclingRecovered = 0): array
     {
-        if ((! $company && ! $branch && ! $site) || ! $month || ! $year || $recyclingRecovered == 0) {
+        if ((! $company && ! $branch && ! $site) || ! $startDate || ! $endDate || $recyclingRecovered == 0) {
             return [
                 ['name' => 'Paper', 'value' => 0, 'color' => '#60a5fa'],
                 ['name' => 'Plastics', 'value' => 0, 'color' => '#a3e635'],
@@ -1031,7 +1194,7 @@ class ReportController extends Controller
         }
 
         // Get material-level summaries
-        $summaries = $this->getMaterialSummaries($company, $branch, $site, $month, $year);
+        $summaries = $this->getMaterialSummaries($company, $branch, $site, $startDate, $endDate);
         $categoryWeights = $this->wasteImpactCalculator->buildCategoryWeightsFromSummaries($summaries, $organicsRecovered);
 
         // Calculate total for percentage calculation

@@ -1,6 +1,6 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
-import { TrendingUp, Leaf, Calculator, Box, Droplets, Users } from 'lucide-react';
+import { TrendingUp, Leaf, Calculator, Box, Droplets, Users, Layers, ClipboardList } from 'lucide-react';
 
 export default function Index() {
     const { auth } = usePage().props;
@@ -62,6 +62,23 @@ export default function Index() {
             icon: TrendingUp,
             color: 'bg-green-500',
             details: 'Requires: Finalized recycling orders with rebate materials and weights captured',
+        },
+        {
+            title: 'Waste Stream Collection Report',
+            description: 'Collections grouped by waste stream and grade, listing order number, collection date, slip number, and quantity per collection with a weight subtotal per group. No pricing.',
+            href: '/reports/waste-stream-collection',
+            icon: Layers,
+            color: 'bg-blue-600',
+            details: 'Requires: Finalized recycling orders with rebate materials and weights captured',
+        },
+        {
+            title: 'Management Report',
+            description: 'One report across all your clients for a single month: total waste diverted % and container-type totals per client, for quick month-end performance tracking.',
+            href: '/reports/management-report',
+            icon: ClipboardList,
+            color: 'bg-fuchsia-600',
+            details: 'Requires: view-reports-all permission',
+            requiredPermission: 'view-reports-all',
         },
     ];
 

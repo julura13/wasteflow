@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
+use Julura\LaravelCommunicator\Concerns\SendsAuthNotificationsViaCommunicator;
 use Lab404\Impersonate\Models\Impersonate;
 use Laravel\Scout\Searchable;
 use Spatie\Permission\Traits\HasRoles;
@@ -17,7 +18,7 @@ use Spatie\Permission\Traits\HasRoles;
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, HasRoles, Impersonate, Notifiable, Searchable, SoftDeletes;
+    use HasFactory, HasRoles, Impersonate, Notifiable, Searchable, SendsAuthNotificationsViaCommunicator, SoftDeletes;
 
     /**
      * The attributes that are mass assignable.

@@ -15,6 +15,8 @@ export default function WasteManagement({ companies, filters }) {
     const [selectedSite, setSelectedSite] = useState(filters?.site_id || '');
     const [month, setMonth] = useState(filters?.month || new Date().getMonth() + 1);
     const [year, setYear] = useState(filters?.year || new Date().getFullYear());
+    const [toMonth, setToMonth] = useState(filters?.to_month || filters?.month || new Date().getMonth() + 1);
+    const [toYear, setToYear] = useState(filters?.to_year || filters?.year || new Date().getFullYear());
 
     const [branches, setBranches] = useState([]);
     const [sites, setSites] = useState([]);
@@ -111,6 +113,7 @@ export default function WasteManagement({ companies, filters }) {
         }
 
         setPdfStatus(null);
+        const rangeInverted = toYear < year || (toYear === year && toMonth < month);
         router.post(
             route('reports.waste-management-pdf.request'),
             {
@@ -119,10 +122,12 @@ export default function WasteManagement({ companies, filters }) {
                 site_id: selectedSite || '',
                 month,
                 year,
+                to_month: rangeInverted ? month : toMonth,
+                to_year: rangeInverted ? year : toYear,
             },
             { preserveScroll: true },
         );
-    }, [selectedCompany, selectedBranch, selectedSite, month, year]);
+    }, [selectedCompany, selectedBranch, selectedSite, month, year, toMonth, toYear]);
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -272,7 +277,7 @@ export default function WasteManagement({ companies, filters }) {
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label htmlFor="month" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Month <span className="text-red-500">*</span>
+                                    From Month <span className="text-red-500">*</span>
                                 </label>
                                 <select
                                     id="month"
@@ -291,7 +296,7 @@ export default function WasteManagement({ companies, filters }) {
 
                             <div>
                                 <label htmlFor="year" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Year <span className="text-red-500">*</span>
+                                    From Year <span className="text-red-500">*</span>
                                 </label>
                                 <select
                                     id="year"
@@ -307,6 +312,42 @@ export default function WasteManagement({ companies, filters }) {
                                     ))}
                                 </select>
                             </div>
+
+                            <div>
+                                <label htmlFor="to_month" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    To Month <span className="text-gray-400 text-xs font-normal">(optional, for a custom range)</span>
+                                </label>
+                                <select
+                                    id="to_month"
+                                    value={toMonth}
+                                    onChange={(e) => setToMonth(parseInt(e.target.value))}
+                                    className="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-gray-100 sm:text-sm"
+                                >
+                                    {months.map((m) => (
+                                        <option key={m.value} value={m.value}>
+                                            {m.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label htmlFor="to_year" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    To Year
+                                </label>
+                                <select
+                                    id="to_year"
+                                    value={toYear}
+                                    onChange={(e) => setToYear(parseInt(e.target.value))}
+                                    className="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-gray-100 sm:text-sm"
+                                >
+                                    {years.map((y) => (
+                                        <option key={y} value={y}>
+                                            {y}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
 
                         <div className="pt-4 flex gap-3">
@@ -314,12 +355,15 @@ export default function WasteManagement({ companies, filters }) {
                                 type="button"
                                 onClick={() => {
                                     if (!selectedCompany) return;
+                                    const rangeInverted = toYear < year || (toYear === year && toMonth < month);
                                     router.get(route('reports.resource-intelligence'), {
                                         company_id: selectedCompany,
                                         branch_id: selectedBranch || '',
                                         site_id: selectedSite || '',
                                         month,
                                         year,
+                                        to_month: rangeInverted ? month : toMonth,
+                                        to_year: rangeInverted ? year : toYear,
                                     });
                                 }}
                                 disabled={!selectedCompany}

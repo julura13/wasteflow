@@ -137,3 +137,29 @@ test('buildCarbonWeightsFromWasteStreams lifecycle with grade-split plastics', f
     // paper(85×1.28) + PPHD(35×2.08) + PS(10×3.05) + LDPE(13×2.06) + Al(12×10) + steel(25×2) + glass(6×0.33) + tetrapak(10×0.95)
     expect($lifecycle)->toBe(420.36);
 });
+
+test('WasteImpactCalculator derives barrels of oil and homes powered from energy saved', function () {
+    $calculator = new WasteImpactCalculator;
+
+    // 100 kg paper × 10 kWh/kg energy factor = 1000 kWh energy saved
+    $categoryWeights = ['paper' => 100];
+
+    $impact = $calculator->calculateImpactFromCategoryWeights($categoryWeights);
+
+    expect($impact['energySaved'])->toBe(1000.0)
+        ->and($impact['barrelsOfOilSaved'])->toBe(0.59)   // 1000 ÷ 1700
+        ->and($impact['homesPoweredOneMonth'])->toBe(1.11); // 1000 ÷ 900
+});
+
+test('WasteImpactCalculator carbon-weights path also derives barrels of oil and homes powered', function () {
+    $calculator = new WasteImpactCalculator;
+
+    // 100 kg paper (carbon-key path) × 10 kWh/kg = 1000 kWh energy saved
+    $carbonWeights = array_merge(WasteImpactCalculator::defaultCarbonWeights(), ['paper' => 100]);
+
+    $impact = $calculator->calculateImpactFromCarbonWeights($carbonWeights);
+
+    expect($impact['energySaved'])->toBe(1000.0)
+        ->and($impact['barrelsOfOilSaved'])->toBe(0.59)
+        ->and($impact['homesPoweredOneMonth'])->toBe(1.11);
+});

@@ -218,7 +218,18 @@ export default function DashboardLayout({ children }) {
                 <div className="flex flex-col flex-grow bg-white dark:bg-gray-800 shadow-lg">
                     <div className="flex h-16 items-center px-4 shrink-0">
                         {!sidebarCollapsed && (
-                            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 truncate">WasteFlow{version && <span className="ml-2 text-xs">{version}</span>}</h1>
+                            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 truncate">
+                                WasteFlow
+                                {version && (
+                                    <Link
+                                        href={route('release-notes.index')}
+                                        title="View release notes"
+                                        className="ml-2 text-xs font-normal text-gray-400 hover:text-primary-600 hover:underline dark:text-gray-500 dark:hover:text-primary-400"
+                                    >
+                                        {version}
+                                    </Link>
+                                )}
+                            </h1>
                         )}
                         {sidebarCollapsed && (
                             <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100 mx-auto" title="WasteFlow">WC</h1>

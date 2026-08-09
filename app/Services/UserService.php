@@ -3,10 +3,12 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Notifications\NewUserPendingApprovalNotification;
 use App\Notifications\UserApprovedNotification;
 use App\Repositories\UserRepository;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 
 class UserService
@@ -23,7 +25,14 @@ class UserService
         $data['password'] = Hash::make($data['password']);
         $data['is_active'] = false; // New users are pending approval
 
-        return $this->userRepository->create($data);
+        $user = $this->userRepository->create($data);
+
+        $admins = User::whereHas('roles', fn ($query) => $query->where('name', 'admin'))->get();
+        if ($admins->isNotEmpty()) {
+            Notification::send($admins, new NewUserPendingApprovalNotification($user));
+        }
+
+        return $user;
     }
 
     /**
@@ -44,11 +53,11 @@ class UserService
     public function approveUser(User $user): bool
     {
         $updated = $this->userRepository->update($user, ['is_active' => true]);
-        
+
         if ($updated) {
-            $user->notify(new UserApprovedNotification());
+            $user->notify(new UserApprovedNotification);
         }
-        
+
         return $updated;
     }
 
@@ -66,10 +75,10 @@ class UserService
     public function uploadAvatar(User $user, UploadedFile $file): string
     {
         if ($user->avatar) {
-            Storage::disk('public')->delete('avatars/' . $user->avatar);
+            Storage::disk('public')->delete('avatars/'.$user->avatar);
         }
 
-        $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+        $filename = time().'_'.uniqid().'.'.$file->getClientOriginalExtension();
 
         $file->storeAs('avatars', $filename, 'public');
 
@@ -84,7 +93,8 @@ class UserService
     public function deleteAvatar(User $user): bool
     {
         if ($user->avatar) {
-            Storage::disk('public')->delete('avatars/' . $user->avatar);
+            Storage::disk('public')->delete('avatars/'.$user->avatar);
+
             return $this->userRepository->update($user, ['avatar' => null]);
         }
 
@@ -145,10 +155,9 @@ class UserService
     public function deleteUser(User $user): bool
     {
         if ($user->avatar) {
-            Storage::disk('public')->delete('avatars/' . $user->avatar);
+            Storage::disk('public')->delete('avatars/'.$user->avatar);
         }
 
         return $this->userRepository->delete($user);
     }
 }
-

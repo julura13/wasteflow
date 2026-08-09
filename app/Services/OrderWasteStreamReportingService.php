@@ -28,7 +28,7 @@ class OrderWasteStreamReportingService
     /**
      * Grade (waste stream) totals by calendar month for a year — same shape as legacy ClientMonthlyMaterialSummary-based rows.
      *
-     * @return array<int, array{name: string, jan: float, feb: float, mar: float, apr: float, may: float, jun: float, jul: float, aug: float, sep: float, oct: float, nov: float, dec: float, total: float}>
+     * @return array<int, array{name: string, jan: float, feb: float, mar: float, apr: float, may: float, jun: float, jul: float, aug: float, sep: float, oct: float, nov: float, dec: float, total: float, color: string}>
      */
     public function gradeSummaryForYear(?Company $company, ?Branch $branch, ?Site $site, int $year): array
     {
@@ -69,15 +69,91 @@ class OrderWasteStreamReportingService
             $byStream[$name]['total'] += $weight;
         }
 
+        $colors = self::wasteStreamColorMap();
+
         $out = [];
         foreach ($byStream as $row) {
             foreach ($monthNames as $m) {
                 $row[$m] = round($row[$m], 2);
             }
             $row['total'] = round($row['total'], 2);
+            $row['color'] = $colors[$row['name']] ?? '#828282';
             $out[] = $row;
         }
         usort($out, fn ($a, $b) => strcasecmp($a['name'], $b['name']));
+
+        return $out;
+    }
+
+    /**
+     * Waste management trend totals by calendar month for a year: Total Waste Diverted, Waste to
+     * Landfill, and Total Waste Managed — same row shape as {@see gradeSummaryForYear()} (one row
+     * per series, jan..dec + total), for the monthly report's Jan-Dec line graph.
+     *
+     * Diverted/disposal bucketing mirrors {@see classificationTotalsFromSummaries()}: classifications
+     * with an unrecognised slug are excluded from all three series, same as that method excludes them
+     * from its totals.
+     *
+     * @return array<int, array{name: string, jan: float, feb: float, mar: float, apr: float, may: float, jun: float, jul: float, aug: float, sep: float, oct: float, nov: float, dec: float, total: float}>
+     */
+    public function classificationTotalsByMonthForYear(?Company $company, ?Branch $branch, ?Site $site, int $year): array
+    {
+        $monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+        $yearStart = sprintf('%04d-01-01', $year);
+        $yearEnd = sprintf('%04d-12-31', $year);
+
+        $results = $this->baseJoinedStreamsQuery($company, $branch, $site)
+            ->join('classifications', 'materials.classification_id', '=', 'classifications.id')
+            ->whereRaw(
+                'DATE(COALESCE(orders.actual_collection_date, orders.requested_collection_date)) BETWEEN ? AND ?',
+                [$yearStart, $yearEnd]
+            )
+            ->groupBy(
+                'classifications.slug',
+                DB::raw('MONTH(COALESCE(orders.actual_collection_date, orders.requested_collection_date))')
+            )
+            ->selectRaw('classifications.slug as classification_slug')
+            ->selectRaw('MONTH(COALESCE(orders.actual_collection_date, orders.requested_collection_date)) as cal_month')
+            ->selectRaw('SUM(order_waste_streams.nett_weight) as total_weight')
+            ->get();
+
+        $series = [
+            'Total Waste Diverted' => array_merge(array_combine($monthNames, array_fill(0, 12, 0.0)), ['name' => 'Total Waste Diverted', 'total' => 0.0]),
+            'Waste to Landfill' => array_merge(array_combine($monthNames, array_fill(0, 12, 0.0)), ['name' => 'Waste to Landfill', 'total' => 0.0]),
+            'Total Waste Managed' => array_merge(array_combine($monthNames, array_fill(0, 12, 0.0)), ['name' => 'Total Waste Managed', 'total' => 0.0]),
+        ];
+
+        foreach ($results as $row) {
+            $month = (int) $row->cal_month;
+            if ($month < 1 || $month > 12) {
+                continue;
+            }
+            $slug = trim((string) $row->classification_slug);
+            $weight = (float) $row->total_weight;
+            $monthKey = $monthNames[$month - 1];
+
+            if (in_array($slug, ['recycling', 'recycle', 'recovered', 'recovery', 'avoidance', 'avoid'], true)) {
+                $series['Total Waste Diverted'][$monthKey] += $weight;
+                $series['Total Waste Diverted']['total'] += $weight;
+            } elseif (in_array($slug, ['disposed', 'disposal'], true)) {
+                $series['Waste to Landfill'][$monthKey] += $weight;
+                $series['Waste to Landfill']['total'] += $weight;
+            } else {
+                continue;
+            }
+
+            $series['Total Waste Managed'][$monthKey] += $weight;
+            $series['Total Waste Managed']['total'] += $weight;
+        }
+
+        $out = [];
+        foreach ($series as $row) {
+            foreach ($monthNames as $m) {
+                $row[$m] = round($row[$m], 2);
+            }
+            $row['total'] = round($row['total'], 2);
+            $out[] = $row;
+        }
 
         return $out;
     }
@@ -236,22 +312,7 @@ class OrderWasteStreamReportingService
             $totals[$wasteStreamName] += $weight;
         }
 
-        $colors = [
-            'Paper' => '#2F80ED',
-            'Plastic' => '#F2994A',
-            'Organic Waste' => '#27AE60',
-            'Waste' => '#1C1C1C',
-            'General Waste' => '#1C1C1C',
-            'Glass' => '#56CCF2',
-            'Metal' => '#4F4F4F',
-            'Aluminium' => '#BDBDBD',
-            'Aluminum' => '#BDBDBD',
-            'Woven Bags' => '#8D6E63',
-            'Wood' => '#A0522D',
-            'Hazardous Waste' => '#EB5757',
-            'Garden Waste' => '#27AE60',
-            'Recycling' => '#6FCF97',
-        ];
+        $colors = self::wasteStreamColorMap();
 
         $result = [];
         foreach ($totals as $name => $weight) {
@@ -441,6 +502,91 @@ class OrderWasteStreamReportingService
     }
 
     /**
+     * Container option quantity totals for a single calendar month (for the cross-client Management Report).
+     * Only containers flagged with show_in_summary = true are included, regardless of order type.
+     *
+     * @return array<int, array{name: string, quantity: int}>
+     */
+    public function containerTotalsForMonth(?Company $company, ?Branch $branch, ?Site $site, int $month, int $year): array
+    {
+        $summaryContainerIds = ContainerOption::where('show_in_summary', true)
+            ->pluck('id')
+            ->flip()
+            ->all();
+
+        if ($summaryContainerIds === []) {
+            return [];
+        }
+
+        $lastDay = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+        $start = Carbon::createFromDate($year, $month, 1)->format('Y-m-d');
+        $end = Carbon::createFromDate($year, $month, $lastDay)->format('Y-m-d');
+
+        $query = Order::query()
+            ->where('status', 'finalized')
+            ->whereNotNull('quantity_lines')
+            ->whereRaw(
+                'DATE(COALESCE(actual_collection_date, requested_collection_date)) BETWEEN ? AND ?',
+                [$start, $end]
+            )
+            ->select(['quantity_lines', 'actual_quantity', 'estimated_quantity']);
+
+        if ($site) {
+            $query->where('site_id', $site->id);
+        } elseif ($branch) {
+            $query->where('branch_id', $branch->id);
+        } elseif ($company) {
+            $query->where('company_id', $company->id);
+        }
+
+        $user = Auth::user();
+        if ($user && $user->company_id && ! $user->can('view-reports-all')) {
+            $query->where('company_id', $user->company_id);
+        }
+
+        $totals = [];
+
+        foreach ($query->cursor() as $order) {
+            $lines = $order->quantity_lines;
+            if (! is_array($lines) || $lines === []) {
+                continue;
+            }
+
+            $lineCount = count($lines);
+            $actualQty = $order->actual_quantity !== null ? (int) $order->actual_quantity : null;
+            $estimatedQty = $order->estimated_quantity !== null ? (int) $order->estimated_quantity : null;
+
+            foreach ($lines as $line) {
+                $containerOptionId = (int) ($line['container_option_id'] ?? 0);
+                if (! array_key_exists($containerOptionId, $summaryContainerIds)) {
+                    continue;
+                }
+
+                $containerName = trim((string) ($line['container_option_name'] ?? ''));
+                if ($containerName === '') {
+                    continue;
+                }
+                $description = trim((string) ($line['description'] ?? ''));
+                $label = $description !== '' ? $containerName.' - '.$description : $containerName;
+                $qty = $this->effectiveLineQty($line, $lineCount, $actualQty, $estimatedQty);
+                if ($qty <= 0) {
+                    continue;
+                }
+
+                $totals[$label] = ($totals[$label] ?? 0) + $qty;
+            }
+        }
+
+        $out = [];
+        foreach ($totals as $name => $qty) {
+            $out[] = ['name' => $name, 'quantity' => $qty];
+        }
+        usort($out, fn ($a, $b) => strcasecmp($a['name'], $b['name']));
+
+        return $out;
+    }
+
+    /**
      * Day-by-day container quantity counts for one container type in one calendar month.
      *
      * @return array{container_option_name: string, description: string, label: string, month: int, year: int, days_in_month: int, counts: array<int, int>}
@@ -537,6 +683,33 @@ class OrderWasteStreamReportingService
         }
 
         return (int) round($estimatedLineQty * $actualQty / $estimatedQty);
+    }
+
+    /**
+     * Shared waste-stream name → chart color mapping, used by {@see wasteStreamTotalsFromSummaries()}
+     * and {@see gradeSummaryForYear()} so the same waste stream always renders in the same color
+     * across the pie chart and the Jan-Dec line graph.
+     *
+     * @return array<string, string>
+     */
+    private static function wasteStreamColorMap(): array
+    {
+        return [
+            'Paper' => '#2F80ED',
+            'Plastic' => '#F2994A',
+            'Organic Waste' => '#27AE60',
+            'Waste' => '#1C1C1C',
+            'General Waste' => '#1C1C1C',
+            'Glass' => '#56CCF2',
+            'Metal' => '#4F4F4F',
+            'Aluminium' => '#BDBDBD',
+            'Aluminum' => '#BDBDBD',
+            'Woven Bags' => '#8D6E63',
+            'Wood' => '#A0522D',
+            'Hazardous Waste' => '#EB5757',
+            'Garden Waste' => '#27AE60',
+            'Recycling' => '#6FCF97',
+        ];
     }
 
     /**
