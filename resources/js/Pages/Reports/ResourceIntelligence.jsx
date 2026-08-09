@@ -3,7 +3,7 @@ import DashboardLayout from '@/Layouts/DashboardLayout';
 import { useState, useEffect, useCallback } from 'react';
 import {
     PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip,
-    ResponsiveContainer, CartesianGrid,
+    ResponsiveContainer, CartesianGrid, LineChart, Line, Legend,
 } from 'recharts';
 import axios from 'axios';
 import LandfillSpaceAvoidedIcon from '@/Components/LandfillSpaceAvoidedIcon';
@@ -11,7 +11,7 @@ import SearchableDropdown from '@/Components/SearchableDropdown';
 import {
     Cloud, Droplet, TreePine, Zap,
     Truck, Fuel, CarFront, Eye, ChevronDown, ChevronUp,
-    Layers, Percent,
+    Layers, Percent, Recycle, Flame, Home,
 } from 'lucide-react';
 
 const HEADER_BG = '#9AD993';
@@ -32,6 +32,30 @@ const CLASS_COLORS = {
     disposal:  '#1C1C1C',
     diverted:  '#C69200',
 };
+
+const MONTH_KEYS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+const MONTH_LABELS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+const TREND_COLORS = {
+    'Total Waste Diverted': '#2D9CDB',
+    'Waste to Landfill': '#EB5757',
+    'Total Waste Managed': '#4F4F4F',
+};
+
+/**
+ * Converts the backend's "one row per series, jan..dec keys" shape (shared by
+ * gradeSummaryByYear and wasteManagementTrendByYear) into Recharts' "one point per
+ * month, one field per series" shape.
+ */
+function seriesRowsToMonthlyPoints(rows) {
+    return MONTH_KEYS.map((key, i) => {
+        const point = { month: MONTH_LABELS_SHORT[i] };
+        rows.forEach((row) => {
+            point[row.name] = row[key] ?? 0;
+        });
+        return point;
+    });
+}
 
 function fmtN(v, dec = 2) {
     const n = parseFloat(v) || 0;
@@ -118,14 +142,14 @@ function ClassificationDonut({ title, totalLabel, percentage, fill, totalKg, pri
 function LandfillSavedPanel({ m3 }) {
     return (
         <div className="text-center">
-            <h3 className="text-xs font-semibold text-gray-700">LANDFILL SAVED</h3>
+            <h3 className="text-xs font-semibold text-gray-700">LANDFILL AIRSPACE SAVED</h3>
             <div className="relative isolate mx-auto mt-0.5 flex w-full max-w-[200px] flex-col items-center justify-center rounded-xl border-0 bg-white px-2"
                 style={{ height: 158 }}>
                 <LandfillSpaceAvoidedIcon className="h-[5.5rem] w-auto max-w-[5.5rem] shrink-0 object-contain" />
-                <p className="mt-1.5 text-xs font-medium text-teal-800">Landfill space avoided</p>
+                <p className="mt-1.5 text-xs font-medium text-teal-800">Landfill airspace avoided</p>
             </div>
             <div className="mt-0 text-center p-1.5 bg-gray-50 rounded">
-                <p className="text-xs text-gray-500">Total Landfill Space Saved</p>
+                <p className="text-xs text-gray-500">Total Landfill Airspace Saved</p>
                 <p className="text-sm font-semibold text-gray-900 tabular-nums">{fmtN(m3)} m³</p>
             </div>
         </div>
@@ -159,6 +183,8 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
     const [selectedSite, setSelectedSite] = useState(filters?.site_id || '');
     const [month, setMonth] = useState(filters?.month || new Date().getMonth() + 1);
     const [year, setYear] = useState(filters?.year || new Date().getFullYear());
+    const [toMonth, setToMonth] = useState(filters?.to_month || filters?.month || new Date().getMonth() + 1);
+    const [toYear, setToYear] = useState(filters?.to_year || filters?.year || new Date().getFullYear());
     const [branches, setBranches] = useState([]);
     const [sites, setSites] = useState([]);
     const [loadingBranches, setLoadingBranches] = useState(false);
@@ -197,14 +223,18 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
     const loadReport = useCallback((e) => {
         e?.preventDefault();
         if (!selectedCompany) return;
+        // If the "to" period is before the "from" period, snap it forward instead of submitting an empty range.
+        const rangeInverted = toYear < year || (toYear === year && toMonth < month);
         router.get(route('reports.resource-intelligence'), {
             company_id: selectedCompany,
             branch_id: selectedBranch || '',
             site_id: selectedSite || '',
             month,
             year,
+            to_month: rangeInverted ? month : toMonth,
+            to_year: rangeInverted ? year : toYear,
         });
-    }, [selectedCompany, selectedBranch, selectedSite, month, year]);
+    }, [selectedCompany, selectedBranch, selectedSite, month, year, toMonth, toYear]);
 
     const currentYear = new Date().getFullYear();
     const years = Array.from({ length: 10 }, (_, i) => currentYear - i);
@@ -218,6 +248,10 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
     const materialsCO2e = rd.materialsCO2e || [];
     const materialsCO2eTotals = rd.materialsCO2eTotals || {};
     const cumulativeImpact = rd.cumulativeImpact || [];
+    const gradeSummaryByYear = rd.gradeSummaryByYear || [];
+    const wasteManagementTrendByYear = rd.wasteManagementTrendByYear || [];
+    const gradeSummaryMonthlyPoints = seriesRowsToMonthlyPoints(gradeSummaryByYear);
+    const wasteManagementTrendMonthlyPoints = seriesRowsToMonthlyPoints(wasteManagementTrendByYear);
 
     // Only show commodities with non-zero qty
     const allCommodities = [
@@ -249,7 +283,15 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                         className="w-full flex items-center justify-between px-5 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-750 rounded-lg">
                         <span>
                             {hasData
-                                ? `${rd.scopeDisplayName || ''} — ${MONTHS.find((m) => m.value === filters?.month)?.label || ''} ${filters?.year || ''}`
+                                ? (() => {
+                                    const fromLabel = `${MONTHS.find((m) => m.value === filters?.month)?.label || ''} ${filters?.year || ''}`;
+                                    const isRange = filters?.to_month && filters?.to_year
+                                        && (filters.to_month !== filters.month || filters.to_year !== filters.year);
+                                    const toLabel = isRange
+                                        ? ` – ${MONTHS.find((m) => m.value === filters?.to_month)?.label || ''} ${filters?.to_year || ''}`
+                                        : '';
+                                    return `${rd.scopeDisplayName || ''} — ${fromLabel}${toLabel}`;
+                                })()
                                 : 'Select filters to load the report'}
                         </span>
                         {filtersOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -272,15 +314,31 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                     menuMatchTriggerWidth disabled={!selectedBranch || loadingSites}
                                     placeholder={!selectedBranch ? 'Select branch first' : loadingSites ? 'Loading…' : 'All sites'} />
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Month</label>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">From Month</label>
                                     <select value={month} onChange={(e) => setMonth(parseInt(e.target.value))}
                                         className="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm sm:text-sm dark:bg-gray-700 dark:text-gray-100">
                                         {MONTHS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Year</label>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">From Year</label>
                                     <select value={year} onChange={(e) => setYear(parseInt(e.target.value))}
+                                        className="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm sm:text-sm dark:bg-gray-700 dark:text-gray-100">
+                                        {years.map((y) => <option key={y} value={y}>{y}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                        To Month <span className="text-gray-400 text-xs font-normal">(optional, for a custom range)</span>
+                                    </label>
+                                    <select value={toMonth} onChange={(e) => setToMonth(parseInt(e.target.value))}
+                                        className="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm sm:text-sm dark:bg-gray-700 dark:text-gray-100">
+                                        {MONTHS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">To Year</label>
+                                    <select value={toYear} onChange={(e) => setToYear(parseInt(e.target.value))}
                                         className="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm sm:text-sm dark:bg-gray-700 dark:text-gray-100">
                                         {years.map((y) => <option key={y} value={y}>{y}</option>)}
                                     </select>
@@ -608,12 +666,12 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                     </div>
                                     <div className="text-center p-3 bg-green-50 rounded-lg border border-green-100">
                                         <TreePine className="w-8 h-8 mx-auto mb-1 text-green-600" />
-                                        <p className="text-xs text-gray-600 mb-1">Trees Saved</p>
+                                        <p className="text-xs text-gray-600 mb-1">Trees Preserved</p>
                                         <p className="text-lg font-bold text-green-600">
                                             {fmtWhole(ei.treesSaved)} trees
                                         </p>
                                         <p className="text-[10px] text-gray-500 leading-snug px-0.5 mb-2">
-                                            Trees saved – Paper based tree conversion
+                                            Trees preserved – Paper based tree conversion
                                         </p>
                                     </div>
                                     <div className="text-center p-3 bg-yellow-50 rounded-lg border border-yellow-100">
@@ -624,6 +682,40 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                         <p className="text-lg font-bold text-yellow-600">
                                             {fmtWhole(ei.electricityEquivalentKwhSaGrid)} kWh
                                         </p>
+                                    </div>
+                                </div>
+
+                                {/* Circular economy & additional savings – matches dashboard */}
+                                <div className="mt-4 pt-4 border-t border-gray-100">
+                                    <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-700 mb-1">
+                                        Circular Economy &amp; Additional Savings
+                                    </h3>
+                                    <p className="text-[11px] text-gray-500 leading-relaxed mb-4">
+                                        Circular economy rate reflects reuse, recycling, and organics recovery as a share of total waste managed.
+                                    </p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                        <div className="text-center p-3.5 bg-emerald-50 rounded-lg border border-emerald-100 shadow-sm">
+                                            <Recycle className="w-7 h-7 mx-auto mb-2 text-emerald-600" strokeWidth={1.75} />
+                                            <p className="text-xs text-gray-600 mb-1.5 leading-snug px-1">Circular Economy Rate</p>
+                                            <p className="text-base font-bold text-emerald-600 tabular-nums">
+                                                {fmtOneDecimal(summary.divertedFromLandfill ?? 0)}
+                                                <span className="text-sm font-semibold text-emerald-500/90">%</span>
+                                            </p>
+                                        </div>
+                                        <div className="text-center p-3.5 bg-amber-50 rounded-lg border border-amber-100 shadow-sm">
+                                            <Flame className="w-7 h-7 mx-auto mb-2 text-amber-600" strokeWidth={1.75} />
+                                            <p className="text-xs text-gray-600 mb-1.5 leading-snug px-1">Barrels of Oil Saved</p>
+                                            <p className="text-base font-bold text-amber-600 tabular-nums">
+                                                {fmtWhole(ei.barrelsOfOilSaved)}
+                                            </p>
+                                        </div>
+                                        <div className="text-center p-3.5 bg-rose-50 rounded-lg border border-rose-100 shadow-sm">
+                                            <Home className="w-7 h-7 mx-auto mb-2 text-rose-600" strokeWidth={1.75} />
+                                            <p className="text-xs text-gray-600 mb-1.5 leading-snug px-1">Homes Powered (1 Month)</p>
+                                            <p className="text-base font-bold text-rose-600 tabular-nums">
+                                                {fmtWhole(ei.homesPoweredOneMonth)}
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -663,6 +755,72 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                     </div>
                                 </div>
 
+                                {/* Monthly material recovery by waste grade (Jan-Dec line graph) */}
+                                {gradeSummaryByYear.length > 0 && (
+                                    <div className="mt-4 pt-4 border-t border-gray-100">
+                                        <SectionHeader>MONTHLY MATERIAL RECOVERY BY WASTE GRADE (KG)</SectionHeader>
+                                        <div className="pt-4">
+                                            {printMode ? (
+                                                <LineChart width={700} height={260} data={gradeSummaryMonthlyPoints} margin={{ left: 10, right: 20, top: 5, bottom: 5 }}>
+                                                    <CartesianGrid strokeDasharray="3 3" />
+                                                    <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                                                    <YAxis tick={{ fontSize: 10 }} />
+                                                    <Legend wrapperStyle={{ fontSize: 10 }} />
+                                                    {gradeSummaryByYear.map((row) => (
+                                                        <Line key={row.name} type="monotone" dataKey={row.name} stroke={row.color} dot={false} isAnimationActive={false} />
+                                                    ))}
+                                                </LineChart>
+                                            ) : (
+                                                <ResponsiveContainer width="100%" height={260}>
+                                                    <LineChart data={gradeSummaryMonthlyPoints} margin={{ left: 10, right: 20, top: 5, bottom: 5 }}>
+                                                        <CartesianGrid strokeDasharray="3 3" />
+                                                        <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                                                        <YAxis tick={{ fontSize: 10 }} />
+                                                        <Tooltip formatter={(v) => `${fmtN(v)} kg`} />
+                                                        <Legend wrapperStyle={{ fontSize: 10 }} />
+                                                        {gradeSummaryByYear.map((row) => (
+                                                            <Line key={row.name} type="monotone" dataKey={row.name} stroke={row.color} dot={false} isAnimationActive={false} />
+                                                        ))}
+                                                    </LineChart>
+                                                </ResponsiveContainer>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Waste management performance trends (Jan-Dec line graph) */}
+                                {wasteManagementTrendByYear.length > 0 && (
+                                    <div className="mt-4 pt-4 border-t border-gray-100">
+                                        <SectionHeader>WASTE MANAGEMENT PERFORMANCE TRENDS</SectionHeader>
+                                        <div className="pt-4">
+                                            {printMode ? (
+                                                <LineChart width={700} height={260} data={wasteManagementTrendMonthlyPoints} margin={{ left: 10, right: 20, top: 5, bottom: 5 }}>
+                                                    <CartesianGrid strokeDasharray="3 3" />
+                                                    <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                                                    <YAxis tick={{ fontSize: 10 }} />
+                                                    <Legend wrapperStyle={{ fontSize: 10 }} />
+                                                    {wasteManagementTrendByYear.map((row) => (
+                                                        <Line key={row.name} type="monotone" dataKey={row.name} stroke={TREND_COLORS[row.name] ?? '#828282'} dot={false} isAnimationActive={false} />
+                                                    ))}
+                                                </LineChart>
+                                            ) : (
+                                                <ResponsiveContainer width="100%" height={260}>
+                                                    <LineChart data={wasteManagementTrendMonthlyPoints} margin={{ left: 10, right: 20, top: 5, bottom: 5 }}>
+                                                        <CartesianGrid strokeDasharray="3 3" />
+                                                        <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                                                        <YAxis tick={{ fontSize: 10 }} />
+                                                        <Tooltip formatter={(v) => `${fmtN(v)} kg`} />
+                                                        <Legend wrapperStyle={{ fontSize: 10 }} />
+                                                        {wasteManagementTrendByYear.map((row) => (
+                                                            <Line key={row.name} type="monotone" dataKey={row.name} stroke={TREND_COLORS[row.name] ?? '#828282'} dot={false} isAnimationActive={false} />
+                                                        ))}
+                                                    </LineChart>
+                                                </ResponsiveContainer>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Cumulative impact bar chart */}
                                 {cumulativeImpact.length > 0 && (
                                     <div className="mt-4 pt-4 border-t border-gray-100">
@@ -698,11 +856,11 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                             )}
                                         </div>
 
-                                        {/* Landfill Space Saved + Diversion Rate tiles */}
-                                        <div className="mt-4 grid grid-cols-2 gap-3">
+                                        {/* Landfill Airspace Saved + Diversion Rate + Recovery Rate tiles */}
+                                        <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
                                             <div className="text-center p-3 bg-teal-50 rounded-lg border border-teal-100">
                                                 <Layers className="w-8 h-8 mx-auto mb-1 text-teal-600" />
-                                                <p className="text-xs text-gray-600 mb-1">Landfill Space Saved</p>
+                                                <p className="text-xs text-gray-600 mb-1">Landfill Airspace Saved</p>
                                                 <p className="text-lg font-bold text-teal-600">
                                                     {fmtN(summary.landfillSpaceSaved ?? 0)} m³
                                                 </p>
@@ -712,6 +870,13 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                                 <p className="text-xs text-gray-600 mb-1">Diversion Rate</p>
                                                 <p className="text-lg font-bold text-purple-600">
                                                     {fmtOneDecimal(summary.divertedFromLandfill ?? 0)}%
+                                                </p>
+                                            </div>
+                                            <div className="text-center p-3 bg-sky-50 rounded-lg border border-sky-100">
+                                                <Recycle className="w-8 h-8 mx-auto mb-1 text-sky-600" />
+                                                <p className="text-xs text-gray-600 mb-1">Recovery Rate</p>
+                                                <p className="text-lg font-bold text-sky-600">
+                                                    {fmtOneDecimal(ct.recovery?.percentage ?? 0)}%
                                                 </p>
                                             </div>
                                         </div>

@@ -139,6 +139,10 @@ Route::middleware(['auth', 'verified', 'permission:view-reports'])->prefix('repo
     Route::post('/rebate-tracker/pdf', [App\Http\Controllers\OrderController::class, 'requestRebateTrackerPdf'])->name('rebate-tracker-pdf.request');
     Route::get('/rebate-tracker/pdf/{uuid}/status', [App\Http\Controllers\OrderController::class, 'rebateTrackerPdfStatus'])->name('rebate-tracker-pdf.status');
     Route::get('/rebate-tracker/pdf/{uuid}/download', [App\Http\Controllers\OrderController::class, 'downloadRebateTrackerPdf'])->name('rebate-tracker-pdf.download');
+    Route::get('/waste-stream-collection', [App\Http\Controllers\OrderController::class, 'wasteStreamCollectionReport'])->name('waste-stream-collection');
+    Route::post('/waste-stream-collection/pdf', [App\Http\Controllers\OrderController::class, 'requestWasteStreamCollectionPdf'])->name('waste-stream-collection-pdf.request');
+    Route::get('/waste-stream-collection/pdf/{uuid}/status', [App\Http\Controllers\OrderController::class, 'wasteStreamCollectionPdfStatus'])->name('waste-stream-collection-pdf.status');
+    Route::get('/waste-stream-collection/pdf/{uuid}/download', [App\Http\Controllers\OrderController::class, 'downloadWasteStreamCollectionPdf'])->name('waste-stream-collection-pdf.download');
     Route::get('/average-weight-wheelie-bins', [App\Http\Controllers\OrderController::class, 'getAverageWeightForWheelieBins'])->name('average-weight-wheelie-bins');
     Route::get('/customer-order-frequencies/export-pdf', [App\Http\Controllers\ReportController::class, 'customerOrderFrequenciesExportPdf'])
         ->middleware('permission:view-reports-all')
@@ -149,6 +153,15 @@ Route::middleware(['auth', 'verified', 'permission:view-reports'])->prefix('repo
     Route::get('/customer-order-frequencies', [App\Http\Controllers\ReportController::class, 'customerOrderFrequencies'])
         ->middleware('permission:view-reports-all')
         ->name('customer-order-frequencies');
+    Route::get('/management-report/export-pdf', [App\Http\Controllers\ReportController::class, 'managementReportExportPdf'])
+        ->middleware('permission:view-reports-all')
+        ->name('management-report.export-pdf');
+    Route::get('/management-report/export', [App\Http\Controllers\ReportController::class, 'managementReportExport'])
+        ->middleware('permission:view-reports-all')
+        ->name('management-report.export');
+    Route::get('/management-report', [App\Http\Controllers\ReportController::class, 'managementReport'])
+        ->middleware('permission:view-reports-all')
+        ->name('management-report');
     Route::get('/waste-management', [App\Http\Controllers\ReportController::class, 'wasteManagement'])->name('waste-management');
     Route::post('/waste-management/pdf/request', [App\Http\Controllers\ReportController::class, 'requestWasteManagementPdf'])->name('waste-management-pdf.request');
     Route::get('/waste-management/pdf/{uuid}/status', [App\Http\Controllers\ReportController::class, 'wasteManagementPdfStatus'])->name('waste-management-pdf.status');
@@ -223,6 +236,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
+    Route::get('/release-notes', [App\Http\Controllers\ReleaseNoteController::class, 'index'])->name('release-notes.index');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::post('/profile/avatar', [ProfileController::class, 'uploadAvatar'])->name('profile.avatar.upload');
