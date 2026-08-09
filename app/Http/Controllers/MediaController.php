@@ -14,6 +14,19 @@ use Throwable;
 class MediaController extends Controller
 {
     /**
+     * Abort with 403 if the order does not belong to the acting user's company.
+     * Mirrors OrderController::ensureOrderInScope() so media access follows the
+     * same tenant-isolation rule as the order itself.
+     */
+    protected function ensureOrderInScope(Order $order): void
+    {
+        $user = auth()->user();
+        if ($user && $user->company_id && (int) $order->company_id !== (int) $user->company_id) {
+            abort(403, 'You do not have access to this order.');
+        }
+    }
+
+    /**
      * Upload a file and associate it with an order.
      */
     public function upload(Request $request)
@@ -31,6 +44,7 @@ class MediaController extends Controller
         }
 
         $order = Order::findOrFail($validated['mediable_id']);
+        $this->ensureOrderInScope($order);
 
         /** @var UploadedFile $file */
         $file = $request->file('file');
@@ -101,6 +115,12 @@ class MediaController extends Controller
      */
     public function download(Media $media)
     {
+        if ($media->mediable_type === 'App\\Models\\Order') {
+            $order = Order::find($media->mediable_id);
+            abort_if(! $order, 404, 'File not found.');
+            $this->ensureOrderInScope($order);
+        }
+
         $disk = Storage::disk($media->disk);
 
         if (! $disk->exists($media->path)) {
@@ -116,6 +136,9 @@ class MediaController extends Controller
     public function destroy(Media $media)
     {
         $order = $media->mediable_type === 'App\\Models\\Order' ? Order::find($media->mediable_id) : null;
+        if ($order) {
+            $this->ensureOrderInScope($order);
+        }
         $originalName = $media->original_name;
 
         $disk = Storage::disk($media->disk);
