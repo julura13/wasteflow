@@ -255,6 +255,13 @@ class ReleaseNotesSeeder extends Seeder
                 'description' => 'Password reset (and email verification) emails now send through our internal Communicator service instead of always going out over SMTP, matching how other system emails already work. This also lays the groundwork for a reusable "julura/laravel-communicator" package we can install in other projects going forward.',
                 'released_at' => now(),
             ],
+            [
+                'version' => '1.8.5',
+                'type' => 'bugfix',
+                'title' => 'Security hardening: document/slip access now correctly scoped per client',
+                'description' => 'A full security review found that downloading, uploading, or deleting a collection document/slip did not check which client it belonged to. Fixed so this now follows the same per-client access rules already used everywhere else in the portal.',
+                'released_at' => now(),
+            ],
         ];
 
         foreach ($notes as $note) {
