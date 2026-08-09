@@ -514,6 +514,14 @@ class ReportController extends Controller
         $toMonth = $request->filled('to_month') ? (int) $request->input('to_month') : $month;
         $toYear = $request->filled('to_year') ? (int) $request->input('to_year') : $year;
 
+        // Guard against a hand-edited/stale URL with an inverted range (the UI itself
+        // already clamps this before submitting) - fall back to a single-month report
+        // for "from" rather than silently rendering an empty one.
+        if (($toYear * 12 + $toMonth) < ($year * 12 + $month)) {
+            $toMonth = $month;
+            $toYear = $year;
+        }
+
         [$companyId, $branchId, $siteId] = $this->enforceCompanyScope($companyId, $branchId, $siteId);
 
         $company = $companyId ? Company::find($companyId) : null;
