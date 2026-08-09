@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "fcf8f9183be9e01d5febe80456778d95",
+    "content-hash": "f3daacda4d344f8203350fc10511c80e",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -1485,6 +1485,65 @@
                 "source": "https://github.com/inertiajs/inertia-laravel/tree/v2.0.10"
             },
             "time": "2025-09-28T21:21:36+00:00"
+        },
+        {
+            "name": "julura/laravel-communicator",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "../communicator-package",
+                "reference": "a45533b9964a8f83853118de849c8d5c0981353b"
+            },
+            "require": {
+                "illuminate/contracts": "^11.0|^12.0",
+                "illuminate/http": "^11.0|^12.0",
+                "illuminate/notifications": "^11.0|^12.0",
+                "illuminate/support": "^11.0|^12.0",
+                "php": "^8.2"
+            },
+            "require-dev": {
+                "orchestra/testbench": "^9.0|^10.0",
+                "pestphp/pest": "^3.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Julura\\LaravelCommunicator\\CommunicatorServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Julura\\LaravelCommunicator\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "Julura\\LaravelCommunicator\\Tests\\": "tests/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Julura"
+                }
+            ],
+            "description": "Laravel notification channel for the Communicator (sndng.co.za) email/SMS API, with drop-in overrides for the built-in password-reset and email-verification notifications.",
+            "keywords": [
+                "communicator",
+                "email",
+                "laravel",
+                "notification-channel",
+                "notifications",
+                "sms"
+            ],
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
         },
         {
             "name": "lab404/laravel-impersonate",
@@ -11112,7 +11171,9 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {},
+    "stability-flags": {
+        "julura/laravel-communicator": 20
+    },
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {

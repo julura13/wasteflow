@@ -6,11 +6,11 @@ use App\Models\Order;
 use App\Models\RecurringOrder;
 use App\Models\User;
 use App\Notifications\RecurringOrdersSummaryNotification;
-use App\Services\CommunicatorSmsClient;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Julura\LaravelCommunicator\Services\CommunicatorSmsClient;
 
 class CreateRecurringOrdersCommand extends Command
 {
