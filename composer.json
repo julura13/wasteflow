@@ -10,7 +10,7 @@
         "dompdf/dompdf": "^3.1",
         "http-interop/http-factory-guzzle": "^1.2",
         "inertiajs/inertia-laravel": "^2.0",
-        "julura/laravel-communicator": "@dev",
+        "julura/laravel-communicator": "^1.0",
         "lab404/laravel-impersonate": "^1.7",
         "laravel/framework": "^12.0",
         "laravel/sanctum": "^4.0",
@@ -78,11 +78,8 @@
     },
     "repositories": [
         {
-            "type": "path",
-            "url": "../communicator-package",
-            "options": {
-                "symlink": true
-            }
+            "type": "vcs",
+            "url": "https://github.com/Julura/laravel-communicator"
         }
     ],
     "config": {
