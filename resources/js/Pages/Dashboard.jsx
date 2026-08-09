@@ -14,9 +14,12 @@ import {
     CarFront,
     Cloud,
     Droplet,
+    Flame,
     Fuel,
+    Home,
     LayoutDashboard,
     PackageCheck,
+    Recycle,
     Table2,
     TreePine,
     Truck,
@@ -353,6 +356,8 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
     const environmentalImpact = dashboardData?.environmentalImpact || {
         treesSaved: 0,
         energySaved: 0,
+        barrelsOfOilSaved: 0,
+        homesPoweredOneMonth: 0,
         waterSaved: 0,
         co2Saved: 0,
         electricityEquivalentKwhSaGrid: 0,
@@ -1092,6 +1097,45 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
                         </p>
                     </div>
                 </div>
+                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-700 dark:text-gray-300 mb-1">
+                        Circular Economy &amp; Additional Savings
+                    </h3>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed mb-4 max-w-3xl">
+                        Circular economy rate reflects reuse, recycling, and organics recovery as a share of total waste managed.
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="text-center p-3.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg border border-emerald-100 dark:border-emerald-800/50 shadow-sm">
+                            <Recycle className="w-7 h-7 mx-auto mb-2 text-emerald-600 dark:text-emerald-400" strokeWidth={1.75} />
+                            <p className="text-xs text-gray-600 dark:text-gray-400 mb-1.5 leading-snug px-1">
+                                Circular Economy Rate
+                            </p>
+                            <p className="text-base sm:text-lg font-bold text-emerald-600 dark:text-emerald-400 tabular-nums tracking-tight">
+                                {formatImpactOneDecimal(classificationData.diverted.percentage)}
+                                <span className="text-sm font-semibold text-emerald-500/90 dark:text-emerald-400/80">%</span>
+                            </p>
+                        </div>
+                        <div className="text-center p-3.5 bg-amber-50 dark:bg-amber-950/40 rounded-lg border border-amber-100 dark:border-amber-800/50 shadow-sm">
+                            <Flame className="w-7 h-7 mx-auto mb-2 text-amber-600 dark:text-amber-400" strokeWidth={1.75} />
+                            <p className="text-xs text-gray-600 dark:text-gray-400 mb-1.5 leading-snug px-1">
+                                Barrels of Oil Saved
+                            </p>
+                            <p className="text-base sm:text-lg font-bold text-amber-600 dark:text-amber-400 tabular-nums tracking-tight">
+                                {formatImpactWhole(environmentalImpact.barrelsOfOilSaved)}
+                            </p>
+                        </div>
+                        <div className="text-center p-3.5 bg-rose-50 dark:bg-rose-950/40 rounded-lg border border-rose-100 dark:border-rose-800/50 shadow-sm">
+                            <Home className="w-7 h-7 mx-auto mb-2 text-rose-600 dark:text-rose-400" strokeWidth={1.75} />
+                            <p className="text-xs text-gray-600 dark:text-gray-400 mb-1.5 leading-snug px-1">
+                                Homes Powered (1 Month)
+                            </p>
+                            <p className="text-base sm:text-lg font-bold text-rose-600 dark:text-rose-400 tabular-nums tracking-tight">
+                                {formatImpactWhole(environmentalImpact.homesPoweredOneMonth)}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
                 <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
                     <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-700 dark:text-gray-300 mb-1">
                         Carbon equivalency indicators
