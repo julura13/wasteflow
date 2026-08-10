@@ -920,6 +920,11 @@ class ReportController extends Controller
                 'divertedFromLandfill' => $divertedFromLandfill,
                 'landfillSpaceSaved' => $landfillSpaceSaved,
                 'lifecycleSaving' => $materialsCO2eTotals['lifecycleSaving'],
+                // Carbon Avoidance Intensity: kg CO2e avoided per kg of waste managed - a
+                // volume-independent efficiency metric, distinct from the absolute lifecycle saving above.
+                'carbonAvoidanceIntensity' => $totalIncomingWaste > 0
+                    ? round($materialsCO2eTotals['lifecycleSaving'] / $totalIncomingWaste, 2)
+                    : 0.0,
             ],
             'landfillSpaceSavedBreakdown' => $landfillSpaceSavedData,
             'materialsCO2e' => $materialsCO2e,

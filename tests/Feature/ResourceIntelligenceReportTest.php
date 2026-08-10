@@ -130,6 +130,75 @@ it('includes jan-dec grade and waste-management trend series plus new energy-der
     );
 });
 
+it('computes Carbon Avoidance Intensity as lifecycle saving per kg of waste managed', function () {
+    $user = User::factory()->create();
+    $user->assignRole('manager');
+
+    $company = Company::create(['name' => 'CAI Report Co', 'is_active' => true]);
+    $branch = Branch::create(['company_id' => $company->id, 'name' => 'Branch', 'is_active' => true]);
+    $site = Site::create(['branch_id' => $branch->id, 'name' => 'Site', 'is_active' => true]);
+    $serviceProvider = ServiceProvider::create(['name' => 'CAI Report SP', 'is_active' => true]);
+
+    $wasteStream = WasteStream::firstOrCreate(['name' => 'Paper'], ['is_active' => true]);
+    $grade = Grade::firstOrCreate(['name' => 'CAI Report Grade'], ['is_active' => true]);
+    $classification = Classification::firstOrCreate(['name' => 'CAI Report Recycling'], ['slug' => 'recycling', 'is_active' => true]);
+    $facility = Facility::firstOrCreate(['name' => 'CAI Report Facility'], ['facility_type' => 'recycling', 'is_active' => true]);
+
+    $material = Material::create([
+        'waste_stream_id' => $wasteStream->id,
+        'grade_id' => $grade->id,
+        'classification_id' => $classification->id,
+        'facility_id' => $facility->id,
+        'is_active' => true,
+    ]);
+
+    $order = Order::create([
+        'company_id' => $company->id,
+        'branch_id' => $branch->id,
+        'site_id' => $site->id,
+        'service_provider_id' => $serviceProvider->id,
+        'created_by' => $user->id,
+        'order_type' => 'recycling',
+        'status' => 'finalized',
+        'requested_collection_date' => Carbon::parse('2026-05-10'),
+        'actual_collection_date' => Carbon::parse('2026-05-10'),
+    ]);
+
+    OrderWasteStream::create(['order_id' => $order->id, 'material_id' => $material->id, 'gross_weight' => 200, 'nett_weight' => 200]);
+
+    $response = $this->actingAs($user)->get(route('reports.resource-intelligence', [
+        'company_id' => $company->id,
+        'month' => 5,
+        'year' => 2026,
+    ]));
+
+    $response->assertOk();
+
+    $summary = $response->viewData('page')['props']['reportData']['summary'];
+
+    expect($summary['totalIncomingWaste'])->toBe(200.0);
+    expect($summary['carbonAvoidanceIntensity'])
+        ->toBe(round($summary['lifecycleSaving'] / $summary['totalIncomingWaste'], 2));
+});
+
+it('reports zero Carbon Avoidance Intensity when there is no waste managed', function () {
+    $user = User::factory()->create();
+    $user->assignRole('manager');
+
+    $company = Company::create(['name' => 'CAI Empty Co', 'is_active' => true]);
+
+    $response = $this->actingAs($user)->get(route('reports.resource-intelligence', [
+        'company_id' => $company->id,
+        'month' => 5,
+        'year' => 2026,
+    ]));
+
+    $response->assertOk();
+    $response->assertInertia(fn (Assert $page) => $page
+        ->where('reportData.summary.carbonAvoidanceIntensity', fn ($v) => (float) $v === 0.0)
+    );
+});
+
 it('combines multiple months of data when a custom From/To date range is used', function () {
     $user = User::factory()->create();
     $user->assignRole('manager');
