@@ -262,6 +262,13 @@ class ReleaseNotesSeeder extends Seeder
                 'description' => 'A full security review found that downloading, uploading, or deleting a collection document/slip did not check which client it belonged to. Fixed so this now follows the same per-client access rules already used everywhere else in the portal.',
                 'released_at' => now(),
             ],
+            [
+                'version' => '1.8.6',
+                'type' => 'feature',
+                'title' => 'Configurable Resource Recovery Rating thresholds',
+                'description' => 'New Settings > Resource Recovery Rating page lets admins set the diversion-rate cutoffs for each rating tier (Platinum, Gold, Silver, Bronze, Developing, Improvement Required).',
+                'released_at' => now(),
+            ],
         ];
 
         foreach ($notes as $note) {
