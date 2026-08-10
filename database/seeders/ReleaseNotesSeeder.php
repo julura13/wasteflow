@@ -276,6 +276,13 @@ class ReleaseNotesSeeder extends Seeder
                 'description' => 'Each load in an order can now specify its own service provider (defaulting to the order\'s provider) instead of every load sharing one provider. The Rebate Tracker report and PDF export now break out weight and rebate totals per provider.',
                 'released_at' => now(),
             ],
+            [
+                'version' => '1.8.8',
+                'type' => 'feature',
+                'title' => 'Client Monthly Certificates',
+                'description' => 'A "Download Certificate" button on the Resource Intelligence report page generates a branded Certificate of Waste Diversion for the selected client and month, showing their landfill diversion percentage and reporting period.',
+                'released_at' => now(),
+            ],
         ];
 
         foreach ($notes as $note) {
