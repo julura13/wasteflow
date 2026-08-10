@@ -168,7 +168,7 @@ function ReportHeader({ scopeDisplayName, reportingPeriodLabel }) {
     return (
         <div className="text-center py-4 px-6" style={{ backgroundColor: HEADER_BG }}>
             <div className="text-2xl font-bold text-gray-900">{scopeDisplayName || 'Site Name'}</div>
-            <div className="text-base font-semibold text-gray-800">WasteFlow Resource Intelligence Report</div>
+            <div className="text-base font-semibold text-gray-800">WasteFlow Resource Intelligence™ Report</div>
             <div className="text-sm text-gray-700">{reportingPeriodLabel}</div>
         </div>
     );
@@ -265,7 +265,7 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
 
     return (
         <DashboardLayout title="Resource Intelligence Report">
-            <Head title="WasteFlow Resource Intelligence Report" />
+            <Head title="WasteFlow Resource Intelligence™ Report" />
             <style>{`
                 @media print {
                     @page { size: A4 portrait; margin: 10mm 8mm; }
@@ -636,7 +636,7 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                         <div className="border-t-4 border-gray-100 print-page-break">
                             <div className="text-center py-4 px-6" style={{ backgroundColor: HEADER_BG }}>
                                 <div className="text-2xl font-bold text-gray-900">{rd.scopeDisplayName}</div>
-                                <div className="text-base font-semibold text-gray-800">WasteFlow Resource Intelligence Report</div>
+                                <div className="text-base font-semibold text-gray-800">WasteFlow Resource Intelligence™ Report</div>
                                 <div className="text-sm text-gray-700">{rd.reportingPeriodLabel}</div>
                             </div>
 
@@ -896,13 +896,78 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                         <div className="border-t-4 border-gray-100 p-4 sm:p-5 bg-white print-page-break">
                             <div className="font-bold text-sm mb-3" style={{ color: NAVY }}>Methodology &amp; Data Sources</div>
                             <div className="space-y-2.5 text-sm text-gray-600 leading-relaxed max-w-4xl">
-                                <p>This report has been prepared using verified waste data collected on-site and processed through the WasteFlow Resource Intelligence Portal.</p>
-                                <p>Carbon emission factors and environmental impact calculations are aligned with internationally recognised methodologies, including the UK Department for Environment, Food &amp; Rural Affairs (DEFRA) greenhouse gas conversion factors and industry-standard lifecycle datasets.</p>
-                                <p>All carbon calculations (CO₂e) are aligned with the Greenhouse Gas (GHG) Protocol, with a focus on Scope 3 emissions avoided through recycling, material recovery, and landfill diversion.</p>
-                                <p>Data is supported by operational records, collection data and verified waste streams ensuring a consistent and transparent reporting framework.</p>
-                                <div className="border-t border-gray-300 pt-3 font-medium text-gray-800 leading-relaxed">
-                                    All reported environmental metrics have been calculated using DEFRA-aligned emission factors in accordance with GHG Protocol best practice, international standards and applicable South African sustainability and reporting frameworks.
+                                <p>This report has been prepared using verified operational waste data collected on-site and processed through the WasteFlow Resource Intelligence™ Platform.</p>
+                                <p>Reported waste quantities are derived from operational collection records, weighbridge data, recycling receipts, waste manifests and other supporting documentation where applicable.</p>
+                                <p>WasteFlow applies recognised environmental conversion factors and lifecycle assessment (LCA) methodologies to convert operational waste data into meaningful environmental performance indicators.</p>
+                                <p>Carbon calculations are based on lifecycle greenhouse gas emissions avoided through resource recovery activities, including:</p>
+                                <ul className="list-disc pl-5 space-y-1">
+                                    <li>Material recycling</li>
+                                    <li>Circular reuse</li>
+                                    <li>Organic waste recovery</li>
+                                    <li>Landfill diversion</li>
+                                </ul>
+                                <p>Environmental calculations are aligned, where applicable, with recognised international guidance including:</p>
+                                <ul className="list-disc pl-5 space-y-1">
+                                    <li>Greenhouse Gas Protocol</li>
+                                    <li>UK DEFRA Greenhouse Gas Conversion Factors</li>
+                                    <li>International Life Cycle Assessment (LCA) methodologies</li>
+                                    <li>Applicable South African environmental reporting principles</li>
+                                </ul>
+                            </div>
+
+                            <div className="mt-6 pt-4 border-t border-gray-200 max-w-4xl">
+                                <div className="font-bold text-sm mb-2" style={{ color: NAVY }}>Resource Intelligence™ Indicators</div>
+                                <p className="text-sm text-gray-600 mb-2 leading-relaxed">The WasteFlow Resource Intelligence™ methodology calculates the following key performance indicators:</p>
+                                <ul className="grid grid-cols-1 sm:grid-cols-2 list-disc pl-5 gap-x-6 text-sm text-gray-600 leading-relaxed">
+                                    <li>Total Waste Managed</li>
+                                    <li>Resource Recovery Rate</li>
+                                    <li>Landfill Diversion Rate</li>
+                                    <li>Recycling Rate</li>
+                                    <li>Circularity (Reuse)</li>
+                                    <li>Organic Recovery</li>
+                                    <li>Total Lifecycle Carbon Avoided (kg CO₂e)</li>
+                                    <li>Carbon Avoidance Intensity (kg CO₂e avoided per ton managed)</li>
+                                    <li>Water Saved</li>
+                                    <li>Electricity Saved</li>
+                                    <li>Trees Preserved</li>
+                                    <li>Landfill Airspace Saved</li>
+                                    <li>WasteFlow Resource Recovery Rating™</li>
+                                </ul>
+                            </div>
+
+                            <div className="mt-6 pt-4 border-t border-gray-200 space-y-2.5 text-sm text-gray-600 leading-relaxed max-w-4xl">
+                                <p><span className="font-semibold text-gray-800">Carbon Avoidance Intensity (CAI).</span> Measures the lifecycle greenhouse gas emissions avoided for every ton of waste managed. This KPI enables organisations to compare environmental performance over time regardless of changes in waste volumes.</p>
+                                <p><span className="font-semibold text-gray-800">WasteFlow Resource Recovery Rating™.</span> Determined by calculating the percentage of total waste diverted from landfill through reuse, recycling and organic recovery. The rating provides a consistent benchmark for measuring operational resource recovery performance and supports continual improvement through month-on-month comparison.</p>
+                                <p><span className="font-semibold text-gray-800">Lifecycle Carbon Avoided.</span> Represents the estimated greenhouse gas emissions prevented through resource recovery activities when compared with conventional disposal or the use of virgin materials. This indicator reflects the combined environmental benefit of avoided upstream (Scope 3) emissions and avoided landfill emissions resulting from WasteFlow&rsquo;s resource recovery activities.</p>
+                            </div>
+
+                            <div className="mt-6 pt-4 border-t border-gray-200 max-w-4xl">
+                                <div className="font-bold text-sm mb-2" style={{ color: NAVY }}>Reporting Statement</div>
+                                <div className="space-y-2 text-sm text-gray-600 leading-relaxed">
+                                    <p>Environmental equivalencies contained within this report represent estimated environmental benefits achieved through resource recovery.</p>
+                                    <p>These indicators are intended to support sustainability reporting, environmental performance measurement and continuous improvement.</p>
+                                    <p>Unless specifically stated otherwise, reported environmental equivalencies should not be interpreted as a verified organisational greenhouse gas inventory or a certified carbon footprint assessment.</p>
                                 </div>
+                            </div>
+
+                            <div className="mt-6 pt-4 border-t border-gray-200 max-w-4xl text-center">
+                                <p className="text-sm font-semibold" style={{ color: NAVY }}>WasteFlow Resource Intelligence™</p>
+                                <p className="mt-1 text-sm text-gray-600 italic leading-relaxed">
+                                    Transforming verified operational waste data into actionable environmental intelligence. Supporting organisations through data-driven resource recovery, sustainability reporting and continuous improvement.
+                                </p>
+                            </div>
+
+                            <div className="mt-6 pt-4 border-t border-gray-200 max-w-4xl">
+                                <div className="font-bold text-sm mb-2" style={{ color: NAVY }}>Limitations</div>
+                                <p className="text-sm text-gray-600 leading-relaxed">Environmental metrics are calculated using recognised conversion factors and lifecycle assessment methodologies. While every effort is made to ensure accuracy and consistency, reported environmental equivalencies remain estimates and may vary depending on material composition, downstream processing technologies and future revisions to published conversion factors.</p>
+                            </div>
+
+                            <div className="mt-6 pt-4 border-t border-gray-200 max-w-4xl">
+                                <div className="font-bold text-sm mb-2" style={{ color: NAVY }}>Disclaimer</div>
+                                <p className="text-sm text-gray-600 leading-relaxed">Environmental equivalencies are estimates derived from recognised conversion factors and lifecycle assessment methodologies. Actual environmental outcomes may vary depending on material composition, processing technologies and downstream recovery pathways. These metrics are intended to support sustainability reporting and continuous improvement and should not be interpreted as a certified greenhouse gas inventory or independently verified carbon footprint assessment.</p>
+                                <p className="mt-3 text-xs text-gray-500 leading-relaxed">
+                                    &copy; {new Date().getFullYear()} WasteFlow (Pty) Ltd. WasteFlow Resource Intelligence™, Carbon Avoidance Intensity (CAI) and WasteFlow Resource Recovery Rating™ are proprietary methodologies developed by WasteFlow (Pty) Ltd. No part of this methodology may be reproduced or distributed without prior written permission.
+                                </p>
                             </div>
                             <div className="mt-8 flex flex-col items-center border-t border-gray-200 dark:border-gray-600 pt-8">
                                 <img

@@ -823,7 +823,7 @@ class ReportController extends Controller
 
         if ($reportLocationLines === []) {
             $reportLocationLines = [
-                'No customer selected. Open Reports → WasteFlow Resource Intelligence Report, choose a customer and period, then use Download PDF so the link includes your filters.',
+                'No customer selected. Open Reports → WasteFlow Resource Intelligence™ Report, choose a customer and period, then use Download PDF so the link includes your filters.',
             ];
         }
 
