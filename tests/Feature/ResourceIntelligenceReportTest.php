@@ -178,7 +178,7 @@ it('computes Carbon Avoidance Intensity as lifecycle saving per kg of waste mana
 
     expect($summary['totalIncomingWaste'])->toBe(200.0);
     expect($summary['carbonAvoidanceIntensity'])
-        ->toBe(round($summary['lifecycleSaving'] / $summary['totalIncomingWaste'], 2));
+        ->toBe(round($summary['lifecycleSaving'] / ($summary['totalIncomingWaste'] / 1000), 2));
 });
 
 it('reports zero Carbon Avoidance Intensity when there is no waste managed', function () {
