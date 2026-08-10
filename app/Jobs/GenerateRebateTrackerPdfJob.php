@@ -77,7 +77,7 @@ class GenerateRebateTrackerPdfJob implements ShouldQueue
                 'site_name' => $siteId ? Site::query()->whereKey($siteId)->value('name') : null,
             ];
 
-            $binary = $rebateTrackerReportService->renderRebateTrackerPdfBinary($rebateData, $pdfFilters, $totalRebate, $totalWeight);
+            $binary = $rebateTrackerReportService->renderRebateTrackerPdfBinary($rebateData, $pdfFilters, $totalRebate, $totalWeight, $user->can('view-reports-all'));
 
             $relativePath = 'rebate-reports/'.$export->uuid.'.pdf';
             Storage::disk($export->disk)->put($relativePath, $binary);

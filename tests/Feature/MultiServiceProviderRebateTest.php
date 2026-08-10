@@ -156,6 +156,63 @@ it('breaks rebate totals out per service provider when a finalized order has loa
     expect((float) $providerBreakdown['Provider B']['total'])->toBe(180.0);
 });
 
+it('hides the provider breakdown from a client-role user even though the rebate data itself is scoped and visible', function () {
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+
+    ['company' => $company, 'branch' => $branch, 'site' => $site, 'providerA' => $providerA, 'providerB' => $providerB, 'material' => $material] = createRebateFixtures();
+
+    $client = User::factory()->create();
+    $client->assignRole('client');
+    $client->companies()->attach($company->id);
+
+    $collectionDate = Carbon::parse('2026-07-15');
+    $order = Order::create([
+        'company_id' => $company->id,
+        'branch_id' => $branch->id,
+        'site_id' => $site->id,
+        'service_provider_id' => $providerA->id,
+        'created_by' => $admin->id,
+        'order_type' => 'recycling',
+        'status' => 'finalized',
+        'tracking_number' => 'RO-MSP-005',
+        'requested_collection_date' => $collectionDate,
+        'actual_collection_date' => $collectionDate,
+    ]);
+
+    OrderWasteStream::create([
+        'order_id' => $order->id,
+        'material_id' => $material->id,
+        'service_provider_id' => $providerA->id,
+        'gross_weight' => 40,
+        'nett_weight' => 40,
+        'rebate_rate' => 3,
+    ]);
+
+    OrderWasteStream::create([
+        'order_id' => $order->id,
+        'material_id' => $material->id,
+        'service_provider_id' => $providerB->id,
+        'gross_weight' => 60,
+        'nett_weight' => 60,
+        'rebate_rate' => 3,
+    ]);
+
+    $response = $this->actingAs($client)->get(route('reports.rebate-tracker', [
+        'start_date' => '2026-07-01',
+        'end_date' => '2026-07-31',
+    ]));
+
+    $response->assertOk();
+
+    $props = $response->viewData('page')['props'];
+
+    // The client still sees their own rebate totals...
+    expect(collect($props['rebateData'])->sum('weight'))->toBe(100.0);
+    // ...but never the internal per-provider breakdown.
+    expect($props['providerBreakdown'])->toBe([]);
+});
+
 it('keeps two service providers that share a name as separate rows instead of merging their totals', function () {
     $user = User::factory()->create();
     $user->assignRole('admin');

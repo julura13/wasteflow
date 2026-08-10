@@ -1029,7 +1029,8 @@ class OrderController extends Controller
 
         return Inertia::render('Reports/RebateTracker', [
             'rebateData' => $rebateData,
-            'providerBreakdown' => $this->rebateTrackerReportService->providerBreakdown($rebateData),
+            // Internal-only breakdown - clients never see which provider handled which load.
+            'providerBreakdown' => $user->can('view-reports-all') ? $this->rebateTrackerReportService->providerBreakdown($rebateData) : [],
             'companies' => $companies,
             'filters' => [
                 'start_date' => $startDate,
