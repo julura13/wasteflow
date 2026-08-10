@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\ClientHubAdvert;
 use App\Models\Document;
 use App\Models\Media;
 use App\Models\ReleaseNote;
@@ -58,7 +59,15 @@ class HandleInertiaRequests extends Middleware
             'bellNotifications' => function () use ($request) {
                 $user = $request->user();
 
-                return $user && $user->isAdmin() ? $this->bellNotifications($user) : [];
+                if (! $user) {
+                    return [];
+                }
+
+                if ($user->isAdmin()) {
+                    return $this->bellNotifications($user);
+                }
+
+                return $user->hasRole('client') ? $this->clientHubBellNotifications($user) : [];
             },
             'hasUnseenDocuments' => function () use ($request) {
                 $user = $request->user();
@@ -71,6 +80,28 @@ class HandleInertiaRequests extends Middleware
                 return $user
                     ? Media::query()->where('collection', 'sheq_compliance')->whereNull('mediable_type')->unseenByUser($user->id)->exists()
                     : false;
+            },
+            'clientHubPopupAdvert' => function () use ($request) {
+                $user = $request->user();
+
+                if (! $user || ! $user->hasRole('client')) {
+                    return null;
+                }
+
+                $advert = ClientHubAdvert::query()
+                    ->active()
+                    ->whereDoesntHave('views', fn ($q) => $q->where('user_id', $user->id)->whereNotNull('dismissed_at'))
+                    ->latest()
+                    ->first();
+
+                return $advert ? [
+                    'id' => $advert->id,
+                    'title' => $advert->title,
+                    'details' => $advert->details,
+                    'contact_email' => $advert->contact_email,
+                    'mime_type' => $advert->mime_type,
+                    'view_url' => route('client-hub.view', $advert->id),
+                ] : null;
             },
         ];
     }
@@ -128,5 +159,31 @@ class HandleInertiaRequests extends Middleware
             ]);
 
         return $releaseNotes->concat($systemNotifications)->values()->all();
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function clientHubBellNotifications(User $user): array
+    {
+        return ClientHubAdvert::query()
+            ->active()
+            ->whereDoesntHave('views', fn ($q) => $q->where('user_id', $user->id)->whereNotNull('read_at'))
+            ->latest()
+            ->get()
+            ->map(fn (ClientHubAdvert $advert) => [
+                'id' => (string) $advert->id,
+                'kind' => 'client_hub_advert',
+                'badge_type' => 'announcement',
+                'badge_label' => 'new',
+                'title' => $advert->title,
+                'description' => $advert->details,
+                'image_url' => route('client-hub.view', $advert->id),
+                'mime_type' => $advert->mime_type,
+                'contact_email' => $advert->contact_email,
+                'read_url' => "/client-hub/{$advert->id}/read",
+            ])
+            ->values()
+            ->all();
     }
 }

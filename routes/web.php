@@ -142,6 +142,24 @@ Route::middleware(['auth', 'verified'])->prefix('sheq-compliance')->name('sheq-c
     });
 });
 
+// Client Hub adverts (WCP-39): admin-managed popup announcements shown to client-role users on
+// login. dismiss/read are two independent flags - see ClientHubAdvertController for why.
+Route::middleware(['auth', 'verified'])->prefix('client-hub')->name('client-hub.')->group(function () {
+    Route::get('/{clientHubAdvert}/view', [App\Http\Controllers\ClientHubAdvertController::class, 'view'])->name('view');
+
+    Route::middleware(['role:client'])->group(function () {
+        Route::post('/{clientHubAdvert}/dismiss', [App\Http\Controllers\ClientHubAdvertController::class, 'dismiss'])->name('dismiss');
+        Route::post('/{clientHubAdvert}/read', [App\Http\Controllers\ClientHubAdvertController::class, 'read'])->name('read');
+    });
+
+    Route::middleware(['role:admin'])->group(function () {
+        Route::get('/', [App\Http\Controllers\ClientHubAdvertController::class, 'index'])->name('index');
+        Route::post('/', [App\Http\Controllers\ClientHubAdvertController::class, 'store'])->name('store');
+        Route::put('/{clientHubAdvert}', [App\Http\Controllers\ClientHubAdvertController::class, 'update'])->name('update');
+        Route::delete('/{clientHubAdvert}', [App\Http\Controllers\ClientHubAdvertController::class, 'destroy'])->name('destroy');
+    });
+});
+
 // Unauthenticated print-preview used by Browsershot — auth via short-lived cache token
 Route::get('/reports/resource-intelligence/print/{token}', [App\Http\Controllers\ReportController::class, 'resourceIntelligencePrintPreview'])
     ->name('reports.resource-intelligence.print-preview');
