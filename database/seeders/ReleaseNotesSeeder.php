@@ -283,6 +283,13 @@ class ReleaseNotesSeeder extends Seeder
                 'description' => 'A "Download Certificate" button on the Resource Intelligence report page generates a branded Certificate of Waste Diversion for the selected client and month, showing their landfill diversion percentage and reporting period.',
                 'released_at' => now(),
             ],
+            [
+                'version' => '1.8.9',
+                'type' => 'feature',
+                'title' => 'Carbon Avoidance Intensity (CAI) metric',
+                'description' => 'New indicator on the Resource Intelligence report: kg CO2e avoided per kg of waste managed, a volume-independent measure of how carbon-efficient a client\'s diversion program is.',
+                'released_at' => now(),
+            ],
         ];
 
         foreach ($notes as $note) {
