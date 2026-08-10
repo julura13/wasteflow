@@ -290,6 +290,13 @@ class ReleaseNotesSeeder extends Seeder
                 'description' => 'New indicator on the Resource Intelligence report: kg CO2e avoided per kg of waste managed, a volume-independent measure of how carbon-efficient a client\'s diversion program is.',
                 'released_at' => now(),
             ],
+            [
+                'version' => '1.9.0',
+                'type' => 'improvement',
+                'title' => 'Updated Methodology & Data Sources report copy',
+                'description' => 'The Resource Intelligence report\'s Methodology & Data Sources section now includes the client\'s updated legal/trademark language: Resource Intelligence™ and Resource Recovery Rating™ trademark symbols, an expanded methodology and indicators list, and new Reporting Statement, Limitations, Disclaimer and copyright sections.',
+                'released_at' => now(),
+            ],
         ];
 
         foreach ($notes as $note) {
