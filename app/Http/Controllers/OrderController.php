@@ -529,7 +529,6 @@ class OrderController extends Controller
             'serviceProvider',
             'wasteStreams.material.wasteStream',
             'wasteStreams.material.grade',
-            'wasteStreams.serviceProvider',
             'supportingDocuments',
         ]);
 

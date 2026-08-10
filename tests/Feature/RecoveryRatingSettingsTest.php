@@ -82,6 +82,70 @@ it('rejects thresholds that are not strictly descending from Platinum down', fun
     expect((float) RecoveryRatingTier::where('slug', 'gold')->value('min_percentage'))->toBe(75.0);
 });
 
+it('rejects a payload missing one tier and leaves all thresholds unchanged', function () {
+    $user = User::factory()->create();
+    $user->assignRole('admin');
+
+    $tiers = RecoveryRatingTier::query()->orderByDesc('sort_order')->get();
+    $originalGold = (float) $tiers->firstWhere('slug', 'gold')->min_percentage;
+
+    // Omit Improvement Required entirely - an incomplete payload.
+    $payload = $tiers->filter(fn (RecoveryRatingTier $tier) => $tier->slug !== 'improvement-required')
+        ->map(fn (RecoveryRatingTier $tier) => [
+            'id' => $tier->id,
+            'min_percentage' => $tier->slug === 'gold' ? 80 : $tier->min_percentage,
+        ])->values()->all();
+
+    $this->actingAs($user)
+        ->put('/settings/recovery-rating', ['tiers' => $payload])
+        ->assertSessionHasErrors('tiers');
+
+    // Gold must still hold its original value - the incomplete payload must not
+    // partially apply even though it appears earlier in the update loop.
+    expect((float) RecoveryRatingTier::where('slug', 'gold')->value('min_percentage'))->toBe($originalGold);
+});
+
+it('rejects a payload with a duplicate tier id', function () {
+    $user = User::factory()->create();
+    $user->assignRole('admin');
+
+    $tiers = RecoveryRatingTier::query()->orderByDesc('sort_order')->get();
+    $platinum = $tiers->firstWhere('slug', 'platinum');
+    $gold = $tiers->firstWhere('slug', 'gold');
+
+    // Platinum's id submitted twice, Improvement Required's id omitted.
+    $payload = $tiers->filter(fn (RecoveryRatingTier $tier) => $tier->slug !== 'improvement-required')
+        ->map(fn (RecoveryRatingTier $tier) => ['id' => $tier->id, 'min_percentage' => $tier->min_percentage])
+        ->values()->all();
+    $payload[] = ['id' => $platinum->id, 'min_percentage' => $platinum->min_percentage];
+
+    $this->actingAs($user)
+        ->put('/settings/recovery-rating', ['tiers' => $payload])
+        ->assertSessionHasErrors('tiers.*.id');
+
+    expect((float) RecoveryRatingTier::where('slug', 'gold')->value('min_percentage'))->toBe((float) $gold->min_percentage);
+});
+
+it('rejects tied thresholds between adjacent tiers', function () {
+    $user = User::factory()->create();
+    $user->assignRole('admin');
+
+    $tiers = RecoveryRatingTier::query()->orderByDesc('sort_order')->get();
+
+    // Gold and Silver both set to the same threshold - a tie, not strictly descending.
+    $payload = $tiers->map(fn (RecoveryRatingTier $tier) => [
+        'id' => $tier->id,
+        'min_percentage' => in_array($tier->slug, ['gold', 'silver'], true) ? 70 : $tier->min_percentage,
+    ])->values()->all();
+
+    $this->actingAs($user)
+        ->put('/settings/recovery-rating', ['tiers' => $payload])
+        ->assertSessionHasErrors('tiers');
+
+    expect((float) RecoveryRatingTier::where('slug', 'gold')->value('min_percentage'))->toBe(75.0);
+    expect((float) RecoveryRatingTier::where('slug', 'silver')->value('min_percentage'))->toBe(60.0);
+});
+
 it('resolves the correct tier for a given diversion percentage', function () {
     expect(RecoveryRatingTier::forPercentage(95)->slug)->toBe('platinum');
     expect(RecoveryRatingTier::forPercentage(90)->slug)->toBe('platinum');

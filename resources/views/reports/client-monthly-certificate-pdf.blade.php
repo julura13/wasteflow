@@ -64,7 +64,13 @@
 <body>
     @php
         $templatePath = public_path('images/certificate-template.jpg');
-        $templateSrc = is_file($templatePath) ? 'data:'.mime_content_type($templatePath).';base64,'.base64_encode((string) file_get_contents($templatePath)) : null;
+        $templateSrc = null;
+        if (is_file($templatePath)) {
+            $cacheKey = 'certificate_template_data_uri_'.filemtime($templatePath);
+            $templateSrc = \Illuminate\Support\Facades\Cache::rememberForever($cacheKey, function () use ($templatePath) {
+                return 'data:'.mime_content_type($templatePath).';base64,'.base64_encode((string) file_get_contents($templatePath));
+            });
+        }
     @endphp
     <div class="page">
         @if($templateSrc)

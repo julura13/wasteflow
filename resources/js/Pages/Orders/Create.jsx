@@ -1,26 +1,11 @@
 import { Head, useForm, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { formatDateYyyyMmDd } from '@/utils/formatDateYyyyMmDd';
+import { filterServiceProvidersByOrderType } from '@/utils/filterServiceProvidersByOrderType';
 import { ArrowLeft, Save, Trash2, Recycle, Package, Plus } from 'lucide-react';
 import { Link } from '@inertiajs/react';
 import { useState, useEffect, useMemo } from 'react';
 import SearchableDropdown from '@/Components/SearchableDropdown';
-
-function filterServiceProvidersByOrderType(providers, orderType) {
-    if (!providers?.length) {
-        return [];
-    }
-    return providers.filter((provider) => {
-        const providerTypes = provider.types || [];
-        if (orderType === 'waste') {
-            return providerTypes.some((type) => ['waste_collection', 'general'].includes(type));
-        }
-        if (orderType === 'recycling') {
-            return providerTypes.some((type) => ['recycling', 'general'].includes(type));
-        }
-        return true;
-    });
-}
 
 function resolveDefaultServiceProviderId(companies, companyId, orderType, providersForOrderType) {
     const company = companies.find((c) => String(c.id) === String(companyId));

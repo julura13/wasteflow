@@ -920,11 +920,7 @@ class ReportController extends Controller
                 'divertedFromLandfill' => $divertedFromLandfill,
                 'landfillSpaceSaved' => $landfillSpaceSaved,
                 'lifecycleSaving' => $materialsCO2eTotals['lifecycleSaving'],
-                // Carbon Avoidance Intensity: kg CO2e avoided per kg of waste managed - a
-                // volume-independent efficiency metric, distinct from the absolute lifecycle saving above.
-                'carbonAvoidanceIntensity' => $totalIncomingWaste > 0
-                    ? round($materialsCO2eTotals['lifecycleSaving'] / $totalIncomingWaste, 2)
-                    : 0.0,
+                'carbonAvoidanceIntensity' => $this->calculateCarbonAvoidanceIntensity($materialsCO2eTotals, $totalIncomingWaste),
             ],
             'landfillSpaceSavedBreakdown' => $landfillSpaceSavedData,
             'materialsCO2e' => $materialsCO2e,
@@ -1212,6 +1208,20 @@ class ReportController extends Controller
         }
 
         return round($lifecycleSaving / 0.192, 2);
+    }
+
+    /**
+     * Carbon Avoidance Intensity (CAI): kg CO2e avoided per kg of waste managed - a
+     * volume-independent efficiency metric, distinct from the absolute lifecycle saving.
+     */
+    private function calculateCarbonAvoidanceIntensity(array $materialsCO2eTotals, float $totalIncomingWaste): float
+    {
+        $lifecycleSaving = (float) ($materialsCO2eTotals['lifecycleSaving'] ?? 0);
+        if ($lifecycleSaving <= 0 || $totalIncomingWaste <= 0) {
+            return 0.0;
+        }
+
+        return round($lifecycleSaving / $totalIncomingWaste, 2);
     }
 
     /**

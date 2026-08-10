@@ -2,25 +2,10 @@ import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import Modal from '@/Components/Modal';
 import { formatDateYyyyMmDd } from '@/utils/formatDateYyyyMmDd';
+import { filterServiceProvidersByOrderType } from '@/utils/filterServiceProvidersByOrderType';
 import SearchableDropdown from '@/Components/SearchableDropdown';
 import { ArrowLeft, CheckCircle, Upload, Trash2, Download, File, AlertCircle, Plus, Save, AlertTriangle } from 'lucide-react';
 import { useState, useMemo, useEffect, useRef } from 'react';
-
-function filterServiceProvidersByOrderType(providers, orderType) {
-    if (!providers?.length) {
-        return [];
-    }
-    return providers.filter((provider) => {
-        const providerTypes = provider.types || [];
-        if (orderType === 'waste') {
-            return providerTypes.some((type) => ['waste_collection', 'general'].includes(type));
-        }
-        if (orderType === 'recycling') {
-            return providerTypes.some((type) => ['recycling', 'general'].includes(type));
-        }
-        return true;
-    });
-}
 
 export default function Finalize({ order, materials = [], canManageOrder = true, containerOptionsWithWeight = [], serviceProviders = [] }) {
     const hasContainerWeightOptions = containerOptionsWithWeight.length > 0;
@@ -184,6 +169,22 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
         () => filterServiceProvidersByOrderType(serviceProviders, order.order_type),
         [serviceProviders, order.order_type]
     );
+
+    // A line's saved provider may no longer be type-eligible (e.g. its types were edited
+    // after the fact) and so be missing from providersForOrderType. Union it back in so the
+    // dropdown always displays the real selection instead of silently falling back to the
+    // "Order default" placeholder while still submitting the stale id underneath.
+    const providerOptionsForLine = (line) => {
+        if (!line.service_provider_id) {
+            return providersForOrderType;
+        }
+        const alreadyIncluded = providersForOrderType.some((p) => String(p.id) === String(line.service_provider_id));
+        if (alreadyIncluded) {
+            return providersForOrderType;
+        }
+        const currentProvider = serviceProviders.find((p) => String(p.id) === String(line.service_provider_id));
+        return currentProvider ? [...providersForOrderType, currentProvider] : providersForOrderType;
+    };
 
     const emptyWeightLine = (id) => ({
         id,
@@ -769,7 +770,7 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap overflow-visible">
                                                             <SearchableDropdown
-                                                                options={providersForOrderType}
+                                                                options={providerOptionsForLine(line)}
                                                                 value={line.service_provider_id}
                                                                 onChange={(value) => updateWeightLine(line.id, 'service_provider_id', value)}
                                                                 placeholder="Order default"

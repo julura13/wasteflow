@@ -155,3 +155,61 @@ it('breaks rebate totals out per service provider when a finalized order has loa
     expect((float) $providerBreakdown['Provider B']['weight'])->toBe(60.0);
     expect((float) $providerBreakdown['Provider B']['total'])->toBe(180.0);
 });
+
+it('keeps two service providers that share a name as separate rows instead of merging their totals', function () {
+    $user = User::factory()->create();
+    $user->assignRole('admin');
+
+    ['company' => $company, 'branch' => $branch, 'site' => $site, 'material' => $material] = createRebateFixtures();
+
+    // Two distinct provider records that happen to share a name - nothing in the schema
+    // prevents this, and the rebate report must not silently combine their totals.
+    $providerX = ServiceProvider::create(['name' => 'Shared Name Co', 'is_active' => true]);
+    $providerY = ServiceProvider::create(['name' => 'Shared Name Co', 'is_active' => true]);
+
+    $collectionDate = Carbon::parse('2026-06-15');
+    $order = Order::create([
+        'company_id' => $company->id,
+        'branch_id' => $branch->id,
+        'site_id' => $site->id,
+        'service_provider_id' => $providerX->id,
+        'created_by' => $user->id,
+        'order_type' => 'recycling',
+        'status' => 'finalized',
+        'tracking_number' => 'RO-MSP-004',
+        'requested_collection_date' => $collectionDate,
+        'actual_collection_date' => $collectionDate,
+    ]);
+
+    OrderWasteStream::create([
+        'order_id' => $order->id,
+        'material_id' => $material->id,
+        'service_provider_id' => $providerX->id,
+        'gross_weight' => 40,
+        'nett_weight' => 40,
+        'rebate_rate' => 3,
+    ]);
+
+    OrderWasteStream::create([
+        'order_id' => $order->id,
+        'material_id' => $material->id,
+        'service_provider_id' => $providerY->id,
+        'gross_weight' => 60,
+        'nett_weight' => 60,
+        'rebate_rate' => 3,
+    ]);
+
+    $response = $this->actingAs($user)->get(route('reports.rebate-tracker', [
+        'start_date' => '2026-06-01',
+        'end_date' => '2026-06-30',
+    ]));
+
+    $response->assertOk();
+
+    $providerBreakdown = collect($response->viewData('page')['props']['providerBreakdown']);
+    $sharedNameRows = $providerBreakdown->where('provider_name', 'Shared Name Co');
+
+    // Two separate rows for the two providers, not one row with the totals merged.
+    expect($sharedNameRows)->toHaveCount(2);
+    expect($sharedNameRows->pluck('weight')->sort()->values()->all())->toBe([40.0, 60.0]);
+});
