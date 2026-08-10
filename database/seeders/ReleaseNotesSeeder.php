@@ -269,6 +269,13 @@ class ReleaseNotesSeeder extends Seeder
                 'description' => 'New Settings > Resource Recovery Rating page lets admins set the diversion-rate cutoffs for each rating tier (Platinum, Gold, Silver, Bronze, Developing, Improvement Required).',
                 'released_at' => now(),
             ],
+            [
+                'version' => '1.8.7',
+                'type' => 'feature',
+                'title' => 'Multi service-provider rebate support',
+                'description' => 'Each load in an order can now specify its own service provider (defaulting to the order\'s provider) instead of every load sharing one provider. The Rebate Tracker report and PDF export now break out weight and rebate totals per provider.',
+                'released_at' => now(),
+            ],
         ];
 
         foreach ($notes as $note) {
