@@ -72,7 +72,7 @@ class HandleInertiaRequests extends Middleware
                 ? Document::query()->unseenByUser($user->id)->exists()
                 : false,
             'hasUnseenSheqCompliance' => fn () => $user
-                ? Media::query()->where('collection', 'sheq_compliance')->unseenByUser($user->id)->exists()
+                ? Media::query()->where('collection', 'sheq_compliance')->whereNull('mediable_type')->unseenByUser($user->id)->exists()
                 : false,
         ];
     }

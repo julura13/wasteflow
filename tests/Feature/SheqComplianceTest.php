@@ -154,6 +154,49 @@ it('does not allow a SHEQ compliance route to operate on media from a different 
         ->assertNotFound();
 });
 
+it('does not allow a SHEQ compliance route to operate on order-attached media mislabeled with the sheq_compliance collection', function () {
+    // Regression test: collection alone is not a trustworthy boundary - an order-attached
+    // record must never be treated as a standalone SHEQ document even if its collection
+    // happens to say so.
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+
+    $mislabeledOrderMedia = Media::factory()->create([
+        'collection' => 'sheq_compliance',
+        'mediable_type' => 'App\\Models\\Order',
+        'mediable_id' => 1,
+    ]);
+
+    $this->actingAs($admin)
+        ->get("/sheq-compliance/{$mislabeledOrderMedia->id}/view")
+        ->assertNotFound();
+
+    $this->actingAs($admin)
+        ->delete("/sheq-compliance/{$mislabeledOrderMedia->id}")
+        ->assertNotFound();
+
+    expect(Media::find($mislabeledOrderMedia->id))->not->toBeNull();
+});
+
+it('excludes order-attached media mislabeled with the sheq_compliance collection from the index and unseen badge', function () {
+    $client = User::factory()->create();
+    $client->assignRole('client');
+
+    Media::factory()->create([
+        'collection' => 'sheq_compliance',
+        'mediable_type' => 'App\\Models\\Order',
+        'mediable_id' => 1,
+    ]);
+
+    $this->actingAs($client)
+        ->get('/sheq-compliance')
+        ->assertInertia(fn ($page) => $page->has('documents.data', 0));
+
+    $this->actingAs($client)
+        ->get('/dashboard')
+        ->assertInertia(fn ($page) => $page->where('hasUnseenSheqCompliance', false));
+});
+
 it('marks SHEQ compliance documents as seen when the user visits the index, clearing the unseen flag', function () {
     $client = User::factory()->create();
     $client->assignRole('client');

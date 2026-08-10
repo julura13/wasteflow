@@ -32,11 +32,13 @@ class SheqComplianceController extends Controller
 
         Media::query()
             ->where('collection', self::COLLECTION)
+            ->whereNull('mediable_type')
             ->unseenByUser($user->id)
             ->get()
             ->each(fn (Media $media) => $media->markSeenBy($user));
 
         $documents = Media::where('collection', self::COLLECTION)
+            ->whereNull('mediable_type')
             ->with('uploadedBy:id,name')
             ->latest()
             ->paginate(15)
@@ -94,7 +96,7 @@ class SheqComplianceController extends Controller
      */
     public function update(UpdateSheqComplianceDocumentRequest $request, Media $sheqCompliance): RedirectResponse
     {
-        abort_unless($sheqCompliance->collection === self::COLLECTION, 404);
+        abort_unless($sheqCompliance->collection === self::COLLECTION && $sheqCompliance->mediable_type === null, 404);
 
         $validated = $request->validated();
 
@@ -136,7 +138,7 @@ class SheqComplianceController extends Controller
      */
     public function destroy(Media $sheqCompliance): RedirectResponse
     {
-        abort_unless($sheqCompliance->collection === self::COLLECTION, 404);
+        abort_unless($sheqCompliance->collection === self::COLLECTION && $sheqCompliance->mediable_type === null, 404);
 
         $title = $sheqCompliance->title;
 
@@ -155,7 +157,7 @@ class SheqComplianceController extends Controller
      */
     public function download(Media $sheqCompliance)
     {
-        abort_unless($sheqCompliance->collection === self::COLLECTION, 404);
+        abort_unless($sheqCompliance->collection === self::COLLECTION && $sheqCompliance->mediable_type === null, 404);
 
         $disk = Storage::disk($sheqCompliance->disk);
 
@@ -171,7 +173,7 @@ class SheqComplianceController extends Controller
      */
     public function view(Media $sheqCompliance)
     {
-        abort_unless($sheqCompliance->collection === self::COLLECTION, 404);
+        abort_unless($sheqCompliance->collection === self::COLLECTION && $sheqCompliance->mediable_type === null, 404);
 
         $disk = Storage::disk($sheqCompliance->disk);
 
