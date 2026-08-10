@@ -1,6 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
-import { Layers, SlidersHorizontal, PackageSearch, MapPin, Building2 } from 'lucide-react';
+import { Layers, SlidersHorizontal, PackageSearch, MapPin, Building2, Award } from 'lucide-react';
 
 const cards = [
     {
@@ -32,6 +32,12 @@ const cards = [
         description: 'Keep facility destinations up to date for routing and reporting.',
         href: '/settings/facilities',
         icon: MapPin,
+    },
+    {
+        name: 'Resource Recovery Rating',
+        description: 'Set the diversion-rate thresholds for Platinum, Gold, Silver, Bronze, Developing and Improvement Required.',
+        href: '/settings/recovery-rating',
+        icon: Award,
     },
 ];
 

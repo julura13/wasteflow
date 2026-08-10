@@ -11,7 +11,7 @@ import SearchableDropdown from '@/Components/SearchableDropdown';
 import {
     Cloud, Droplet, TreePine, Zap,
     Truck, Fuel, CarFront, Eye, ChevronDown, ChevronUp,
-    Layers, Percent, Recycle, Flame, Home,
+    Layers, Percent, Recycle, Flame, Home, Gauge,
 } from 'lucide-react';
 
 const HEADER_BG = '#9AD993';
@@ -856,8 +856,8 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                             )}
                                         </div>
 
-                                        {/* Landfill Airspace Saved + Diversion Rate + Recovery Rate tiles */}
-                                        <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                        {/* Landfill Airspace Saved + Diversion Rate + Recovery Rate + Carbon Avoidance Intensity tiles */}
+                                        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                                             <div className="text-center p-3 bg-teal-50 rounded-lg border border-teal-100">
                                                 <Layers className="w-8 h-8 mx-auto mb-1 text-teal-600" />
                                                 <p className="text-xs text-gray-600 mb-1">Landfill Airspace Saved</p>
@@ -877,6 +877,13 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                                 <p className="text-xs text-gray-600 mb-1">Recovery Rate</p>
                                                 <p className="text-lg font-bold text-sky-600">
                                                     {fmtOneDecimal(ct.recovery?.percentage ?? 0)}%
+                                                </p>
+                                            </div>
+                                            <div className="text-center p-3 bg-emerald-50 rounded-lg border border-emerald-100">
+                                                <Gauge className="w-8 h-8 mx-auto mb-1 text-emerald-600" />
+                                                <p className="text-xs text-gray-600 mb-1">Carbon Avoidance Intensity</p>
+                                                <p className="text-lg font-bold text-emerald-600">
+                                                    {fmtN(summary.carbonAvoidanceIntensity ?? 0)} kg CO₂e/kg
                                                 </p>
                                             </div>
                                         </div>

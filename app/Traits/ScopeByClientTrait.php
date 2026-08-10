@@ -17,11 +17,8 @@ trait ScopeByClientTrait
     protected function isClientScoped(): bool
     {
         $user = Auth::user();
-        if (! $user || $user->can('view-reports-all')) {
-            return false;
-        }
 
-        return ! empty($this->scopedCompanyIdsForUser($user));
+        return $user !== null && ! $user->can('view-reports-all');
     }
 
     protected function scopeCompaniesForUser()
@@ -48,9 +45,6 @@ trait ScopeByClientTrait
         }
 
         $scopedCompanyIds = $this->scopedCompanyIdsForUser($user);
-        if (empty($scopedCompanyIds)) {
-            return [$companyId, $branchId, $siteId];
-        }
 
         if ($companyId !== null && ! in_array($companyId, $scopedCompanyIds, true)) {
             $companyId = null;

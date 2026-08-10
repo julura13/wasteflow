@@ -2,11 +2,12 @@ import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import Modal from '@/Components/Modal';
 import { formatDateYyyyMmDd } from '@/utils/formatDateYyyyMmDd';
+import { filterServiceProvidersByOrderType } from '@/utils/filterServiceProvidersByOrderType';
 import SearchableDropdown from '@/Components/SearchableDropdown';
 import { ArrowLeft, CheckCircle, Upload, Trash2, Download, File, AlertCircle, Plus, Save, AlertTriangle } from 'lucide-react';
 import { useState, useMemo, useEffect, useRef } from 'react';
 
-export default function Finalize({ order, materials = [], canManageOrder = true, containerOptionsWithWeight = [] }) {
+export default function Finalize({ order, materials = [], canManageOrder = true, containerOptionsWithWeight = [], serviceProviders = [] }) {
     const hasContainerWeightOptions = containerOptionsWithWeight.length > 0;
     const { flash, errors } = usePage().props;
     const [uploading, setUploading] = useState(false);
@@ -162,6 +163,40 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
         };
     }, [slipNumberPart, hasSlipPrefix, slipPrefix, order.id]);
 
+    // Providers eligible for this order's type; each weight line defaults to the order's own
+    // provider but can be overridden per load (WCP-43).
+    const providersForOrderType = useMemo(
+        () => filterServiceProvidersByOrderType(serviceProviders, order.order_type),
+        [serviceProviders, order.order_type]
+    );
+
+    // A line's saved provider may no longer be type-eligible (e.g. its types were edited
+    // after the fact) and so be missing from providersForOrderType. Union it back in so the
+    // dropdown always displays the real selection instead of silently falling back to the
+    // "Order default" placeholder while still submitting the stale id underneath.
+    const providerOptionsForLine = (line) => {
+        if (!line.service_provider_id) {
+            return providersForOrderType;
+        }
+        const alreadyIncluded = providersForOrderType.some((p) => String(p.id) === String(line.service_provider_id));
+        if (alreadyIncluded) {
+            return providersForOrderType;
+        }
+        const currentProvider = serviceProviders.find((p) => String(p.id) === String(line.service_provider_id));
+        return currentProvider ? [...providersForOrderType, currentProvider] : providersForOrderType;
+    };
+
+    const emptyWeightLine = (id) => ({
+        id,
+        material_id: '',
+        weight: '',
+        isExisting: false,
+        use_containers: false,
+        container_option_id: '',
+        container_quantity: '',
+        service_provider_id: order.service_provider_id || '',
+    });
+
     // Initialize weight lines from existing waste streams or empty array
     const initialWeightLines = order.waste_streams && order.waste_streams.length > 0
         ? order.waste_streams.map((ws, index) => ({
@@ -172,8 +207,9 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
             use_containers: false,
             container_option_id: '',
             container_quantity: '',
+            service_provider_id: ws.service_provider_id || order.service_provider_id || '',
         }))
-        : [{ id: 1, material_id: '', weight: '', isExisting: false, use_containers: false, container_option_id: '', container_quantity: '' }];
+        : [emptyWeightLine(1)];
 
     const [weightLines, setWeightLines] = useState(initialWeightLines);
 
@@ -272,7 +308,7 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
 
     const addWeightLine = () => {
         const newId = Math.max(...weightLines.map(line => line.id || 0), 0) + 1;
-        setWeightLines([...weightLines, { id: newId, material_id: '', weight: '', isExisting: false, use_containers: false, container_option_id: '', container_quantity: '' }]);
+        setWeightLines([...weightLines, emptyWeightLine(newId)]);
     };
 
     const removeWeightLine = (id) => {
@@ -300,6 +336,7 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
             material_id: line.material_id,
             weight: getLineWeight(line),
             id: line.isExisting ? line.id : undefined,
+            service_provider_id: line.service_provider_id || null,
         }));
 
         setSavingWeights(true);
@@ -310,7 +347,7 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
                 weight_lines: payload,
             });
             router.reload({ only: ['order'], preserveScroll: true });
-            setWeightLines(payload.length > 0 ? validWeightLines.map(line => ({ ...line, isExisting: true })) : [{ id: 1, material_id: '', weight: '', isExisting: false, use_containers: false, container_option_id: '', container_quantity: '' }]);
+            setWeightLines(payload.length > 0 ? validWeightLines.map(line => ({ ...line, isExisting: true })) : [emptyWeightLine(1)]);
             setSuccessMessage(payload.length > 0 ? 'Weights saved successfully. Order status updated to Documents Required.' : 'All weights cleared successfully.');
             setTimeout(() => setSuccessMessage(null), 5000);
         } catch (error) {
@@ -686,6 +723,9 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
                                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                                     Material
                                                 </th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                                    Provider
+                                                </th>
                                                 {hasContainerWeightOptions && (
                                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                                         By containers
@@ -705,7 +745,7 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
                                         <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                             {weightLines.length === 0 ? (
                                                 <tr>
-                                                    <td colSpan={hasContainerWeightOptions ? 5 : 4} className="px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                                                    <td colSpan={hasContainerWeightOptions ? 6 : 5} className="px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
                                                         No weight lines. Click Add Line to add one, or Save Weights to clear all.
                                                     </td>
                                                 </tr>
@@ -725,6 +765,16 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
                                                                 placeholder="Select material"
                                                                 getOptionLabel={getMaterialDisplayName}
                                                                 required
+                                                                className="w-full"
+                                                            />
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap overflow-visible">
+                                                            <SearchableDropdown
+                                                                options={providerOptionsForLine(line)}
+                                                                value={line.service_provider_id}
+                                                                onChange={(value) => updateWeightLine(line.id, 'service_provider_id', value)}
+                                                                placeholder="Order default"
+                                                                getOptionLabel={(provider) => provider?.name ?? ''}
                                                                 className="w-full"
                                                             />
                                                         </td>

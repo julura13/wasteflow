@@ -404,6 +404,56 @@ class ReportController extends Controller
     }
 
     /**
+     * Single-page "Certificate of Achievement" for one client/month, showing their Resource
+     * Recovery Rating tier and headline stats. Small and fast enough to render with Dompdf
+     * synchronously - no queue/export-table round trip needed like the multi-page report.
+     */
+    public function downloadClientMonthlyCertificate(Request $request)
+    {
+        $validated = $request->validate([
+            'company_id' => ['required', 'integer', 'exists:companies,id'],
+            'month' => ['required', 'integer', 'min:1', 'max:12'],
+            'year' => ['required', 'integer', 'min:2000', 'max:2100'],
+        ]);
+
+        $companyId = (int) $validated['company_id'];
+        $month = (int) $validated['month'];
+        $year = (int) $validated['year'];
+
+        [$companyId] = $this->enforceCompanyScope($companyId, null, null);
+
+        $company = Company::findOrFail($companyId);
+        $reportData = $this->getReportData($company, null, null, $month, $year, $month, $year);
+
+        $divertedFromLandfillPercentage = (float) $reportData['summary']['divertedFromLandfill'];
+        $periodEnd = Carbon::createFromDate($year, $month, 1)->endOfMonth();
+
+        $options = new Options;
+        $options->set('isHtml5ParserEnabled', true);
+        $options->set('isRemoteEnabled', false);
+        $options->set('defaultFont', 'DejaVu Sans');
+
+        $dompdf = new Dompdf($options);
+        $html = view('reports.client-monthly-certificate-pdf', [
+            'companyNameUpper' => Str::upper($reportData['companyName']),
+            'percentageDisplay' => number_format($divertedFromLandfillPercentage, 1),
+            'monthYearUpper' => Str::upper($periodEnd->format('F Y')),
+            'completeDateUpper' => Str::upper($periodEnd->format('d F Y')),
+        ])->render();
+
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('letter', 'landscape');
+        $dompdf->render();
+
+        $filename = sprintf('WasteFlow_Certificate_%s_%04d-%02d.pdf', Str::slug($reportData['companyName']), $year, $month);
+
+        return response($dompdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+        ]);
+    }
+
+    /**
      * Build and store the PDF for a queued export (invoked from {@see GenerateWasteManagementPdfJob}).
      */
     public function completeWasteManagementReportExport(WasteManagementReportExport $export, User $user): void
@@ -870,6 +920,7 @@ class ReportController extends Controller
                 'divertedFromLandfill' => $divertedFromLandfill,
                 'landfillSpaceSaved' => $landfillSpaceSaved,
                 'lifecycleSaving' => $materialsCO2eTotals['lifecycleSaving'],
+                'carbonAvoidanceIntensity' => $this->calculateCarbonAvoidanceIntensity($materialsCO2eTotals, $totalIncomingWaste),
             ],
             'landfillSpaceSavedBreakdown' => $landfillSpaceSavedData,
             'materialsCO2e' => $materialsCO2e,
@@ -1157,6 +1208,20 @@ class ReportController extends Controller
         }
 
         return round($lifecycleSaving / 0.192, 2);
+    }
+
+    /**
+     * Carbon Avoidance Intensity (CAI): kg CO2e avoided per kg of waste managed - a
+     * volume-independent efficiency metric, distinct from the absolute lifecycle saving.
+     */
+    private function calculateCarbonAvoidanceIntensity(array $materialsCO2eTotals, float $totalIncomingWaste): float
+    {
+        $lifecycleSaving = (float) ($materialsCO2eTotals['lifecycleSaving'] ?? 0);
+        if ($lifecycleSaving <= 0 || $totalIncomingWaste <= 0) {
+            return 0.0;
+        }
+
+        return round($lifecycleSaving / $totalIncomingWaste, 2);
     }
 
     /**

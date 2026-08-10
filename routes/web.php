@@ -5,6 +5,7 @@ use App\Http\Controllers\Settings\ClassificationController;
 use App\Http\Controllers\Settings\ContainerOptionController;
 use App\Http\Controllers\Settings\FacilityController;
 use App\Http\Controllers\Settings\GradeController;
+use App\Http\Controllers\Settings\RecoveryRatingController;
 use App\Http\Controllers\Settings\WasteStreamController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -166,6 +167,7 @@ Route::middleware(['auth', 'verified', 'permission:view-reports'])->prefix('repo
     Route::post('/waste-management/pdf/request', [App\Http\Controllers\ReportController::class, 'requestWasteManagementPdf'])->name('waste-management-pdf.request');
     Route::get('/waste-management/pdf/{uuid}/status', [App\Http\Controllers\ReportController::class, 'wasteManagementPdfStatus'])->name('waste-management-pdf.status');
     Route::get('/waste-management/pdf/{uuid}/download', [App\Http\Controllers\ReportController::class, 'downloadWasteManagementPdf'])->name('waste-management-pdf.download');
+    Route::get('/waste-management/certificate', [App\Http\Controllers\ReportController::class, 'downloadClientMonthlyCertificate'])->name('waste-management-certificate.download');
     Route::get('/waste-management/summary', [App\Http\Controllers\ReportController::class, 'wasteManagementSummary'])->name('waste-management-summary');
     Route::get('/resource-intelligence', [App\Http\Controllers\ReportController::class, 'resourceIntelligenceView'])->name('resource-intelligence');
     Route::get('/carbon-calculator', [App\Http\Controllers\ReportController::class, 'carbonCalculator'])
@@ -225,6 +227,8 @@ Route::middleware(['auth', 'verified', 'permission:manage-settings'])->prefix('s
     Route::patch('container-options/{containerOption}/toggle-summary', [ContainerOptionController::class, 'toggleSummary'])->name('container-options.toggle-summary');
     Route::resource('classifications', ClassificationController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::resource('facilities', FacilityController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::get('recovery-rating', [RecoveryRatingController::class, 'index'])->name('recovery-rating.index');
+    Route::put('recovery-rating', [RecoveryRatingController::class, 'update'])->name('recovery-rating.update');
 });
 
 Route::middleware('auth')->get('/search', App\Http\Controllers\GlobalSearchController::class)->name('search');

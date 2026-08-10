@@ -31,8 +31,10 @@ class RebateTrackerReportService
             'order.branch.company',
             'order.company',
             'order.supportingDocuments',
+            'order.serviceProvider',
             'material.grade',
             'material.wasteStream',
+            'serviceProvider',
         ])
             ->whereHas('order', function ($q) use ($startDate, $endDate, $companyId, $branchId, $siteId, $user, $companyIds) {
                 $q->where('status', 'finalized')
@@ -81,9 +83,11 @@ class RebateTrackerReportService
     /**
      * Build rebate rows for finalized orders in the date range.
      *
-     * Rows are aggregated by collection date (calendar day), company, branch, site, and material grade.
-     * When multiple finalized orders contribute the same grade on the same day for the same location,
-     * weights and rebate totals are summed and distinct order tracking numbers are listed together.
+     * Rows are aggregated by collection date (calendar day), company, branch, site, material grade,
+     * and service provider. When multiple finalized orders contribute the same grade on the same day
+     * for the same location and provider, weights and rebate totals are summed and distinct order
+     * tracking numbers are listed together. Loads for the same date/location/grade but a different
+     * provider are kept as separate rows so per-provider totals stay accurate.
      *
      * Streams are included when the line has a positive rebate rate, or the material offers rebates, or
      * the material is organic recovery (waste stream Organic Waste or grade Organics Recovered) so
@@ -116,6 +120,7 @@ class RebateTrackerReportService
             $sharePercentage = $user->isAdmin() ? 100.0 : $this->resolveClientSharePercentage($stream);
             $effectiveRate = ($baseRate * $sharePercentage) / 100;
             $effectiveTotal = ((float) $stream->nett_weight) * $effectiveRate;
+            $serviceProvider = $stream->serviceProvider ?? $order->serviceProvider;
 
             return [
                 'id' => $stream->id,
@@ -125,6 +130,10 @@ class RebateTrackerReportService
                 'company_name' => $company?->name ?? '—',
                 'branch_name' => $branch?->name ?? '—',
                 'site_name' => $site?->name ?? '—',
+                // Grouped/keyed by id (not name) below so two providers that happen to share a
+                // name are never silently merged; the name is display-only.
+                'service_provider_id' => $serviceProvider?->id,
+                'service_provider_name' => $serviceProvider?->name ?? '—',
                 'grade' => $stream->material->grade->name ?? '—',
                 'weight' => $stream->nett_weight,
                 'rate' => $effectiveRate,
@@ -139,7 +148,7 @@ class RebateTrackerReportService
                 })->values()->toArray(),
             ];
         })->groupBy(function ($item) {
-            return Carbon::parse($item['date'])->format('Y-m-d').'|'.($item['company_name'] ?? '').'|'.($item['branch_name'] ?? '').'|'.($item['site_name'] ?? '').'|'.$item['grade'];
+            return Carbon::parse($item['date'])->format('Y-m-d').'|'.($item['company_name'] ?? '').'|'.($item['branch_name'] ?? '').'|'.($item['site_name'] ?? '').'|'.$item['grade'].'|'.($item['service_provider_id'] ?? 'none');
         })->map(function ($group) {
             $trackingNumbers = $group->pluck('tracking_number')
                 ->filter(fn ($t) => $t !== null && $t !== '' && $t !== '—')
@@ -157,6 +166,8 @@ class RebateTrackerReportService
                 'company_name' => $group->first()['company_name'],
                 'branch_name' => $group->first()['branch_name'],
                 'site_name' => $group->first()['site_name'],
+                'service_provider_id' => $group->first()['service_provider_id'],
+                'service_provider_name' => $group->first()['service_provider_name'],
                 'tracking_numbers' => $trackingNumbers->isEmpty() ? '—' : $trackingNumbers->implode(', '),
                 'grade' => $group->first()['grade'],
                 'weight' => $group->sum('weight'),
@@ -218,6 +229,27 @@ class RebateTrackerReportService
         })->values();
     }
 
+    /**
+     * Summarise already-built rebate rows by service provider, for the per-provider
+     * subtotal shown on the Rebate Tracker page and PDF export.
+     *
+     * @param  Collection<int, array<string, mixed>>  $rebateData
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function providerBreakdown(Collection $rebateData): Collection
+    {
+        return $rebateData
+            ->groupBy(fn (array $row) => $row['service_provider_id'] ?? 'none')
+            ->map(fn (Collection $rows) => [
+                'provider_name' => $rows->first()['service_provider_name'],
+                'weight' => $rows->sum('weight'),
+                'total' => $rows->sum('total'),
+            ])
+            ->values()
+            ->sortBy('provider_name')
+            ->values();
+    }
+
     private function resolveClientSharePercentage(OrderWasteStream $stream): float
     {
         $order = $stream->order;
@@ -260,6 +292,7 @@ class RebateTrackerReportService
             'filters' => $filters,
             'totalRebate' => $totalRebate,
             'totalWeight' => $totalWeight,
+            'providerBreakdown' => $this->providerBreakdown($rebateData),
         ])->render();
 
         $dompdf->loadHtml($html);

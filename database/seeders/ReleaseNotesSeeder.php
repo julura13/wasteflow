@@ -262,6 +262,34 @@ class ReleaseNotesSeeder extends Seeder
                 'description' => 'A full security review found that downloading, uploading, or deleting a collection document/slip did not check which client it belonged to. Fixed so this now follows the same per-client access rules already used everywhere else in the portal.',
                 'released_at' => now(),
             ],
+            [
+                'version' => '1.8.6',
+                'type' => 'feature',
+                'title' => 'Configurable Resource Recovery Rating thresholds',
+                'description' => 'New Settings > Resource Recovery Rating page lets admins set the diversion-rate cutoffs for each rating tier (Platinum, Gold, Silver, Bronze, Developing, Improvement Required).',
+                'released_at' => now(),
+            ],
+            [
+                'version' => '1.8.7',
+                'type' => 'feature',
+                'title' => 'Multi service-provider rebate support',
+                'description' => 'Each load in an order can now specify its own service provider (defaulting to the order\'s provider) instead of every load sharing one provider. The Rebate Tracker report and PDF export now break out weight and rebate totals per provider.',
+                'released_at' => now(),
+            ],
+            [
+                'version' => '1.8.8',
+                'type' => 'feature',
+                'title' => 'Client Monthly Certificates',
+                'description' => 'A "Download Certificate" button on the Resource Intelligence report page generates a branded Certificate of Waste Diversion for the selected client and month, showing their landfill diversion percentage and reporting period.',
+                'released_at' => now(),
+            ],
+            [
+                'version' => '1.8.9',
+                'type' => 'feature',
+                'title' => 'Carbon Avoidance Intensity (CAI) metric',
+                'description' => 'New indicator on the Resource Intelligence report: kg CO2e avoided per kg of waste managed, a volume-independent measure of how carbon-efficient a client\'s diversion program is.',
+                'released_at' => now(),
+            ],
         ];
 
         foreach ($notes as $note) {

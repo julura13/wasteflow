@@ -267,6 +267,7 @@ class OrderController extends Controller
             'serviceProvider',
             'wasteStreams.material.wasteStream',
             'wasteStreams.material.grade',
+            'wasteStreams.serviceProvider',
             'supportingDocuments',
             'statusHistory.changedBy',
         ]);
@@ -563,11 +564,14 @@ class OrderController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'default_weight']);
 
+        $serviceProviders = ServiceProvider::active()->get();
+
         return Inertia::render('Orders/Finalize', [
             'order' => $order,
             'materials' => $materials,
             'canManageOrder' => $canManageOrder,
             'containerOptionsWithWeight' => $containerOptionsWithWeight,
+            'serviceProviders' => $serviceProviders,
         ]);
     }
 
@@ -615,6 +619,7 @@ class OrderController extends Controller
             'weight_lines.*.material_id' => 'required|exists:materials,id',
             'weight_lines.*.weight' => 'required|numeric|min:0',
             'weight_lines.*.id' => 'nullable|exists:order_waste_streams,id',
+            'weight_lines.*.service_provider_id' => 'nullable|exists:service_providers,id',
         ]);
 
         $existingIds = collect($validated['weight_lines'])
@@ -634,6 +639,7 @@ class OrderController extends Controller
             $rebateRate = $material && $material->rebate_offered && $material->rebate_rate !== null
                 ? round((float) $material->rebate_rate, 2)
                 : null;
+            $serviceProviderId = $line['service_provider_id'] ?? $order->service_provider_id;
 
             if (isset($line['id']) && $line['id']) {
                 $wasteStream = \App\Models\OrderWasteStream::find($line['id']);
@@ -643,6 +649,7 @@ class OrderController extends Controller
                         'nett_weight' => $line['weight'],
                         'gross_weight' => $line['weight'],
                         'rebate_rate' => $rebateRate,
+                        'service_provider_id' => $serviceProviderId,
                     ]);
                 }
             } else {
@@ -652,6 +659,7 @@ class OrderController extends Controller
                     'nett_weight' => $line['weight'],
                     'gross_weight' => $line['weight'],
                     'rebate_rate' => $rebateRate,
+                    'service_provider_id' => $serviceProviderId,
                 ]);
             }
         }
@@ -678,7 +686,7 @@ class OrderController extends Controller
 
         return response()->json([
             'message' => 'Weights saved successfully.',
-            'order' => $order->fresh(['wasteStreams.material.wasteStream', 'wasteStreams.material.grade']),
+            'order' => $order->fresh(['wasteStreams.material.wasteStream', 'wasteStreams.material.grade', 'wasteStreams.serviceProvider']),
         ]);
     }
 
@@ -1021,6 +1029,7 @@ class OrderController extends Controller
 
         return Inertia::render('Reports/RebateTracker', [
             'rebateData' => $rebateData,
+            'providerBreakdown' => $this->rebateTrackerReportService->providerBreakdown($rebateData),
             'companies' => $companies,
             'filters' => [
                 'start_date' => $startDate,

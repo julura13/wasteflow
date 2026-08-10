@@ -15,6 +15,7 @@ class OrderWasteStream extends Model
     protected $fillable = [
         'order_id',
         'material_id',
+        'service_provider_id',
         'gross_weight',
         'tare_weight',
         'nett_weight',
@@ -96,6 +97,11 @@ class OrderWasteStream extends Model
     public function material(): BelongsTo
     {
         return $this->belongsTo(Material::class);
+    }
+
+    public function serviceProvider(): BelongsTo
+    {
+        return $this->belongsTo(ServiceProvider::class);
     }
 
     public function getRebateAmountAttribute(): float

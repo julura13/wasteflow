@@ -3,7 +3,7 @@ import DashboardLayout from '@/Layouts/DashboardLayout';
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import SearchableDropdown from '@/Components/SearchableDropdown';
-import { Download, Loader2, Eye } from 'lucide-react';
+import { Download, Loader2, Eye, Award } from 'lucide-react';
 
 export default function WasteManagement({ companies, filters }) {
     const { flash } = usePage().props;
@@ -372,7 +372,32 @@ export default function WasteManagement({ companies, filters }) {
                                 <Eye className="h-4 w-4" />
                                 View Report
                             </button>
+                            {selectedCompany ? (
+                                <a
+                                    href={route('reports.waste-management-certificate.download', {
+                                        company_id: selectedCompany,
+                                        month,
+                                        year,
+                                    })}
+                                    className="flex-1 inline-flex justify-center items-center gap-2 px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500"
+                                >
+                                    <Award className="h-4 w-4" />
+                                    Download Certificate
+                                </a>
+                            ) : (
+                                <button
+                                    type="button"
+                                    disabled
+                                    className="flex-1 inline-flex justify-center items-center gap-2 px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-amber-600 opacity-50"
+                                >
+                                    <Award className="h-4 w-4" />
+                                    Download Certificate
+                                </button>
+                            )}
                         </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                            Download Certificate uses the "From" month/year above (single month, not the date range) and the company's landfill diversion rate for that month.
+                        </p>
                     </div>
                 </form>
 
