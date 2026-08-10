@@ -883,7 +883,7 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                                 <Gauge className="w-8 h-8 mx-auto mb-1 text-emerald-600" />
                                                 <p className="text-xs text-gray-600 mb-1">Carbon Avoidance Intensity</p>
                                                 <p className="text-lg font-bold text-emerald-600">
-                                                    {fmtN(summary.carbonAvoidanceIntensity ?? 0)} kg CO₂e/kg
+                                                    {fmtN(summary.carbonAvoidanceIntensity ?? 0)} kg CO₂e/t
                                                 </p>
                                             </div>
                                         </div>

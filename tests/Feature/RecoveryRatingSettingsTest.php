@@ -79,7 +79,7 @@ it('rejects thresholds that are not strictly descending from Platinum down', fun
         ->put('/settings/recovery-rating', ['tiers' => $payload])
         ->assertSessionHasErrors('tiers');
 
-    expect((float) RecoveryRatingTier::where('slug', 'gold')->value('min_percentage'))->toBe(75.0);
+    expect((float) RecoveryRatingTier::where('slug', 'gold')->value('min_percentage'))->toBe(80.0);
 });
 
 it('rejects a payload missing one tier and leaves all thresholds unchanged', function () {
@@ -135,15 +135,15 @@ it('rejects tied thresholds between adjacent tiers', function () {
     // Gold and Silver both set to the same threshold - a tie, not strictly descending.
     $payload = $tiers->map(fn (RecoveryRatingTier $tier) => [
         'id' => $tier->id,
-        'min_percentage' => in_array($tier->slug, ['gold', 'silver'], true) ? 70 : $tier->min_percentage,
+        'min_percentage' => in_array($tier->slug, ['gold', 'silver'], true) ? 65 : $tier->min_percentage,
     ])->values()->all();
 
     $this->actingAs($user)
         ->put('/settings/recovery-rating', ['tiers' => $payload])
         ->assertSessionHasErrors('tiers');
 
-    expect((float) RecoveryRatingTier::where('slug', 'gold')->value('min_percentage'))->toBe(75.0);
-    expect((float) RecoveryRatingTier::where('slug', 'silver')->value('min_percentage'))->toBe(60.0);
+    expect((float) RecoveryRatingTier::where('slug', 'gold')->value('min_percentage'))->toBe(80.0);
+    expect((float) RecoveryRatingTier::where('slug', 'silver')->value('min_percentage'))->toBe(70.0);
 });
 
 it('resolves the correct tier for a given diversion percentage', function () {

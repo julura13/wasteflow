@@ -26,6 +26,7 @@ import {
     Moon,
     UserCog,
     Shield,
+    ShieldCheck,
     History,
 } from 'lucide-react';
 
@@ -51,6 +52,7 @@ export default function DashboardLayout({ children }) {
     const notificationsRef = useRef(null);
     const bellNotifications = usePage().props.bellNotifications ?? [];
     const hasUnseenDocuments = usePage().props.hasUnseenDocuments ?? false;
+    const hasUnseenSheqCompliance = usePage().props.hasUnseenSheqCompliance ?? false;
 
     // Open command palette with ⌘K / Ctrl+K
     useEffect(() => {
@@ -205,6 +207,24 @@ export default function DashboardLayout({ children }) {
                                 <span className="ml-auto h-2 w-2 rounded-full bg-primary-500" />
                             )}
                         </Link>
+                        <Link
+                            href="/sheq-compliance"
+                            className={`group relative flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                                url.startsWith('/sheq-compliance')
+                                    ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
+                                    : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'
+                            }`}
+                        >
+                            <ShieldCheck
+                                className={`mr-3 h-5 w-5 ${
+                                    url.startsWith('/sheq-compliance') ? 'text-blue-500' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'
+                                }`}
+                            />
+                            SHEQ Compliance
+                            {hasUnseenSheqCompliance && (
+                                <span className="ml-auto h-2 w-2 rounded-full bg-primary-500" />
+                            )}
+                        </Link>
                     </div>
                 </div>
             </div>
@@ -286,6 +306,33 @@ export default function DashboardLayout({ children }) {
                                 />
                                 {!sidebarCollapsed && <span className="truncate">Documents</span>}
                                 {hasUnseenDocuments && (
+                                    <span
+                                        className={`absolute h-2 w-2 rounded-full bg-primary-500 ${
+                                            sidebarCollapsed ? 'top-1.5 right-1.5' : 'right-3 top-1/2 -translate-y-1/2'
+                                        }`}
+                                    />
+                                )}
+                            </Link>
+                        </div>
+                        <div className="border-t border-gray-200 dark:border-gray-700 p-2">
+                            <Link
+                                href="/sheq-compliance"
+                                title={sidebarCollapsed ? 'SHEQ Compliance' : undefined}
+                                className={`group relative flex items-center rounded-lg text-sm font-medium transition-colors ${
+                                    sidebarCollapsed ? 'justify-center px-2 py-2' : 'px-3 py-2'
+                                } ${
+                                    url.startsWith('/sheq-compliance')
+                                        ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
+                                        : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'
+                                }`}
+                            >
+                                <ShieldCheck
+                                    className={`h-5 w-5 shrink-0 ${sidebarCollapsed ? '' : 'mr-3'} ${
+                                        url.startsWith('/sheq-compliance') ? 'text-blue-500' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'
+                                    }`}
+                                />
+                                {!sidebarCollapsed && <span className="truncate">SHEQ Compliance</span>}
+                                {hasUnseenSheqCompliance && (
                                     <span
                                         className={`absolute h-2 w-2 rounded-full bg-primary-500 ${
                                             sidebarCollapsed ? 'top-1.5 right-1.5' : 'right-3 top-1/2 -translate-y-1/2'
@@ -438,7 +485,7 @@ export default function DashboardLayout({ children }) {
                                     className="-m-1.5 flex items-center p-1.5"
                                 >
                                     <span className="sr-only">Open user menu</span>
-                                    {user.avatar ? (
+                                    {user?.avatar ? (
                                         <img
                                             src={user.avatar}
                                             alt={user.name}
@@ -446,12 +493,12 @@ export default function DashboardLayout({ children }) {
                                         />
                                     ) : (
                                         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-600 text-white text-sm font-medium">
-                                            {user.name.charAt(0).toUpperCase()}
+                                            {user?.name?.charAt(0).toUpperCase()}
                                         </div>
                                     )}
                                     <span className="hidden lg:flex lg:items-center">
                                         <span className="ml-4 text-sm font-semibold leading-6 text-gray-900 dark:text-gray-100" aria-hidden="true">
-                                            {user.name}
+                                            {user?.name}
                                         </span>
                                         <ChevronDown className={`ml-2 h-5 w-5 text-gray-400 dark:text-gray-500 transition-transform ${profileDropdownOpen ? 'rotate-180' : ''}`} />
                                     </span>

@@ -178,7 +178,7 @@ it('computes Carbon Avoidance Intensity as lifecycle saving per kg of waste mana
 
     expect($summary['totalIncomingWaste'])->toBe(200.0);
     expect($summary['carbonAvoidanceIntensity'])
-        ->toBe(round($summary['lifecycleSaving'] / $summary['totalIncomingWaste'], 2));
+        ->toBe(round($summary['lifecycleSaving'] / ($summary['totalIncomingWaste'] / 1000), 2));
 });
 
 it('reports zero Carbon Avoidance Intensity when there is no waste managed', function () {
@@ -323,5 +323,38 @@ it('falls back to a single-month report when the to-period is before the from-pe
         ->where('filters.to_month', 6)
         ->where('filters.to_year', 2026)
         ->where('reportData.classificationTotals.total', fn ($v) => abs((float) $v - 40.0) < 0.0001)
+    );
+});
+
+it('shares the logged-in user on the token-authenticated print-preview route for a cookie-less request', function () {
+    // Regression test: Browsershot hits this route with no session cookie. The controller
+    // calls auth()->login($user) from the cache-token payload, but Inertia's shared 'auth'
+    // prop must be resolved AFTER that login() call (not captured eagerly when the
+    // HandleInertiaRequests middleware runs, which is before the controller executes) or
+    // auth.user comes back null and the layout crashes on a null user, producing a blank PDF.
+    $user = User::factory()->create();
+    $user->assignRole('manager');
+
+    $token = 'test-token';
+    cache()->put('ri_pdf_print_'.$token, [
+        'user_id' => $user->id,
+        'filters' => [
+            'company_id' => null,
+            'branch_id' => null,
+            'site_id' => null,
+            'month' => 4,
+            'year' => 2026,
+            'to_month' => 4,
+            'to_year' => 2026,
+        ],
+    ], now()->addMinutes(10));
+
+    $response = $this->get(route('reports.resource-intelligence.print-preview', ['token' => $token]));
+
+    $response->assertOk();
+    $response->assertInertia(fn (Assert $page) => $page
+        ->where('auth.user.id', $user->id)
+        ->where('auth.user.email', $user->email)
+        ->where('isPrint', true)
     );
 });

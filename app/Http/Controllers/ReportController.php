@@ -823,7 +823,7 @@ class ReportController extends Controller
 
         if ($reportLocationLines === []) {
             $reportLocationLines = [
-                'No customer selected. Open Reports → WasteFlow Resource Intelligence Report, choose a customer and period, then use Download PDF so the link includes your filters.',
+                'No customer selected. Open Reports → WasteFlow Resource Intelligence™ Report, choose a customer and period, then use Download PDF so the link includes your filters.',
             ];
         }
 
@@ -1211,8 +1211,9 @@ class ReportController extends Controller
     }
 
     /**
-     * Carbon Avoidance Intensity (CAI): kg CO2e avoided per kg of waste managed - a
+     * Carbon Avoidance Intensity (CAI): kg CO2e avoided per TON of waste managed - a
      * volume-independent efficiency metric, distinct from the absolute lifecycle saving.
+     * $totalIncomingWaste is in kg; converted to tons (÷1000) to match the client's spec.
      */
     private function calculateCarbonAvoidanceIntensity(array $materialsCO2eTotals, float $totalIncomingWaste): float
     {
@@ -1221,7 +1222,9 @@ class ReportController extends Controller
             return 0.0;
         }
 
-        return round($lifecycleSaving / $totalIncomingWaste, 2);
+        $totalIncomingWasteTons = $totalIncomingWaste / 1000;
+
+        return round($lifecycleSaving / $totalIncomingWasteTons, 2);
     }
 
     /**
