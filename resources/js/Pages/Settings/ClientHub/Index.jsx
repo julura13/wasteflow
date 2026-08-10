@@ -27,7 +27,11 @@ export default function ClientHubIndex({ adverts }) {
     const resetForm = () => {
         form.reset();
         form.clearErrors();
-        form.setData({ title: '', details: '', contact_email: 'crm@wasteflow.example.com', is_active: true, file: null });
+        // form.transform() persists on this form instance across submissions - reset it here so
+        // a prior edit's _method: 'put' transform can't leak into the next create submission
+        // (the create branch relies on this having already happened, since it never sets its
+        // own transform).
+        form.transform((data) => data);
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
@@ -69,7 +73,6 @@ export default function ClientHubIndex({ adverts }) {
         event.preventDefault();
 
         if (mode === 'create') {
-            form.transform((data) => data);
             form.post('/client-hub', {
                 forceFormData: true,
                 preserveScroll: true,

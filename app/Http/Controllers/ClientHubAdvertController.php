@@ -155,12 +155,26 @@ class ClientHubAdvertController extends Controller
     /**
      * The client closed the popup without opening it from the bell. Stops it auto-popping again,
      * but deliberately leaves read_at untouched so the notification badge still shows unread.
+     *
+     * Uses an atomic upsert rather than updateOrCreate: two concurrent requests for the same
+     * user/advert (e.g. a double-click, or the same advert dismissed from two tabs) would
+     * otherwise both pass updateOrCreate's "no matching row" check and race to insert, tripping
+     * the unique(client_hub_advert_id, user_id) constraint on the second insert.
      */
     public function dismiss(Request $request, ClientHubAdvert $clientHubAdvert): RedirectResponse
     {
-        ClientHubAdvertView::query()->updateOrCreate(
-            ['client_hub_advert_id' => $clientHubAdvert->id, 'user_id' => $request->user()->id],
-            ['dismissed_at' => now()]
+        $now = now();
+
+        ClientHubAdvertView::query()->upsert(
+            [[
+                'client_hub_advert_id' => $clientHubAdvert->id,
+                'user_id' => $request->user()->id,
+                'dismissed_at' => $now,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]],
+            ['client_hub_advert_id', 'user_id'],
+            ['dismissed_at', 'updated_at']
         );
 
         return back();
@@ -169,12 +183,57 @@ class ClientHubAdvertController extends Controller
     /**
      * The client actually opened the advert (from the bell). Marks both flags: read implies
      * dismissed, so the popup doesn't also reappear after they've already viewed it this way.
+     * See dismiss() for why this is an atomic upsert rather than updateOrCreate.
      */
     public function read(Request $request, ClientHubAdvert $clientHubAdvert): RedirectResponse
     {
-        ClientHubAdvertView::query()->updateOrCreate(
-            ['client_hub_advert_id' => $clientHubAdvert->id, 'user_id' => $request->user()->id],
-            ['dismissed_at' => now(), 'read_at' => now()]
+        $now = now();
+
+        ClientHubAdvertView::query()->upsert(
+            [[
+                'client_hub_advert_id' => $clientHubAdvert->id,
+                'user_id' => $request->user()->id,
+                'dismissed_at' => $now,
+                'read_at' => $now,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]],
+            ['client_hub_advert_id', 'user_id'],
+            ['dismissed_at', 'read_at', 'updated_at']
+        );
+
+        return back();
+    }
+
+    /**
+     * "Mark all as read" from the notification bell, for a client user. Marks every currently
+     * unread active advert as both dismissed and read in one atomic upsert batch.
+     */
+    public function readAll(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+        $now = now();
+
+        $advertIds = ClientHubAdvert::query()
+            ->active()
+            ->whereDoesntHave('views', fn ($q) => $q->where('user_id', $user->id)->whereNotNull('read_at'))
+            ->pluck('id');
+
+        if ($advertIds->isEmpty()) {
+            return back();
+        }
+
+        ClientHubAdvertView::query()->upsert(
+            $advertIds->map(fn (int $advertId) => [
+                'client_hub_advert_id' => $advertId,
+                'user_id' => $user->id,
+                'dismissed_at' => $now,
+                'read_at' => $now,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ])->all(),
+            ['client_hub_advert_id', 'user_id'],
+            ['dismissed_at', 'read_at', 'updated_at']
         );
 
         return back();

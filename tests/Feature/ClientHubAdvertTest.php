@@ -261,3 +261,69 @@ it('deletes the file from storage when an advert is deleted', function () {
 
     Storage::disk('local')->assertMissing($path);
 });
+
+it('marks all unread client hub adverts as read for the acting client via read-all', function () {
+    $advertA = ClientHubAdvert::factory()->create();
+    $advertB = ClientHubAdvert::factory()->create();
+
+    $client = User::factory()->create();
+    $client->assignRole('client');
+
+    $this->actingAs($client)
+        ->post('/client-hub/read-all')
+        ->assertRedirect();
+
+    $views = ClientHubAdvertView::where('user_id', $client->id)->get()->keyBy('client_hub_advert_id');
+    expect($views->has($advertA->id))->toBeTrue();
+    expect($views->has($advertB->id))->toBeTrue();
+    expect($views[$advertA->id]->dismissed_at)->not->toBeNull();
+    expect($views[$advertA->id]->read_at)->not->toBeNull();
+    expect($views[$advertB->id]->read_at)->not->toBeNull();
+
+    $this->actingAs($client)
+        ->get('/dashboard')
+        ->assertInertia(fn ($page) => $page
+            ->where('clientHubPopupAdvert', null)
+            ->where('bellNotifications', [])
+        );
+});
+
+it('does not let read-all affect another client\'s unread adverts', function () {
+    $advert = ClientHubAdvert::factory()->create();
+
+    $clientA = User::factory()->create();
+    $clientA->assignRole('client');
+    $clientB = User::factory()->create();
+    $clientB->assignRole('client');
+
+    $this->actingAs($clientA)->post('/client-hub/read-all');
+
+    expect(ClientHubAdvertView::where('user_id', $clientB->id)->count())->toBe(0);
+
+    $this->actingAs($clientB)
+        ->get('/dashboard')
+        ->assertInertia(fn ($page) => $page->has('bellNotifications', 1));
+});
+
+it('forbids non-client roles from calling read-all', function () {
+    ClientHubAdvert::factory()->create();
+
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+
+    $this->actingAs($admin)
+        ->post('/client-hub/read-all')
+        ->assertForbidden();
+});
+
+it('dismiss does not throw when called twice for the same user and advert (race-safe upsert)', function () {
+    $advert = ClientHubAdvert::factory()->create();
+
+    $client = User::factory()->create();
+    $client->assignRole('client');
+
+    $this->actingAs($client)->post("/client-hub/{$advert->id}/dismiss")->assertRedirect();
+    $this->actingAs($client)->post("/client-hub/{$advert->id}/dismiss")->assertRedirect();
+
+    expect(ClientHubAdvertView::where('user_id', $client->id)->where('client_hub_advert_id', $advert->id)->count())->toBe(1);
+});

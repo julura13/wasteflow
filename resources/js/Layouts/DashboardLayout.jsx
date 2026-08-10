@@ -67,10 +67,13 @@ export default function DashboardLayout({ children }) {
     // about-to-be-discarded mount would burn the one-time flag before the client ever actually
     // saw the popup. Waiting lets that remount settle first.
     useEffect(() => {
-        if (!clientHubPopupAdvert) {
+        if (!clientHubPopupAdvert || !user) {
             return undefined;
         }
-        const sessionKey = `client_hub_popup_shown_${clientHubPopupAdvert.id}`;
+        // Keyed by user id too - otherwise a second user logging into the same browser tab
+        // (without a full reload, e.g. after the first user logs out) could inherit the first
+        // user's "already shown" flag for an advert they've never actually dismissed.
+        const sessionKey = `client_hub_popup_shown_${user.id}_${clientHubPopupAdvert.id}`;
         try {
             if (sessionStorage.getItem(sessionKey)) {
                 return undefined;
@@ -83,7 +86,7 @@ export default function DashboardLayout({ children }) {
             setShowClientHubPopup(true);
         }, 900);
         return () => clearTimeout(timer);
-    }, [clientHubPopupAdvert?.id]);
+    }, [clientHubPopupAdvert?.id, user?.id]);
 
     const dismissClientHubPopup = () => {
         if (clientHubPopupAdvert) {
@@ -499,7 +502,11 @@ export default function DashboardLayout({ children }) {
                                             {bellNotifications.length > 0 && (
                                                 <button
                                                     onClick={() => {
-                                                        router.post('/release-notes/read-all');
+                                                        // A user's bell list is one kind or the other, never mixed (admins get
+                                                        // release notes/system notifications, clients get Client Hub adverts) -
+                                                        // route the bulk action to whichever endpoint actually owns these rows.
+                                                        const isClientHub = bellNotifications.some((n) => n.kind === 'client_hub_advert');
+                                                        router.post(isClientHub ? '/client-hub/read-all' : '/release-notes/read-all');
                                                         setNotificationsOpen(false);
                                                     }}
                                                     className="text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"

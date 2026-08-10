@@ -148,6 +148,7 @@ Route::middleware(['auth', 'verified'])->prefix('client-hub')->name('client-hub.
     Route::get('/{clientHubAdvert}/view', [App\Http\Controllers\ClientHubAdvertController::class, 'view'])->name('view');
 
     Route::middleware(['role:client'])->group(function () {
+        Route::post('/read-all', [App\Http\Controllers\ClientHubAdvertController::class, 'readAll'])->name('read-all');
         Route::post('/{clientHubAdvert}/dismiss', [App\Http\Controllers\ClientHubAdvertController::class, 'dismiss'])->name('dismiss');
         Route::post('/{clientHubAdvert}/read', [App\Http\Controllers\ClientHubAdvertController::class, 'read'])->name('read');
     });
