@@ -177,3 +177,55 @@ it('allows an admin to download media belonging to any company\'s order', functi
         ->get(route('media.download', $media->id))
         ->assertOk();
 });
+
+it('does not allow the legacy /media routes to serve standalone (non-order) media even for a user with orders permissions', function () {
+    // Regression test: /media/* is gated only by orders permissions (not manage-documents),
+    // so a standalone SHEQ Compliance document (mediable_type/id null) must never be reachable
+    // through it - only through the manage-documents-gated /sheq-compliance routes.
+    $user = User::factory()->create();
+    $user->assignRole('weights_capture');
+
+    $standaloneMedia = Media::create([
+        'mediable_type' => null,
+        'mediable_id' => null,
+        'title' => 'HSE Policy',
+        'file_name' => 'policy.pdf',
+        'original_name' => 'policy.pdf',
+        'mime_type' => 'application/pdf',
+        'disk' => 'local',
+        'path' => 'sheq-compliance/policy.pdf',
+        'file_size' => 100,
+        'collection' => 'sheq_compliance',
+    ]);
+    Storage::disk('local')->put($standaloneMedia->path, 'fake pdf content');
+
+    $this->actingAs($user)
+        ->get(route('media.download', $standaloneMedia->id))
+        ->assertNotFound();
+
+    $this->actingAs($user)
+        ->delete(route('media.destroy', $standaloneMedia->id))
+        ->assertNotFound();
+
+    expect(Media::find($standaloneMedia->id))->not->toBeNull();
+});
+
+it('rejects an order upload tagged with the reserved sheq_compliance collection', function () {
+    $companyA = Company::create(['name' => 'Company A', 'is_active' => true]);
+
+    $scopedUser = User::factory()->create(['company_id' => $companyA->id]);
+    $scopedUser->assignRole('document_capture');
+
+    $order = createOrderForCompany($companyA, $scopedUser);
+
+    $this->actingAs($scopedUser)
+        ->post(route('media.upload'), [
+            'file' => UploadedFile::fake()->create('slip.pdf', 100),
+            'mediable_type' => 'App\\Models\\Order',
+            'mediable_id' => $order->id,
+            'collection' => 'sheq_compliance',
+        ])
+        ->assertSessionHasErrors('collection');
+
+    expect(Media::where('mediable_id', $order->id)->count())->toBe(0);
+});
