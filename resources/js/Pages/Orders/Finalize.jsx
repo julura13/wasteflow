@@ -6,7 +6,23 @@ import SearchableDropdown from '@/Components/SearchableDropdown';
 import { ArrowLeft, CheckCircle, Upload, Trash2, Download, File, AlertCircle, Plus, Save, AlertTriangle } from 'lucide-react';
 import { useState, useMemo, useEffect, useRef } from 'react';
 
-export default function Finalize({ order, materials = [], canManageOrder = true, containerOptionsWithWeight = [] }) {
+function filterServiceProvidersByOrderType(providers, orderType) {
+    if (!providers?.length) {
+        return [];
+    }
+    return providers.filter((provider) => {
+        const providerTypes = provider.types || [];
+        if (orderType === 'waste') {
+            return providerTypes.some((type) => ['waste_collection', 'general'].includes(type));
+        }
+        if (orderType === 'recycling') {
+            return providerTypes.some((type) => ['recycling', 'general'].includes(type));
+        }
+        return true;
+    });
+}
+
+export default function Finalize({ order, materials = [], canManageOrder = true, containerOptionsWithWeight = [], serviceProviders = [] }) {
     const hasContainerWeightOptions = containerOptionsWithWeight.length > 0;
     const { flash, errors } = usePage().props;
     const [uploading, setUploading] = useState(false);
@@ -162,6 +178,24 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
         };
     }, [slipNumberPart, hasSlipPrefix, slipPrefix, order.id]);
 
+    // Providers eligible for this order's type; each weight line defaults to the order's own
+    // provider but can be overridden per load (WCP-43).
+    const providersForOrderType = useMemo(
+        () => filterServiceProvidersByOrderType(serviceProviders, order.order_type),
+        [serviceProviders, order.order_type]
+    );
+
+    const emptyWeightLine = (id) => ({
+        id,
+        material_id: '',
+        weight: '',
+        isExisting: false,
+        use_containers: false,
+        container_option_id: '',
+        container_quantity: '',
+        service_provider_id: order.service_provider_id || '',
+    });
+
     // Initialize weight lines from existing waste streams or empty array
     const initialWeightLines = order.waste_streams && order.waste_streams.length > 0
         ? order.waste_streams.map((ws, index) => ({
@@ -172,8 +206,9 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
             use_containers: false,
             container_option_id: '',
             container_quantity: '',
+            service_provider_id: ws.service_provider_id || order.service_provider_id || '',
         }))
-        : [{ id: 1, material_id: '', weight: '', isExisting: false, use_containers: false, container_option_id: '', container_quantity: '' }];
+        : [emptyWeightLine(1)];
 
     const [weightLines, setWeightLines] = useState(initialWeightLines);
 
@@ -272,7 +307,7 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
 
     const addWeightLine = () => {
         const newId = Math.max(...weightLines.map(line => line.id || 0), 0) + 1;
-        setWeightLines([...weightLines, { id: newId, material_id: '', weight: '', isExisting: false, use_containers: false, container_option_id: '', container_quantity: '' }]);
+        setWeightLines([...weightLines, emptyWeightLine(newId)]);
     };
 
     const removeWeightLine = (id) => {
@@ -300,6 +335,7 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
             material_id: line.material_id,
             weight: getLineWeight(line),
             id: line.isExisting ? line.id : undefined,
+            service_provider_id: line.service_provider_id || null,
         }));
 
         setSavingWeights(true);
@@ -310,7 +346,7 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
                 weight_lines: payload,
             });
             router.reload({ only: ['order'], preserveScroll: true });
-            setWeightLines(payload.length > 0 ? validWeightLines.map(line => ({ ...line, isExisting: true })) : [{ id: 1, material_id: '', weight: '', isExisting: false, use_containers: false, container_option_id: '', container_quantity: '' }]);
+            setWeightLines(payload.length > 0 ? validWeightLines.map(line => ({ ...line, isExisting: true })) : [emptyWeightLine(1)]);
             setSuccessMessage(payload.length > 0 ? 'Weights saved successfully. Order status updated to Documents Required.' : 'All weights cleared successfully.');
             setTimeout(() => setSuccessMessage(null), 5000);
         } catch (error) {
@@ -686,6 +722,9 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
                                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                                     Material
                                                 </th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                                    Provider
+                                                </th>
                                                 {hasContainerWeightOptions && (
                                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                                         By containers
@@ -705,7 +744,7 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
                                         <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                             {weightLines.length === 0 ? (
                                                 <tr>
-                                                    <td colSpan={hasContainerWeightOptions ? 5 : 4} className="px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                                                    <td colSpan={hasContainerWeightOptions ? 6 : 5} className="px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
                                                         No weight lines. Click Add Line to add one, or Save Weights to clear all.
                                                     </td>
                                                 </tr>
@@ -725,6 +764,16 @@ export default function Finalize({ order, materials = [], canManageOrder = true,
                                                                 placeholder="Select material"
                                                                 getOptionLabel={getMaterialDisplayName}
                                                                 required
+                                                                className="w-full"
+                                                            />
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap overflow-visible">
+                                                            <SearchableDropdown
+                                                                options={providersForOrderType}
+                                                                value={line.service_provider_id}
+                                                                onChange={(value) => updateWeightLine(line.id, 'service_provider_id', value)}
+                                                                placeholder="Order default"
+                                                                getOptionLabel={(provider) => provider?.name ?? ''}
                                                                 className="w-full"
                                                             />
                                                         </td>

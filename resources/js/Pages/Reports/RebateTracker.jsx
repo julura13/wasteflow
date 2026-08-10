@@ -9,7 +9,7 @@ import { formatDateYyyyMmDd } from '@/utils/formatDateYyyyMmDd';
 const siteOptionLabel = (site) =>
     `${site.name}${site.branch?.company ? ` (${site.branch.company.name})` : ''}`;
 
-export default function RebateTracker({ rebateData, companies, filters, totalRebate, totalWeight }) {
+export default function RebateTracker({ rebateData, providerBreakdown = [], companies, filters, totalRebate, totalWeight }) {
     const { flash } = usePage().props;
     const [pdfExportUuid, setPdfExportUuid] = useState(null);
     const [pdfStatus, setPdfStatus] = useState(null);
@@ -316,6 +316,22 @@ export default function RebateTracker({ rebateData, companies, filters, totalReb
                 </div>
             )}
 
+            {providerBreakdown.length > 1 && (
+                <div className="bg-white dark:bg-gray-800 shadow rounded-lg mb-6 p-4 border border-gray-200 dark:border-gray-700">
+                    <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">Rebate by Service Provider</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {providerBreakdown.map((row) => (
+                            <div key={row.provider_name} className="rounded-md bg-gray-50 dark:bg-gray-700/50 p-3">
+                                <span className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{row.provider_name}</span>
+                                <p className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                                    {Number(row.weight).toFixed(2)} kg — R {Number(row.total).toFixed(2)}
+                                </p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             <div className="mb-4 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 p-4">
                 <h3 className="text-sm font-medium text-blue-900 dark:text-blue-200 mb-2">Filter Information</h3>
                 <ul className="text-xs text-blue-800 dark:text-blue-300 space-y-1">
@@ -363,6 +379,9 @@ export default function RebateTracker({ rebateData, companies, filters, totalReb
                                             Grade
                                         </th>
                                         <th className="px-4 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                            Provider
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                             Weight (kg)
                                         </th>
                                         <th className="px-4 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -396,6 +415,9 @@ export default function RebateTracker({ rebateData, companies, filters, totalReb
                                             </td>
                                             <td className="px-4 py-3 whitespace-nowrap text-base text-gray-900 dark:text-gray-100">
                                                 {item.grade}
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-base text-gray-900 dark:text-gray-100">
+                                                {item.service_provider_name ?? '—'}
                                             </td>
                                             <td className="px-4 py-3 whitespace-nowrap text-base text-gray-900 dark:text-gray-100">
                                                 {Number(item.weight).toFixed(2)}

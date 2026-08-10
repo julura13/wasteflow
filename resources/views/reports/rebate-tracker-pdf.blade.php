@@ -170,6 +170,18 @@
         </div>
     </div>
 
+    @if(!empty($providerBreakdown) && count($providerBreakdown) > 1)
+    <div class="summary-box">
+        <h3>Rebate by Service Provider</h3>
+        @foreach($providerBreakdown as $providerRow)
+        <div class="summary-row">
+            <span class="summary-label">{{ $providerRow['provider_name'] }}:</span>
+            <span class="summary-value">{{ number_format($providerRow['weight'], 2) }} kg — R {{ number_format($providerRow['total'], 2) }}</span>
+        </div>
+        @endforeach
+    </div>
+    @endif
+
     <table>
         <thead>
             <tr>
@@ -179,6 +191,7 @@
                 <th>Site</th>
                 <th>Tracking No</th>
                 <th>Grade</th>
+                <th>Provider</th>
                 <th class="text-right">Weight (kg)</th>
                 <th class="text-right">Rate (R/kg)</th>
                 <th class="text-right">Total (R)</th>
@@ -193,13 +206,14 @@
                 <td>{{ $item['site_name'] }}</td>
                 <td class="tracking-cell">{{ $item['tracking_numbers'] ?? '—' }}</td>
                 <td>{{ $item['grade'] }}</td>
+                <td>{{ $item['service_provider_name'] ?? '—' }}</td>
                 <td class="text-right">{{ number_format($item['weight'], 2) }}</td>
                 <td class="text-right">{{ number_format($item['rate'], 2) }}</td>
                 <td class="text-right">{{ number_format($item['total'], 2) }}</td>
             </tr>
             @empty
             <tr>
-                <td colspan="9" style="text-align: center; padding: 20px;">No rebate data found for the selected filters.</td>
+                <td colspan="10" style="text-align: center; padding: 20px;">No rebate data found for the selected filters.</td>
             </tr>
             @endforelse
         </tbody>
