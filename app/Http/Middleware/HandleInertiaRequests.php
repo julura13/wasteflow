@@ -34,8 +34,6 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
-        $user = $request->user();
-
         return [
             ...parent::share($request),
             'flash' => [
@@ -51,29 +49,49 @@ class HandleInertiaRequests extends Middleware
                 'version' => config('app.version'),
             ],
             'auth' => [
-                'user' => $user ? [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'is_active' => $user->is_active,
-                    'is_admin' => $user->isAdmin(),
-                    'roles' => $user->getRoleNames(),
-                    'permissions' => $user->getAllPermissions()->pluck('name'),
-                ] : null,
+                'user' => fn () => $this->authUserPayload($request->user()),
             ],
             'impersonating' => fn () => app(ImpersonateManager::class)->isImpersonating(),
             'mapbox' => [
                 'access_token' => config('services.mapbox.access_token'),
             ],
-            'bellNotifications' => fn () => $user && $user->isAdmin()
-                ? $this->bellNotifications($user)
-                : [],
-            'hasUnseenDocuments' => fn () => $user
-                ? Document::query()->unseenByUser($user->id)->exists()
-                : false,
-            'hasUnseenSheqCompliance' => fn () => $user
-                ? Media::query()->where('collection', 'sheq_compliance')->whereNull('mediable_type')->unseenByUser($user->id)->exists()
-                : false,
+            'bellNotifications' => function () use ($request) {
+                $user = $request->user();
+
+                return $user && $user->isAdmin() ? $this->bellNotifications($user) : [];
+            },
+            'hasUnseenDocuments' => function () use ($request) {
+                $user = $request->user();
+
+                return $user ? Document::query()->unseenByUser($user->id)->exists() : false;
+            },
+            'hasUnseenSheqCompliance' => function () use ($request) {
+                $user = $request->user();
+
+                return $user
+                    ? Media::query()->where('collection', 'sheq_compliance')->whereNull('mediable_type')->unseenByUser($user->id)->exists()
+                    : false;
+            },
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function authUserPayload(?User $user): ?array
+    {
+        if (! $user) {
+            return null;
+        }
+
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'is_active' => $user->is_active,
+            'is_admin' => $user->isAdmin(),
+            'roles' => $user->getRoleNames(),
+            'permissions' => $user->getAllPermissions()->pluck('name'),
         ];
     }
 

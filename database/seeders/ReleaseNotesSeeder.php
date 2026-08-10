@@ -311,6 +311,13 @@ class ReleaseNotesSeeder extends Seeder
                 'description' => 'New "SHEQ Compliance" section (Safety, Health, Environment & Quality) for HSE File documents, alongside the existing Documents section. Staff can upload and manage files; all authenticated users can view and download.',
                 'released_at' => now(),
             ],
+            [
+                'version' => '1.9.0',
+                'type' => 'bugfix',
+                'title' => 'Resource Intelligence "Generate PDF" button restored',
+                'description' => 'The button that starts a Resource Intelligence PDF download had been missing from the report page since April. It has been restored, and the underlying download now renders correctly with all charts and tables (the same content shown when printing via Ctrl+P).',
+                'released_at' => now(),
+            ],
         ];
 
         foreach ($notes as $note) {

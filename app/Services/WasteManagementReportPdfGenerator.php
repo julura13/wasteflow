@@ -37,11 +37,38 @@ class WasteManagementReportPdfGenerator
     /**
      * Render the live React page at $url to PDF via Browsershot.
      * emulateMedia('print') activates the print CSS that hides nav/sidebar/filter panel.
+     *
+     * Waits for the page to genuinely finish loading (network idle - no pending requests
+     * for the JS bundle, images, fonts) before snapshotting, rather than relying only on a
+     * fixed delay. A fixed delay is "long enough" until it occasionally isn't (a slower
+     * moment on the server, a cold browser instance with nothing cached) - which produced
+     * downloads with charts/tables missing even though the same report prints correctly via
+     * Ctrl+P, where the page has already had as long as it needed to finish rendering.
+     * Falls back to the old delay-only behaviour if the network-idle wait itself errors, so
+     * this change can only make downloads more reliable, never less.
      */
     public function generateFromUrl(string $url): string
     {
         $cfg = config('waste_report_pdf.browsershot', []);
 
+        try {
+            return $this->newUrlBrowsershot($url, $cfg)
+                ->waitUntilNetworkIdle()
+                ->delay((int) ($cfg['url_delay_ms_after_idle'] ?? 800))
+                ->pdf();
+        } catch (Throwable $e) {
+            Log::warning('Waste report PDF: network-idle wait failed, retrying with fixed delay only.', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return $this->newUrlBrowsershot($url, $cfg)
+                ->delay((int) ($cfg['url_delay_ms'] ?? 4000))
+                ->pdf();
+        }
+    }
+
+    private function newUrlBrowsershot(string $url, array $cfg): Browsershot
+    {
         $browsershot = Browsershot::url($url)
             ->format('A4')
             ->landscape(false)
@@ -49,7 +76,6 @@ class WasteManagementReportPdfGenerator
             ->margins(0, 0, 0, 0, 'mm')
             ->windowSize(1400, 900)
             ->timeout((int) ($cfg['timeout_seconds'] ?? 120))
-            ->delay((int) ($cfg['url_delay_ms'] ?? 4000))
             ->emulateMedia('print')
             ->setNodeModulePath(base_path('node_modules'))
             ->newHeadless();
@@ -77,7 +103,7 @@ class WasteManagementReportPdfGenerator
         }
         $browsershot->addChromiumArguments($chromeArgs);
 
-        return $browsershot->pdf();
+        return $browsershot;
     }
 
     public function generateWithBrowsershot(string $html): string

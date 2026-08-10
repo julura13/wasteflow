@@ -485,7 +485,7 @@ export default function DashboardLayout({ children }) {
                                     className="-m-1.5 flex items-center p-1.5"
                                 >
                                     <span className="sr-only">Open user menu</span>
-                                    {user.avatar ? (
+                                    {user?.avatar ? (
                                         <img
                                             src={user.avatar}
                                             alt={user.name}
@@ -493,12 +493,12 @@ export default function DashboardLayout({ children }) {
                                         />
                                     ) : (
                                         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-600 text-white text-sm font-medium">
-                                            {user.name.charAt(0).toUpperCase()}
+                                            {user?.name?.charAt(0).toUpperCase()}
                                         </div>
                                     )}
                                     <span className="hidden lg:flex lg:items-center">
                                         <span className="ml-4 text-sm font-semibold leading-6 text-gray-900 dark:text-gray-100" aria-hidden="true">
-                                            {user.name}
+                                            {user?.name}
                                         </span>
                                         <ChevronDown className={`ml-2 h-5 w-5 text-gray-400 dark:text-gray-500 transition-transform ${profileDropdownOpen ? 'rotate-180' : ''}`} />
                                     </span>
