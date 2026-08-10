@@ -35,7 +35,7 @@ class MediaController extends Controller
             'file' => 'required|file|max:10240',
             'mediable_type' => 'required|string',
             'mediable_id' => 'required|integer|exists:orders,id',
-            'collection' => 'nullable|string|max:255',
+            'collection' => 'nullable|string|in:default,supporting_documents',
             'description' => 'nullable|string|max:1000',
         ]);
 
@@ -111,15 +111,17 @@ class MediaController extends Controller
     }
 
     /**
-     * Download a media file.
+     * Download a media file. This route is scoped to orders permissions only (see routes/web.php),
+     * so any media not attached to an Order - e.g. standalone SHEQ Compliance documents, which have
+     * their own manage-documents-gated routes - must never be reachable here.
      */
     public function download(Media $media)
     {
-        if ($media->mediable_type === 'App\\Models\\Order') {
-            $order = Order::find($media->mediable_id);
-            abort_if(! $order, 404, 'File not found.');
-            $this->ensureOrderInScope($order);
-        }
+        abort_unless($media->mediable_type === 'App\\Models\\Order', 404, 'File not found.');
+
+        $order = Order::find($media->mediable_id);
+        abort_if(! $order, 404, 'File not found.');
+        $this->ensureOrderInScope($order);
 
         $disk = Storage::disk($media->disk);
 
@@ -131,14 +133,17 @@ class MediaController extends Controller
     }
 
     /**
-     * Delete a media file.
+     * Delete a media file. This route is scoped to orders permissions only (see routes/web.php),
+     * so any media not attached to an Order - e.g. standalone SHEQ Compliance documents, which have
+     * their own manage-documents-gated routes - must never be reachable here.
      */
     public function destroy(Media $media)
     {
-        $order = $media->mediable_type === 'App\\Models\\Order' ? Order::find($media->mediable_id) : null;
-        if ($order) {
-            $this->ensureOrderInScope($order);
-        }
+        abort_unless($media->mediable_type === 'App\\Models\\Order', 404, 'File not found.');
+
+        $order = Order::find($media->mediable_id);
+        abort_if(! $order, 404, 'File not found.');
+        $this->ensureOrderInScope($order);
         $originalName = $media->original_name;
 
         $disk = Storage::disk($media->disk);
@@ -154,7 +159,7 @@ class MediaController extends Controller
             $localDisk->delete($media->local_path);
         }
 
-        ActivityLog::log('media_deleted', "Document \"{$originalName}\" deleted".($order ? " from order {$order->tracking_number}" : ''), $order ?? $media, [
+        ActivityLog::log('media_deleted', "Document \"{$originalName}\" deleted from order {$order->tracking_number}", $order, [
             'media_id' => $media->id,
             'original_name' => $originalName,
             'order_id' => $media->mediable_id,

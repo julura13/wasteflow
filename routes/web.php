@@ -128,6 +128,20 @@ Route::middleware(['auth', 'verified'])->prefix('documents')->name('documents.')
     });
 });
 
+// SHEQ Compliance / HSE File documents (viewable by all authenticated users; same access
+// rules as Documents, stored as standalone `media` rows with collection=sheq_compliance)
+Route::middleware(['auth', 'verified'])->prefix('sheq-compliance')->name('sheq-compliance.')->group(function () {
+    Route::get('/', [App\Http\Controllers\SheqComplianceController::class, 'index'])->name('index');
+    Route::get('/{sheqCompliance}/view', [App\Http\Controllers\SheqComplianceController::class, 'view'])->name('view');
+    Route::get('/{sheqCompliance}/download', [App\Http\Controllers\SheqComplianceController::class, 'download'])->name('download');
+
+    Route::middleware(['permission:manage-documents'])->group(function () {
+        Route::post('/', [App\Http\Controllers\SheqComplianceController::class, 'store'])->name('store');
+        Route::put('/{sheqCompliance}', [App\Http\Controllers\SheqComplianceController::class, 'update'])->name('update');
+        Route::delete('/{sheqCompliance}', [App\Http\Controllers\SheqComplianceController::class, 'destroy'])->name('destroy');
+    });
+});
+
 // Unauthenticated print-preview used by Browsershot — auth via short-lived cache token
 Route::get('/reports/resource-intelligence/print/{token}', [App\Http\Controllers\ReportController::class, 'resourceIntelligencePrintPreview'])
     ->name('reports.resource-intelligence.print-preview');
