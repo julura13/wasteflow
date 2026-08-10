@@ -372,6 +372,18 @@ export default function WasteManagement({ companies, filters }) {
                                 <Eye className="h-4 w-4" />
                                 View Report
                             </button>
+                            <button
+                                type="submit"
+                                disabled={!selectedCompany || pdfIsProcessing}
+                                className="flex-1 inline-flex justify-center items-center gap-2 px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                            >
+                                {pdfIsProcessing ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                    <Download className="h-4 w-4" />
+                                )}
+                                Generate PDF
+                            </button>
                             {selectedCompany ? (
                                 <a
                                     href={route('reports.waste-management-certificate.download', {

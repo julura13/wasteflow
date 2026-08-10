@@ -290,6 +290,13 @@ class ReleaseNotesSeeder extends Seeder
                 'description' => 'New indicator on the Resource Intelligence report: kg CO2e avoided per kg of waste managed, a volume-independent measure of how carbon-efficient a client\'s diversion program is.',
                 'released_at' => now(),
             ],
+            [
+                'version' => '1.9.0',
+                'type' => 'bugfix',
+                'title' => 'Resource Intelligence "Generate PDF" button restored',
+                'description' => 'The button that starts a Resource Intelligence PDF download had been missing from the report page since April. It has been restored, and the underlying download now renders correctly with all charts and tables (the same content shown when printing via Ctrl+P).',
+                'released_at' => now(),
+            ],
         ];
 
         foreach ($notes as $note) {

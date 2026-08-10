@@ -30,7 +30,11 @@ return [
 
         'delay_ms' => (int) env('BROWSERSHOT_PDF_DELAY_MS', 500),
 
+        // Fallback-only: used if the network-idle wait itself errors (generateFromUrl()).
         'url_delay_ms' => (int) env('BROWSERSHOT_PDF_URL_DELAY_MS', 4000),
+
+        // Small buffer after network-idle for final chart/layout paint (generateFromUrl()).
+        'url_delay_ms_after_idle' => (int) env('BROWSERSHOT_PDF_URL_DELAY_MS_AFTER_IDLE', 800),
 
         'timeout_seconds' => (int) env('BROWSERSHOT_PDF_TIMEOUT', 120),
 
