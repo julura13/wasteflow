@@ -167,6 +167,7 @@ Route::middleware(['auth', 'verified', 'permission:view-reports'])->prefix('repo
     Route::post('/waste-management/pdf/request', [App\Http\Controllers\ReportController::class, 'requestWasteManagementPdf'])->name('waste-management-pdf.request');
     Route::get('/waste-management/pdf/{uuid}/status', [App\Http\Controllers\ReportController::class, 'wasteManagementPdfStatus'])->name('waste-management-pdf.status');
     Route::get('/waste-management/pdf/{uuid}/download', [App\Http\Controllers\ReportController::class, 'downloadWasteManagementPdf'])->name('waste-management-pdf.download');
+    Route::get('/waste-management/certificate', [App\Http\Controllers\ReportController::class, 'downloadClientMonthlyCertificate'])->name('waste-management-certificate.download');
     Route::get('/waste-management/summary', [App\Http\Controllers\ReportController::class, 'wasteManagementSummary'])->name('waste-management-summary');
     Route::get('/resource-intelligence', [App\Http\Controllers\ReportController::class, 'resourceIntelligenceView'])->name('resource-intelligence');
     Route::get('/carbon-calculator', [App\Http\Controllers\ReportController::class, 'carbonCalculator'])
