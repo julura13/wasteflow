@@ -2,15 +2,22 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Viewable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Facades\Storage;
 
 class Media extends Model
 {
+    /** @use HasFactory<\Database\Factories\MediaFactory> */
+    use HasFactory, Viewable;
+
     protected $fillable = [
         'mediable_type',
         'mediable_id',
+        'title',
         'file_name',
         'original_name',
         'mime_type',
@@ -23,6 +30,7 @@ class Media extends Model
         'file_size',
         'collection',
         'description',
+        'uploaded_by',
     ];
 
     protected function casts(): array
@@ -34,11 +42,17 @@ class Media extends Model
     }
 
     /**
-     * Get the parent mediable model (Order, Material, etc.).
+     * Get the parent mediable model (Order, Material, etc.). Null for standalone media
+     * not attached to a specific record, e.g. SHEQ Compliance documents.
      */
     public function mediable(): MorphTo
     {
         return $this->morphTo();
+    }
+
+    public function uploadedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'uploaded_by');
     }
 
     /**

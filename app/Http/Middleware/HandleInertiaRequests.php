@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\Document;
+use App\Models\Media;
 use App\Models\ReleaseNote;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -69,6 +70,9 @@ class HandleInertiaRequests extends Middleware
                 : [],
             'hasUnseenDocuments' => fn () => $user
                 ? Document::query()->unseenByUser($user->id)->exists()
+                : false,
+            'hasUnseenSheqCompliance' => fn () => $user
+                ? Media::query()->where('collection', 'sheq_compliance')->unseenByUser($user->id)->exists()
                 : false,
         ];
     }

@@ -290,6 +290,27 @@ class ReleaseNotesSeeder extends Seeder
                 'description' => 'New indicator on the Resource Intelligence report: kg CO2e avoided per kg of waste managed, a volume-independent measure of how carbon-efficient a client\'s diversion program is.',
                 'released_at' => now(),
             ],
+            [
+                'version' => '1.9.0',
+                'type' => 'bugfix',
+                'title' => 'Corrected Resource Recovery Rating thresholds',
+                'description' => 'Updated the Platinum/Gold/Silver/Bronze/Developing diversion-rate cutoffs to match the client\'s specification (defaults only; any admin-customized thresholds are preserved).',
+                'released_at' => now(),
+            ],
+            [
+                'version' => '1.9.0',
+                'type' => 'bugfix',
+                'title' => 'Carbon Avoidance Intensity now reported per ton',
+                'description' => 'The CAI metric on the Resource Intelligence report was being calculated per kg of waste managed; it now correctly reports kg CO2e avoided per ton, matching the client\'s specification.',
+                'released_at' => now(),
+            ],
+            [
+                'version' => '1.9.0',
+                'type' => 'feature',
+                'title' => 'SHEQ Compliance document library',
+                'description' => 'New "SHEQ Compliance" section (Safety, Health, Environment & Quality) for HSE File documents, alongside the existing Documents section. Staff can upload and manage files; all authenticated users can view and download.',
+                'released_at' => now(),
+            ],
         ];
 
         foreach ($notes as $note) {
