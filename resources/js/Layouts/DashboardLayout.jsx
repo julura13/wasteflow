@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, usePage, router } from '@inertiajs/react';
 import { Dialog } from '@headlessui/react';
 import CommandPalette from '@/Components/CommandPalette';
+import ClientHubAdvertModal from '@/Components/ClientHubAdvertModal';
 import {
     LayoutDashboard,
     Users,
@@ -28,6 +29,7 @@ import {
     Shield,
     ShieldCheck,
     History,
+    Megaphone,
 } from 'lucide-react';
 
 export default function DashboardLayout({ children }) {
@@ -53,6 +55,45 @@ export default function DashboardLayout({ children }) {
     const bellNotifications = usePage().props.bellNotifications ?? [];
     const hasUnseenDocuments = usePage().props.hasUnseenDocuments ?? false;
     const hasUnseenSheqCompliance = usePage().props.hasUnseenSheqCompliance ?? false;
+    const clientHubPopupAdvert = usePage().props.clientHubPopupAdvert ?? null;
+    const [showClientHubPopup, setShowClientHubPopup] = useState(false);
+
+    // Auto-popup an undismissed Client Hub advert once per browser tab session (server-side
+    // dismissed_at is what actually stops it long-term; this just avoids re-popping on every
+    // in-app navigation before the client has clicked close). The 900ms delay before marking
+    // it "shown" is deliberate: Dashboard.jsx restores a saved company/branch/site selection on
+    // mount via router.get(..., { preserveState: false }), which remounts this whole layout
+    // almost immediately after the first load. Marking "shown" synchronously on that first,
+    // about-to-be-discarded mount would burn the one-time flag before the client ever actually
+    // saw the popup. Waiting lets that remount settle first.
+    useEffect(() => {
+        if (!clientHubPopupAdvert || !user) {
+            return undefined;
+        }
+        // Keyed by user id too - otherwise a second user logging into the same browser tab
+        // (without a full reload, e.g. after the first user logs out) could inherit the first
+        // user's "already shown" flag for an advert they've never actually dismissed.
+        const sessionKey = `client_hub_popup_shown_${user.id}_${clientHubPopupAdvert.id}`;
+        try {
+            if (sessionStorage.getItem(sessionKey)) {
+                return undefined;
+            }
+        } catch {}
+        const timer = setTimeout(() => {
+            try {
+                sessionStorage.setItem(sessionKey, 'true');
+            } catch {}
+            setShowClientHubPopup(true);
+        }, 900);
+        return () => clearTimeout(timer);
+    }, [clientHubPopupAdvert?.id, user?.id]);
+
+    const dismissClientHubPopup = () => {
+        if (clientHubPopupAdvert) {
+            router.post(`/client-hub/${clientHubPopupAdvert.id}/dismiss`, {}, { preserveScroll: true, preserveState: true });
+        }
+        setShowClientHubPopup(false);
+    };
 
     // Open command palette with ⌘K / Ctrl+K
     useEffect(() => {
@@ -225,6 +266,23 @@ export default function DashboardLayout({ children }) {
                                 <span className="ml-auto h-2 w-2 rounded-full bg-primary-500" />
                             )}
                         </Link>
+                        {user?.is_admin && (
+                            <Link
+                                href="/client-hub"
+                                className={`group flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                                    url.startsWith('/client-hub')
+                                        ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
+                                        : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'
+                                }`}
+                            >
+                                <Megaphone
+                                    className={`mr-3 h-5 w-5 ${
+                                        url.startsWith('/client-hub') ? 'text-blue-500' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'
+                                    }`}
+                                />
+                                Client Hub
+                            </Link>
+                        )}
                     </div>
                 </div>
             </div>
@@ -341,6 +399,28 @@ export default function DashboardLayout({ children }) {
                                 )}
                             </Link>
                         </div>
+                        {user?.is_admin && (
+                            <div className="border-t border-gray-200 dark:border-gray-700 p-2">
+                                <Link
+                                    href="/client-hub"
+                                    title={sidebarCollapsed ? 'Client Hub' : undefined}
+                                    className={`group flex items-center rounded-lg text-sm font-medium transition-colors ${
+                                        sidebarCollapsed ? 'justify-center px-2 py-2' : 'px-3 py-2'
+                                    } ${
+                                        url.startsWith('/client-hub')
+                                            ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
+                                            : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'
+                                    }`}
+                                >
+                                    <Megaphone
+                                        className={`h-5 w-5 shrink-0 ${sidebarCollapsed ? '' : 'mr-3'} ${
+                                            url.startsWith('/client-hub') ? 'text-blue-500' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'
+                                        }`}
+                                    />
+                                    {!sidebarCollapsed && <span className="truncate">Client Hub</span>}
+                                </Link>
+                            </div>
+                        )}
                         <div className="border-t border-gray-200 dark:border-gray-700 p-2">
                             <button
                                 type="button"
@@ -422,7 +502,11 @@ export default function DashboardLayout({ children }) {
                                             {bellNotifications.length > 0 && (
                                                 <button
                                                     onClick={() => {
-                                                        router.post('/release-notes/read-all');
+                                                        // A user's bell list is one kind or the other, never mixed (admins get
+                                                        // release notes/system notifications, clients get Client Hub adverts) -
+                                                        // route the bulk action to whichever endpoint actually owns these rows.
+                                                        const isClientHub = bellNotifications.some((n) => n.kind === 'client_hub_advert');
+                                                        router.post(isClientHub ? '/client-hub/read-all' : '/release-notes/read-all');
                                                         setNotificationsOpen(false);
                                                     }}
                                                     className="text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
@@ -555,8 +639,28 @@ export default function DashboardLayout({ children }) {
             </div>
         </div>
 
+        {/* Client Hub advert detail (opened from the bell) - marks read on close */}
+        {selectedNote?.kind === 'client_hub_advert' && (
+            <ClientHubAdvertModal
+                show
+                advert={selectedNote}
+                closeLabel="Mark as read"
+                onClose={() => {
+                    router.post(selectedNote.read_url);
+                    setSelectedNote(null);
+                }}
+            />
+        )}
+
+        {/* Client Hub advert auto-popup on login */}
+        <ClientHubAdvertModal
+            show={showClientHubPopup}
+            advert={clientHubPopupAdvert}
+            onClose={dismissClientHubPopup}
+        />
+
         {/* Notification detail modal */}
-        <Dialog open={!!selectedNote} onClose={() => setSelectedNote(null)} className="relative z-50">
+        <Dialog open={!!selectedNote && selectedNote.kind !== 'client_hub_advert'} onClose={() => setSelectedNote(null)} className="relative z-50">
             <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" aria-hidden="true" />
             <div className="fixed inset-0 flex items-center justify-center p-4">
                 <Dialog.Panel className="w-full max-w-md rounded-xl bg-white dark:bg-gray-900 shadow-2xl ring-1 ring-black/10 dark:ring-white/10">

@@ -325,6 +325,13 @@ class ReleaseNotesSeeder extends Seeder
                 'description' => 'The Resource Intelligence report\'s Methodology & Data Sources section now includes the client\'s updated legal/trademark language: Resource Intelligence™ and Resource Recovery Rating™ trademark symbols, an expanded methodology and indicators list, and new Reporting Statement, Limitations, Disclaimer and copyright sections.',
                 'released_at' => now(),
             ],
+            [
+                'version' => '1.10.0',
+                'type' => 'feature',
+                'title' => 'Client Hub adverts',
+                'description' => 'Admins can now upload PNG/JPG/PDF adverts under Client Hub. Active adverts pop up automatically for clients on login. Closing the popup dismisses it (won\'t pop up again) but keeps the notification bell badge unread until the client actually opens it from the bell.',
+                'released_at' => now(),
+            ],
         ];
 
         foreach ($notes as $note) {

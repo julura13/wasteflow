@@ -2,16 +2,25 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\ClientHubAdvert;
 use App\Models\Document;
 use App\Models\Media;
 use App\Models\ReleaseNote;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Inertia\Middleware;
 use Lab404\Impersonate\Services\ImpersonateManager;
 
 class HandleInertiaRequests extends Middleware
 {
+    /**
+     * Cache for activeClientHubAdvertsWithViewsFor() within a single request - clientHubPopupAdvert
+     * and bellNotifications both need "active adverts + this user's view state" and would otherwise
+     * each run their own near-identical query on every request for a client-role user.
+     */
+    private ?Collection $clientHubAdvertsForUser = null;
+
     /**
      * The root template that is loaded on the first page visit.
      *
@@ -58,7 +67,15 @@ class HandleInertiaRequests extends Middleware
             'bellNotifications' => function () use ($request) {
                 $user = $request->user();
 
-                return $user && $user->isAdmin() ? $this->bellNotifications($user) : [];
+                if (! $user) {
+                    return [];
+                }
+
+                if ($user->isAdmin()) {
+                    return $this->bellNotifications($user);
+                }
+
+                return $user->hasRole('client') ? $this->clientHubBellNotifications($user) : [];
             },
             'hasUnseenDocuments' => function () use ($request) {
                 $user = $request->user();
@@ -71,6 +88,25 @@ class HandleInertiaRequests extends Middleware
                 return $user
                     ? Media::query()->where('collection', 'sheq_compliance')->whereNull('mediable_type')->unseenByUser($user->id)->exists()
                     : false;
+            },
+            'clientHubPopupAdvert' => function () use ($request) {
+                $user = $request->user();
+
+                if (! $user || ! $user->hasRole('client')) {
+                    return null;
+                }
+
+                $advert = $this->activeClientHubAdvertsWithViewsFor($user)
+                    ->first(fn (ClientHubAdvert $a) => is_null($a->views->first()?->dismissed_at));
+
+                return $advert ? [
+                    'id' => $advert->id,
+                    'title' => $advert->title,
+                    'details' => $advert->details,
+                    'contact_email' => $advert->contact_email,
+                    'mime_type' => $advert->mime_type,
+                    'view_url' => route('client-hub.view', $advert->id),
+                ] : null;
             },
         ];
     }
@@ -128,5 +164,48 @@ class HandleInertiaRequests extends Middleware
             ]);
 
         return $releaseNotes->concat($systemNotifications)->values()->all();
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function clientHubBellNotifications(User $user): array
+    {
+        return $this->activeClientHubAdvertsWithViewsFor($user)
+            ->filter(fn (ClientHubAdvert $a) => is_null($a->views->first()?->read_at))
+            ->map(fn (ClientHubAdvert $advert) => [
+                'id' => (string) $advert->id,
+                'kind' => 'client_hub_advert',
+                'badge_type' => 'announcement',
+                'badge_label' => 'new',
+                'title' => $advert->title,
+                'description' => $advert->details,
+                'image_url' => route('client-hub.view', $advert->id),
+                'mime_type' => $advert->mime_type,
+                'contact_email' => $advert->contact_email,
+                'read_url' => "/client-hub/{$advert->id}/read",
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Active adverts with this user's ClientHubAdvertView eager-loaded (0 or 1 per advert, per
+     * the unique(client_hub_advert_id, user_id) constraint) - fetched once per request and shared
+     * between clientHubPopupAdvert and clientHubBellNotifications.
+     *
+     * @return Collection<int, ClientHubAdvert>
+     */
+    private function activeClientHubAdvertsWithViewsFor(User $user): Collection
+    {
+        if ($this->clientHubAdvertsForUser === null) {
+            $this->clientHubAdvertsForUser = ClientHubAdvert::query()
+                ->active()
+                ->with(['views' => fn ($q) => $q->where('user_id', $user->id)])
+                ->latest()
+                ->get();
+        }
+
+        return $this->clientHubAdvertsForUser;
     }
 }
