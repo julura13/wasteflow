@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             MaterialMatrixSeeder::class,
             ContainerOptionSeeder::class,
+            RecoveryRatingTierSeeder::class,
         ]);
     }
 }

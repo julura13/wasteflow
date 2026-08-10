@@ -5,6 +5,7 @@ use App\Http\Controllers\Settings\ClassificationController;
 use App\Http\Controllers\Settings\ContainerOptionController;
 use App\Http\Controllers\Settings\FacilityController;
 use App\Http\Controllers\Settings\GradeController;
+use App\Http\Controllers\Settings\RecoveryRatingController;
 use App\Http\Controllers\Settings\WasteStreamController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -225,6 +226,8 @@ Route::middleware(['auth', 'verified', 'permission:manage-settings'])->prefix('s
     Route::patch('container-options/{containerOption}/toggle-summary', [ContainerOptionController::class, 'toggleSummary'])->name('container-options.toggle-summary');
     Route::resource('classifications', ClassificationController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::resource('facilities', FacilityController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::get('recovery-rating', [RecoveryRatingController::class, 'index'])->name('recovery-rating.index');
+    Route::put('recovery-rating', [RecoveryRatingController::class, 'update'])->name('recovery-rating.update');
 });
 
 Route::middleware('auth')->get('/search', App\Http\Controllers\GlobalSearchController::class)->name('search');
