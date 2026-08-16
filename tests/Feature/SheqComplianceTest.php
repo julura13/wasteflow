@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Company;
 use App\Models\ContentView;
 use App\Models\Media;
 use App\Models\User;
@@ -135,6 +136,27 @@ it('allows admins to update and delete a SHEQ compliance document', function () 
     expect(Media::find($document->id))->toBeNull();
 });
 
+it('allows updating a SHEQ compliance document without a file when the file field is an empty string, as Inertia sends it', function () {
+    // Regression test: Inertia's useForm + forceFormData serializes a null `file` field as an
+    // empty string rather than omitting it, which used to fail `sometimes|file` validation.
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+
+    $document = Media::factory()->create(['disk' => 'local']);
+
+    $this->actingAs($admin)
+        ->post("/sheq-compliance/{$document->id}", [
+            '_method' => 'put',
+            'title' => 'Updated title',
+            'description' => '',
+            'file' => '',
+        ])
+        ->assertRedirect()
+        ->assertSessionHasNoErrors();
+
+    expect($document->fresh()->title)->toBe('Updated title');
+});
+
 it('does not allow a SHEQ compliance route to operate on media from a different collection', function () {
     $admin = User::factory()->create();
     $admin->assignRole('admin');
@@ -257,4 +279,276 @@ it('does not flag SHEQ compliance as unseen when a document exists in a differen
     $this->actingAs($client)
         ->get('/dashboard')
         ->assertInertia(fn ($page) => $page->where('hasUnseenSheqCompliance', false));
+});
+
+it('appends a newly uploaded SHEQ compliance document to the end of the sort order', function () {
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+
+    Media::factory()->create(['sort_order' => 1]);
+    Media::factory()->create(['sort_order' => 2]);
+
+    $this->actingAs($admin)
+        ->post('/sheq-compliance', [
+            'title' => 'New Policy',
+            'file' => UploadedFile::fake()->create('new-policy.pdf', 100),
+        ])
+        ->assertRedirect();
+
+    $document = Media::where('title', 'New Policy')->first();
+    expect($document->sort_order)->toBe(3);
+});
+
+it('orders the SHEQ compliance index by sort_order', function () {
+    $client = User::factory()->create();
+    $client->assignRole('client');
+
+    $third = Media::factory()->create(['title' => 'Third', 'sort_order' => 3]);
+    $first = Media::factory()->create(['title' => 'First', 'sort_order' => 1]);
+    $second = Media::factory()->create(['title' => 'Second', 'sort_order' => 2]);
+
+    $this->actingAs($client)
+        ->get('/sheq-compliance')
+        ->assertInertia(fn ($page) => $page
+            ->where('documents.data.0.title', 'First')
+            ->where('documents.data.1.title', 'Second')
+            ->where('documents.data.2.title', 'Third')
+        );
+});
+
+it('allows an admin to move a SHEQ compliance document up, swapping with the previous document', function () {
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+
+    $first = Media::factory()->create(['sort_order' => 1]);
+    $second = Media::factory()->create(['sort_order' => 2]);
+
+    $this->actingAs($admin)
+        ->post("/sheq-compliance/{$second->id}/move-up")
+        ->assertRedirect();
+
+    expect($first->fresh()->sort_order)->toBe(2);
+    expect($second->fresh()->sort_order)->toBe(1);
+});
+
+it('allows an admin to move a SHEQ compliance document down, swapping with the next document', function () {
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+
+    $first = Media::factory()->create(['sort_order' => 1]);
+    $second = Media::factory()->create(['sort_order' => 2]);
+
+    $this->actingAs($admin)
+        ->post("/sheq-compliance/{$first->id}/move-down")
+        ->assertRedirect();
+
+    expect($first->fresh()->sort_order)->toBe(2);
+    expect($second->fresh()->sort_order)->toBe(1);
+});
+
+it('does not change sort_order when moving the first document up or the last document down', function () {
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+
+    $first = Media::factory()->create(['sort_order' => 1]);
+    $second = Media::factory()->create(['sort_order' => 2]);
+
+    $this->actingAs($admin)->post("/sheq-compliance/{$first->id}/move-up")->assertRedirect();
+    expect($first->fresh()->sort_order)->toBe(1);
+    expect($second->fresh()->sort_order)->toBe(2);
+
+    $this->actingAs($admin)->post("/sheq-compliance/{$second->id}/move-down")->assertRedirect();
+    expect($first->fresh()->sort_order)->toBe(1);
+    expect($second->fresh()->sort_order)->toBe(2);
+});
+
+it('forbids non-admins from reordering SHEQ compliance documents', function () {
+    $client = User::factory()->create();
+    $client->assignRole('client');
+
+    $first = Media::factory()->create(['sort_order' => 1]);
+    $second = Media::factory()->create(['sort_order' => 2]);
+
+    $this->actingAs($client)->post("/sheq-compliance/{$second->id}/move-up")->assertForbidden();
+    $this->actingAs($client)->post("/sheq-compliance/{$first->id}/move-down")->assertForbidden();
+
+    expect($first->fresh()->sort_order)->toBe(1);
+    expect($second->fresh()->sort_order)->toBe(2);
+});
+
+it('does not allow reordering a SHEQ compliance route to operate on media from a different collection', function () {
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+
+    $orderMedia = Media::factory()->create([
+        'collection' => 'supporting_documents',
+        'mediable_type' => 'App\\Models\\Order',
+        'mediable_id' => 1,
+        'sort_order' => 1,
+    ]);
+
+    $this->actingAs($admin)
+        ->post("/sheq-compliance/{$orderMedia->id}/move-up")
+        ->assertNotFound();
+});
+
+it('lets an admin restrict a SHEQ compliance document to specific companies on upload', function () {
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+
+    $companyA = Company::query()->create(['name' => 'Company A', 'is_active' => true]);
+    $companyB = Company::query()->create(['name' => 'Company B', 'is_active' => true]);
+
+    $this->actingAs($admin)
+        ->post('/sheq-compliance', [
+            'title' => 'Restricted Policy',
+            'file' => UploadedFile::fake()->create('policy.pdf', 100),
+            'company_ids' => [$companyA->id, $companyB->id],
+        ])
+        ->assertRedirect();
+
+    $document = Media::where('title', 'Restricted Policy')->first();
+    expect($document->companies()->pluck('companies.id')->sort()->values()->all())
+        ->toBe([$companyA->id, $companyB->id]);
+});
+
+it('lets an admin change a SHEQ compliance document\'s visible companies on update', function () {
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+
+    $companyA = Company::query()->create(['name' => 'Company A', 'is_active' => true]);
+    $companyB = Company::query()->create(['name' => 'Company B', 'is_active' => true]);
+
+    $document = Media::factory()->create();
+    $document->companies()->attach($companyA->id);
+
+    $this->actingAs($admin)
+        ->put("/sheq-compliance/{$document->id}", [
+            'title' => $document->title,
+            'company_ids' => [$companyB->id],
+        ])
+        ->assertRedirect();
+
+    expect($document->companies()->pluck('companies.id')->all())->toBe([$companyB->id]);
+});
+
+it('hides a company-restricted SHEQ compliance document from clients of a different company', function () {
+    $ownCompany = Company::query()->create(['name' => 'Own Co', 'is_active' => true]);
+    $otherCompany = Company::query()->create(['name' => 'Other Co', 'is_active' => true]);
+
+    $client = User::factory()->create();
+    $client->assignRole('client');
+    $client->companies()->attach($ownCompany->id);
+
+    $restricted = Media::factory()->create(['title' => 'Restricted']);
+    $restricted->companies()->attach($otherCompany->id);
+
+    $public = Media::factory()->create(['title' => 'Public']);
+
+    $this->actingAs($client)
+        ->get('/sheq-compliance')
+        ->assertInertia(fn ($page) => $page
+            ->has('documents.data', 1)
+            ->where('documents.data.0.title', 'Public')
+        );
+
+    $this->actingAs($client)->get("/sheq-compliance/{$restricted->id}/view")->assertForbidden();
+    $this->actingAs($client)->get("/sheq-compliance/{$restricted->id}/download")->assertForbidden();
+});
+
+it('shows a company-restricted SHEQ compliance document to clients of that company', function () {
+    $company = Company::query()->create(['name' => 'Acme', 'is_active' => true]);
+
+    $client = User::factory()->create();
+    $client->assignRole('client');
+    $client->companies()->attach($company->id);
+
+    $file = UploadedFile::fake()->create('hse-policy.pdf', 100);
+    $path = $file->storeAs('sheq-compliance', 'test.pdf', 'local');
+
+    $restricted = Media::factory()->create([
+        'title' => 'Restricted',
+        'disk' => 'local',
+        'path' => $path,
+        'original_name' => 'hse-policy.pdf',
+    ]);
+    $restricted->companies()->attach($company->id);
+
+    $this->actingAs($client)
+        ->get('/sheq-compliance')
+        ->assertInertia(fn ($page) => $page->has('documents.data', 1));
+
+    $this->actingAs($client)->get("/sheq-compliance/{$restricted->id}/view")->assertSuccessful();
+    $this->actingAs($client)->get("/sheq-compliance/{$restricted->id}/download")->assertSuccessful();
+});
+
+it('always shows company-restricted SHEQ compliance documents to internal staff', function () {
+    $manager = User::factory()->create();
+    $manager->assignRole('manager');
+
+    $company = Company::query()->create(['name' => 'Acme', 'is_active' => true]);
+
+    $file = UploadedFile::fake()->create('hse-policy.pdf', 100);
+    $path = $file->storeAs('sheq-compliance', 'test.pdf', 'local');
+
+    $restricted = Media::factory()->create([
+        'title' => 'Restricted',
+        'disk' => 'local',
+        'path' => $path,
+        'original_name' => 'hse-policy.pdf',
+    ]);
+    $restricted->companies()->attach($company->id);
+
+    $this->actingAs($manager)
+        ->get('/sheq-compliance')
+        ->assertInertia(fn ($page) => $page->has('documents.data', 1));
+
+    $this->actingAs($manager)->get("/sheq-compliance/{$restricted->id}/view")->assertSuccessful();
+});
+
+it('excludes company-restricted SHEQ compliance documents from the unseen badge for clients without access', function () {
+    $ownCompany = Company::query()->create(['name' => 'Own Co', 'is_active' => true]);
+    $otherCompany = Company::query()->create(['name' => 'Other Co', 'is_active' => true]);
+
+    $client = User::factory()->create();
+    $client->assignRole('client');
+    $client->companies()->attach($ownCompany->id);
+
+    $restricted = Media::factory()->create();
+    $restricted->companies()->attach($otherCompany->id);
+
+    $this->actingAs($client)
+        ->get('/dashboard')
+        ->assertInertia(fn ($page) => $page->where('hasUnseenSheqCompliance', false));
+});
+
+it('includes company-restricted SHEQ compliance documents in the unseen badge for clients with access', function () {
+    $company = Company::query()->create(['name' => 'Acme', 'is_active' => true]);
+
+    $client = User::factory()->create();
+    $client->assignRole('client');
+    $client->companies()->attach($company->id);
+
+    $restricted = Media::factory()->create();
+    $restricted->companies()->attach($company->id);
+
+    $this->actingAs($client)
+        ->get('/dashboard')
+        ->assertInertia(fn ($page) => $page->where('hasUnseenSheqCompliance', true));
+});
+
+it('respects company restriction for the company_user role as well as client', function () {
+    $ownCompany = Company::query()->create(['name' => 'Own Co', 'is_active' => true]);
+    $otherCompany = Company::query()->create(['name' => 'Other Co', 'is_active' => true]);
+
+    $companyUser = User::factory()->create();
+    $companyUser->assignRole('company_user');
+    $companyUser->companies()->attach($ownCompany->id);
+
+    $restricted = Media::factory()->create();
+    $restricted->companies()->attach($otherCompany->id);
+
+    $this->actingAs($companyUser)
+        ->get('/sheq-compliance')
+        ->assertInertia(fn ($page) => $page->has('documents.data', 0));
 });

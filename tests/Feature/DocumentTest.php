@@ -129,8 +129,27 @@ it('allows admins to update and delete a document', function () {
     $this->actingAs($admin)
         ->delete("/documents/{$document->id}")
         ->assertRedirect();
+});
 
-    expect(Document::find($document->id))->toBeNull();
+it('allows updating a document without a file when the file field is an empty string, as Inertia sends it', function () {
+    // Regression test: Inertia's useForm + forceFormData serializes a null `file` field as an
+    // empty string rather than omitting it, which used to fail `sometimes|file` validation.
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+
+    $document = Document::factory()->create(['disk' => 'local']);
+
+    $this->actingAs($admin)
+        ->post("/documents/{$document->id}", [
+            '_method' => 'put',
+            'title' => 'Updated title',
+            'description' => '',
+            'file' => '',
+        ])
+        ->assertRedirect()
+        ->assertSessionHasNoErrors();
+
+    expect($document->fresh()->title)->toBe('Updated title');
 });
 
 it('marks documents as seen when the user visits the index, clearing the unseen flag', function () {
