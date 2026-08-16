@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Jobs\GenerateWasteManagementPdfJob;
 use App\Models\Branch;
 use App\Models\Company;
+use App\Models\RecoveryRatingTier;
 use App\Models\Site;
 use App\Models\User;
 use App\Models\WasteManagementReportExport;
@@ -427,6 +428,7 @@ class ReportController extends Controller
 
         $divertedFromLandfillPercentage = (float) $reportData['summary']['divertedFromLandfill'];
         $periodEnd = Carbon::createFromDate($year, $month, 1)->endOfMonth();
+        $tier = RecoveryRatingTier::forPercentage($divertedFromLandfillPercentage);
 
         $options = new Options;
         $options->set('isHtml5ParserEnabled', true);
@@ -439,6 +441,8 @@ class ReportController extends Controller
             'percentageDisplay' => number_format($divertedFromLandfillPercentage, 1),
             'monthYearUpper' => Str::upper($periodEnd->format('F Y')),
             'completeDateUpper' => Str::upper($periodEnd->format('d F Y')),
+            'tierNameUpper' => $tier ? Str::upper($tier->name) : null,
+            'tierColor' => $tier?->color,
         ])->render();
 
         $dompdf->loadHtml($html);

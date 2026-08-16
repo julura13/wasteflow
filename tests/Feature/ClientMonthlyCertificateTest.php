@@ -62,3 +62,52 @@ it('cannot download a certificate for a company outside a scoped client user\'s 
         'year' => 2026,
     ]))->assertNotFound();
 });
+
+it('includes the resolved Resource Recovery Rating tier name and colour in the certificate template', function () {
+    $html = view('reports.client-monthly-certificate-pdf', [
+        'companyNameUpper' => 'ACME CO',
+        'percentageDisplay' => '82.0',
+        'monthYearUpper' => 'JULY 2026',
+        'completeDateUpper' => '31 JULY 2026',
+        'tierNameUpper' => 'GOLD',
+        'tierColor' => '#D4AF37',
+    ])->render();
+
+    expect($html)->toContain('GOLD')
+        ->and($html)->toContain('RESOURCE RECOVERY RATING')
+        ->and($html)->toContain('#D4AF37')
+        ->and($html)->toContain('82.0');
+});
+
+it('falls back to the original certificate wording when no tier is resolved', function () {
+    $html = view('reports.client-monthly-certificate-pdf', [
+        'companyNameUpper' => 'ACME CO',
+        'percentageDisplay' => '82.0',
+        'monthYearUpper' => 'JULY 2026',
+        'completeDateUpper' => '31 JULY 2026',
+        'tierNameUpper' => null,
+        'tierColor' => null,
+    ])->render();
+
+    expect($html)->not->toContain('RESOURCE RECOVERY RATING')
+        ->and($html)->toContain('DEMONSTRATING THE');
+});
+
+it('resolves a Resource Recovery Rating tier for the certificate based on the diversion percentage achieved', function () {
+    $this->seed(\Database\Seeders\RecoveryRatingTierSeeder::class);
+
+    $user = User::factory()->create();
+    $user->assignRole('manager');
+
+    $company = Company::query()->create(['name' => 'Certificate Co', 'is_active' => true]);
+
+    // No waste data recorded for the period => 0% diverted => "Improvement Required" tier.
+    $response = $this->actingAs($user)->get(route('reports.waste-management-certificate.download', [
+        'company_id' => $company->id,
+        'month' => 4,
+        'year' => 2026,
+    ]));
+
+    $response->assertOk();
+    $response->assertHeader('content-type', 'application/pdf');
+});

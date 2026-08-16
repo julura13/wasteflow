@@ -51,6 +51,10 @@
             color: #1a1a1a;
             line-height: 1.5;
         }
+        .summary-line.with-tier {
+            font-size: 11.5pt;
+            line-height: 1.35;
+        }
         .certificate-date {
             left: 179.5mm;
             top: 159mm;
@@ -79,9 +83,15 @@
 
         <div class="field company-name">{{ $companyNameUpper }}</div>
 
-        <div class="field summary-line">
-            A DIVERSION OF <strong>{{ $percentageDisplay }}%</strong> WAS ACHIEVED FOR THE MONTH OF {{ $monthYearUpper }} DEMONSTRATING THE
-            CONTINUED SUCCESS OF <strong>{{ $companyNameUpper }}&#8217;S</strong> WASTE DIVERSION PROGRAM
+        <div class="field summary-line @if($tierNameUpper) with-tier @endif">
+            @if($tierNameUpper)
+                A DIVERSION OF <strong>{{ $percentageDisplay }}%</strong> WAS ACHIEVED FOR {{ $monthYearUpper }}, EARNING A
+                <strong style="color: {{ $tierColor }}">{{ $tierNameUpper }}</strong> RESOURCE RECOVERY RATING&#8482;,
+                DEMONSTRATING <strong>{{ $companyNameUpper }}&#8217;S</strong> CONTINUED WASTE DIVERSION SUCCESS
+            @else
+                A DIVERSION OF <strong>{{ $percentageDisplay }}%</strong> WAS ACHIEVED FOR THE MONTH OF {{ $monthYearUpper }} DEMONSTRATING THE
+                CONTINUED SUCCESS OF <strong>{{ $companyNameUpper }}&#8217;S</strong> WASTE DIVERSION PROGRAM
+            @endif
         </div>
 
         <div class="field certificate-date">{{ $completeDateUpper }}</div>
