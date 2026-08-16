@@ -1142,6 +1142,8 @@ export default function Dashboard({ companies = [], dashboardData = null, gradeS
                     </h3>
                     <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed mb-4 max-w-3xl">
                         From lifecycle saving, SA factors — see docs/Dashboard &amp; Reports - Metrics
+                        <br />
+                        WasteFlow Resource Intelligence™ factors – baseline 2026
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div className="text-center p-3.5 bg-indigo-50 dark:bg-indigo-950/40 rounded-lg border border-indigo-100 dark:border-indigo-800/50 shadow-sm">

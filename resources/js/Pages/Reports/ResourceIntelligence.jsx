@@ -268,7 +268,6 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
             <Head title="WasteFlow Resource Intelligence™ Report" />
             <style>{`
                 @media print {
-                    @page { size: A4 portrait; margin: 10mm 8mm; }
                     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
                     .resource-intelligence-report { box-shadow: none !important; border: none !important; border-radius: 0 !important; }
                     .print-page-break { page-break-before: always; break-before: page; border-top: none !important; }
@@ -967,6 +966,9 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                 <p className="text-sm text-gray-600 leading-relaxed">Environmental equivalencies are estimates derived from recognised conversion factors and lifecycle assessment methodologies. Actual environmental outcomes may vary depending on material composition, processing technologies and downstream recovery pathways. These metrics are intended to support sustainability reporting and continuous improvement and should not be interpreted as a certified greenhouse gas inventory or independently verified carbon footprint assessment.</p>
                                 <p className="mt-3 text-xs text-gray-500 leading-relaxed">
                                     &copy; {new Date().getFullYear()} WasteFlow (Pty) Ltd. WasteFlow Resource Intelligence™, Carbon Avoidance Intensity (CAI) and WasteFlow Resource Recovery Rating™ are proprietary methodologies developed by WasteFlow (Pty) Ltd. No part of this methodology may be reproduced or distributed without prior written permission.
+                                </p>
+                                <p className="mt-2 text-xs text-gray-500 leading-relaxed">
+                                    — WasteFlow Resource Intelligence™ factors – baseline 2026
                                 </p>
                             </div>
                             <div className="mt-8 flex flex-col items-center border-t border-gray-200 dark:border-gray-600 pt-8">

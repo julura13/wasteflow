@@ -99,6 +99,29 @@ it('allows an admin to update and delete a client hub advert', function () {
     expect(ClientHubAdvert::find($advert->id))->toBeNull();
 });
 
+it('allows updating a client hub advert without a file when the file field is an empty string, as Inertia sends it', function () {
+    // Regression test: Inertia's useForm + forceFormData serializes a null `file` field as an
+    // empty string rather than omitting it, which used to fail `sometimes|file` validation.
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+
+    $advert = ClientHubAdvert::factory()->create(['disk' => 'local']);
+
+    $this->actingAs($admin)
+        ->post("/client-hub/{$advert->id}", [
+            '_method' => 'put',
+            'title' => 'Updated title',
+            'details' => '',
+            'contact_email' => $advert->contact_email,
+            'is_active' => true,
+            'file' => '',
+        ])
+        ->assertRedirect()
+        ->assertSessionHasNoErrors();
+
+    expect($advert->fresh()->title)->toBe('Updated title');
+});
+
 it('shares an active undismissed advert as the popup prop for a client user, but not for other roles', function () {
     ClientHubAdvert::factory()->create(['title' => 'New Service']);
 

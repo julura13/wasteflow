@@ -6,6 +6,7 @@ use App\Models\Concerns\Viewable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Facades\Storage;
 
@@ -29,6 +30,7 @@ class Media extends Model
         'local_deleted_at',
         'file_size',
         'collection',
+        'sort_order',
         'description',
         'uploaded_by',
     ];
@@ -38,6 +40,7 @@ class Media extends Model
         return [
             'local_cached_at' => 'datetime',
             'local_deleted_at' => 'datetime',
+            'sort_order' => 'integer',
         ];
     }
 
@@ -53,6 +56,16 @@ class Media extends Model
     public function uploadedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'uploaded_by');
+    }
+
+    /**
+     * Companies this document is restricted to. An empty set means visible to every client
+     * (the default, matching pre-existing behaviour); a non-empty set restricts visibility
+     * to client-role users belonging to one of these companies. Used by SHEQ Compliance.
+     */
+    public function companies(): BelongsToMany
+    {
+        return $this->belongsToMany(Company::class, 'media_company');
     }
 
     /**

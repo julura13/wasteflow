@@ -139,6 +139,8 @@ Route::middleware(['auth', 'verified'])->prefix('sheq-compliance')->name('sheq-c
         Route::post('/', [App\Http\Controllers\SheqComplianceController::class, 'store'])->name('store');
         Route::put('/{sheqCompliance}', [App\Http\Controllers\SheqComplianceController::class, 'update'])->name('update');
         Route::delete('/{sheqCompliance}', [App\Http\Controllers\SheqComplianceController::class, 'destroy'])->name('destroy');
+        Route::post('/{sheqCompliance}/move-up', [App\Http\Controllers\SheqComplianceController::class, 'moveUp'])->name('move-up');
+        Route::post('/{sheqCompliance}/move-down', [App\Http\Controllers\SheqComplianceController::class, 'moveDown'])->name('move-down');
     });
 });
 

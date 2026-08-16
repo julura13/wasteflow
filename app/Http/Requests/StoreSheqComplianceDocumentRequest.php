@@ -25,6 +25,8 @@ class StoreSheqComplianceDocumentRequest extends FormRequest
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:2000'],
             'file' => ['required', 'file', 'max:10240'],
+            'company_ids' => ['nullable', 'array'],
+            'company_ids.*' => ['integer', 'exists:companies,id'],
         ];
     }
 }

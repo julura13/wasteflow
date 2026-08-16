@@ -189,7 +189,7 @@ export default function DashboardLayout({ children }) {
 
     return (
         <>
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 print:bg-white">
             {/* Mobile sidebar */}
             <div className={`fixed inset-0 z-50 lg:hidden print:hidden ${sidebarOpen ? 'block' : 'hidden'}`}>
                 <div className="fixed inset-0 bg-gray-900/70" onClick={() => setSidebarOpen(false)} />
@@ -293,7 +293,7 @@ export default function DashboardLayout({ children }) {
                     sidebarCollapsed ? 'lg:w-20' : 'lg:w-64'
                 }`}
             >
-                <div className="flex flex-col flex-grow bg-white dark:bg-gray-800 shadow-lg">
+                <div className="flex flex-col flex-grow min-h-0 bg-white dark:bg-gray-800 shadow-lg">
                     <div className="flex h-16 items-center px-4 shrink-0">
                         {!sidebarCollapsed && (
                             <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 truncate">
@@ -313,7 +313,8 @@ export default function DashboardLayout({ children }) {
                             <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100 mx-auto" title="WasteFlow">WC</h1>
                         )}
                     </div>
-                    <nav className="flex-1 px-3 py-4 overflow-hidden">
+                    <div className="flex-1 overflow-y-auto">
+                    <nav className="px-3 py-4">
                         <ul className="space-y-2">
                             {navigation.map((item) => {
                                 const isCurrent = url.startsWith(item.href);
@@ -344,7 +345,7 @@ export default function DashboardLayout({ children }) {
                             })}
                         </ul>
                     </nav>
-                    <div className="shrink-0">
+                    <div>
                         <div className="border-t border-gray-200 dark:border-gray-700 p-2">
                             <Link
                                 href="/documents"
@@ -439,6 +440,7 @@ export default function DashboardLayout({ children }) {
                                 )}
                             </button>
                         </div>
+                    </div>
                     </div>
                 </div>
             </div>
@@ -631,8 +633,8 @@ export default function DashboardLayout({ children }) {
                 )}
 
                 {/* Main content area */}
-                <main className="py-2">
-                    <div className="mx-auto px-4 sm:px-6 lg:px-8">
+                <main className="py-2 print:py-0">
+                    <div className="mx-auto px-4 sm:px-6 lg:px-8 print:px-0">
                         {children}
                     </div>
                 </main>

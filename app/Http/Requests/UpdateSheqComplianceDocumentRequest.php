@@ -2,10 +2,13 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\StripsEmptyFileField;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateSheqComplianceDocumentRequest extends FormRequest
 {
+    use StripsEmptyFileField;
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -25,6 +28,8 @@ class UpdateSheqComplianceDocumentRequest extends FormRequest
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:2000'],
             'file' => ['sometimes', 'file', 'max:10240'],
+            'company_ids' => ['nullable', 'array'],
+            'company_ids.*' => ['integer', 'exists:companies,id'],
         ];
     }
 }

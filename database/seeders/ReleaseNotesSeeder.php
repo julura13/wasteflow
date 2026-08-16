@@ -332,6 +332,62 @@ class ReleaseNotesSeeder extends Seeder
                 'description' => 'Admins can now upload PNG/JPG/PDF adverts under Client Hub. Active adverts pop up automatically for clients on login. Closing the popup dismisses it (won\'t pop up again) but keeps the notification bell badge unread until the client actually opens it from the bell.',
                 'released_at' => now(),
             ],
+            [
+                'version' => '1.10.1',
+                'type' => 'bugfix',
+                'title' => 'Corrected Barrels of Oil Saved and Homes Powered formulas to match EPA factors',
+                'description' => 'Barrels of Oil Saved and Homes Powered (1 Month) were previously derived from energy saved (kWh); they are now derived from Total Lifecycle Carbon Avoided (kg CO2e), divided by the EPA Greenhouse Gas Equivalencies Calculator factors of 431.9 kg CO2e per barrel of oil and 399.83 kg CO2e per home\'s electricity use per month, matching the EPA\'s current published methodology.',
+                'released_at' => now(),
+            ],
+            [
+                'version' => '1.10.2',
+                'type' => 'improvement',
+                'title' => 'Baseline-year footnote added to Dashboard and Resource Intelligence Report',
+                'description' => 'Added a "WasteFlow Resource Intelligence™ factors – baseline 2026" footnote to the Dashboard\'s Carbon equivalency indicators section and to the Resource Intelligence Report\'s Disclaimer section (web view and PDF), so clients know which year\'s conversion factors are in effect.',
+                'released_at' => now(),
+            ],
+            [
+                'version' => '1.10.3',
+                'type' => 'bugfix',
+                'title' => 'Fixed grey border and alignment issues on the Resource Intelligence Report PDF',
+                'description' => 'The Resource Intelligence Report PDF (and print view) is generated from the same page as the Dashboard layout, whose grey page background and content padding were leaking through into print/PDF output as a grey frame around every page. The layout now goes edge-to-edge and white in print mode, and a dead "@page margin" CSS rule that was never actually applied by the PDF generator was removed.',
+                'released_at' => now(),
+            ],
+            [
+                'version' => '1.10.4',
+                'type' => 'bugfix',
+                'title' => 'Sidebar navigation now scrolls on short screens instead of hiding items',
+                'description' => 'On shorter browser viewports (e.g. laptops with high display scaling), the bottom of the sidebar — including Documents, SHEQ Compliance, Client Hub and the collapse button — could be clipped off-screen with no way to reach it. The sidebar now scrolls as a whole so every item stays reachable regardless of screen height.',
+                'released_at' => now(),
+            ],
+            [
+                'version' => '1.10.5',
+                'type' => 'feature',
+                'title' => 'Manual ordering for SHEQ Compliance documents',
+                'description' => 'Admins can now reorder SHEQ Compliance documents with move up/down controls instead of relying on filename or upload date. New uploads are appended to the end of the list.',
+                'released_at' => now(),
+            ],
+            [
+                'version' => '1.10.6',
+                'type' => 'feature',
+                'title' => 'Per-client visibility for SHEQ Compliance documents',
+                'description' => 'Admins can now restrict a SHEQ Compliance document to specific companies via a "Visible to" selector when uploading or editing. Documents with no companies selected remain visible to all clients, matching the previous behaviour. Internal staff always see every document regardless of restriction.',
+                'released_at' => now(),
+            ],
+            [
+                'version' => '1.10.7',
+                'type' => 'bugfix',
+                'title' => 'Fixed "The file field must be a file" error when editing documents without replacing the file',
+                'description' => 'Editing a Document, SHEQ Compliance document, or Client Hub advert without also choosing a replacement file always failed validation, because the upload form sends an empty placeholder value for the file field that Laravel was treating as an invalid file. Editing details (title, description, visibility, etc.) without touching the file now works correctly across all three.',
+                'released_at' => now(),
+            ],
+            [
+                'version' => '1.10.8',
+                'type' => 'feature',
+                'title' => 'Resource Recovery Rating now shown on the monthly certificate',
+                'description' => 'The WasteFlow Resource Recovery Rating™ tier (Platinum through Improvement Required) is now resolved from the client\'s diversion percentage and shown on their monthly Certificate of Waste Diversion, colour-matched to the tier configured under Settings > Recovery Rating. Previously the tiers were fully configurable by admins but never surfaced anywhere in the app.',
+                'released_at' => now(),
+            ],
         ];
 
         foreach ($notes as $note) {

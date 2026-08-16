@@ -39,7 +39,6 @@
             height: 19mm;
             font-family: 'DejaVu Serif', serif;
             font-weight: bold;
-            font-size: 30pt;
             color: #387026;
         }
         .summary-line {
@@ -47,9 +46,7 @@
             top: 136mm;
             width: 243.7mm;
             height: 19mm;
-            font-size: 13.5pt;
             color: #1a1a1a;
-            line-height: 1.5;
         }
         .certificate-date {
             left: 179.5mm;
@@ -77,11 +74,17 @@
             <img class="background" src="{{ $templateSrc }}" alt="">
         @endif
 
-        <div class="field company-name">{{ $companyNameUpper }}</div>
+        <div class="field company-name" style="font-size: {{ $companyNameFontSize }}pt">{{ $companyNameUpper }}</div>
 
-        <div class="field summary-line">
-            A DIVERSION OF <strong>{{ $percentageDisplay }}%</strong> WAS ACHIEVED FOR THE MONTH OF {{ $monthYearUpper }} DEMONSTRATING THE
-            CONTINUED SUCCESS OF <strong>{{ $companyNameUpper }}&#8217;S</strong> WASTE DIVERSION PROGRAM
+        <div class="field summary-line" style="font-size: {{ $summaryFontSize }}pt; line-height: {{ $summaryLineHeight }}">
+            @if($tierNameUpper)
+                A DIVERSION OF <strong>{{ $percentageDisplay }}%</strong> WAS ACHIEVED FOR {{ $monthYearUpper }}, EARNING A
+                <strong style="color: {{ $tierColor }}">{{ $tierNameUpper }}</strong> RESOURCE RECOVERY RATING&#8482;,
+                DEMONSTRATING <strong>{{ $companyNameUpper }}&#8217;S</strong> CONTINUED WASTE DIVERSION SUCCESS
+            @else
+                A DIVERSION OF <strong>{{ $percentageDisplay }}%</strong> WAS ACHIEVED FOR THE MONTH OF {{ $monthYearUpper }} DEMONSTRATING THE
+                CONTINUED SUCCESS OF <strong>{{ $companyNameUpper }}&#8217;S</strong> WASTE DIVERSION PROGRAM
+            @endif
         </div>
 
         <div class="field certificate-date">{{ $completeDateUpper }}</div>
