@@ -3,7 +3,9 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 use Throwable;
 
 class CleanupDatabaseBackupsCommand extends Command
@@ -12,14 +14,14 @@ class CleanupDatabaseBackupsCommand extends Command
                             {--disk= : Filesystem disk (default: database_backup.disk, usually wasabi)}
                             {--prefix= : Object key prefix (default: database_backup path_prefix)}
                             {--days= : Retention window in days (default: database_backup.retention_days)}
-                            {--dry-run : List what would be deleted without deleting anything}';
+                            {--dry-run : List what would be deleted without deleting anything}
+                            {--entire-bucket : Allow operating from the bucket root when the resolved prefix is empty}';
 
     protected $description = 'Delete database backup objects older than the configured retention window';
 
     public function handle(): int
     {
         $diskName = $this->option('disk') ?: (string) config('database_backup.disk', 'wasabi');
-        $prefix = trim((string) ($this->option('prefix') ?: config('database_backup.path_prefix', 'database-backups')), '/');
         $daysOption = $this->option('days');
         $days = (int) ($daysOption !== null && $daysOption !== '' ? $daysOption : config('database_backup.retention_days', 7));
         $dryRun = (bool) $this->option('dry-run');
@@ -30,28 +32,23 @@ class CleanupDatabaseBackupsCommand extends Command
             return self::FAILURE;
         }
 
-        $cutoffTimestamp = now()->subDays($days)->getTimestamp();
-
         try {
-            $disk = Storage::disk($diskName);
-            $paths = $disk->allFiles($prefix);
-        } catch (Throwable $e) {
-            $this->components->error('Could not list backups: '.$e->getMessage());
+            $prefix = $this->resolvePrefix();
+        } catch (RuntimeException $e) {
+            $this->components->error($e->getMessage());
 
             return self::FAILURE;
         }
 
-        $stale = [];
-        foreach ($paths as $path) {
-            try {
-                $lastModified = $disk->lastModified($path);
-            } catch (Throwable) {
-                continue;
-            }
+        $cutoffTimestamp = now()->subDays($days)->getTimestamp();
 
-            if ($lastModified > 0 && $lastModified < $cutoffTimestamp) {
-                $stale[] = $path;
-            }
+        try {
+            $disk = Storage::disk($diskName);
+            $stale = $this->findStaleObjects($disk, $prefix, $cutoffTimestamp);
+        } catch (Throwable $e) {
+            $this->components->error('Could not list backups: '.$e->getMessage());
+
+            return self::FAILURE;
         }
 
         if ($stale === []) {
@@ -95,5 +92,47 @@ class CleanupDatabaseBackupsCommand extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Resolve the object key prefix, refusing to operate on the entire bucket
+     * root unless explicitly allowed — this command deletes objects, and the
+     * disk may also hold unrelated data (e.g. migrated order documents).
+     */
+    private function resolvePrefix(): string
+    {
+        $prefixOption = $this->option('prefix');
+
+        $prefix = ($prefixOption !== null && $prefixOption !== '')
+            ? trim((string) $prefixOption, '/')
+            : trim((string) config('database_backup.path_prefix', 'database-backups'), '/');
+
+        if ($prefix === '' && ! $this->option('entire-bucket')) {
+            throw new RuntimeException('Resolved prefix is empty, which would operate on the entire bucket root. Pass --entire-bucket to confirm this is intentional, or set a non-empty prefix.');
+        }
+
+        return $prefix;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function findStaleObjects(FilesystemAdapter $disk, string $prefix, int $cutoffTimestamp): array
+    {
+        $stale = [];
+
+        foreach ($disk->getDriver()->listContents($prefix, true) as $attributes) {
+            if (! $attributes->isFile()) {
+                continue;
+            }
+
+            $lastModified = $attributes->lastModified();
+
+            if ($lastModified !== null && $lastModified < $cutoffTimestamp) {
+                $stale[] = $attributes->path();
+            }
+        }
+
+        return $stale;
     }
 }

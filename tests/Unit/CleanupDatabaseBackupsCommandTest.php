@@ -1,8 +1,9 @@
 <?php
 
 use Illuminate\Support\Facades\Storage;
+use Tests\TestCase;
 
-uses(Tests\TestCase::class);
+uses(TestCase::class);
 
 function touchWasabiBackup(string $key, int $timestamp): void
 {
@@ -72,4 +73,41 @@ it('honours the --days option over the configured default', function () {
 it('rejects a retention window below one day', function () {
     $this->artisan('backup:cleanup', ['--days' => 0])
         ->assertFailed();
+});
+
+it('refuses to run against the entire bucket root when the prefix is empty', function () {
+    $old = 'unrelated-order-doc.pdf';
+    touchWasabiBackup($old, now()->subDays(10)->getTimestamp());
+
+    config(['database_backup.path_prefix' => '']);
+
+    $this->artisan('backup:cleanup')
+        ->assertFailed()
+        ->expectsOutputToContain('--entire-bucket');
+
+    expect(Storage::disk('wasabi')->exists($old))->toBeTrue();
+});
+
+it('refuses to run against the entire bucket root when --prefix trims to empty', function () {
+    $old = 'unrelated-order-doc.pdf';
+    touchWasabiBackup($old, now()->subDays(10)->getTimestamp());
+
+    $this->artisan('backup:cleanup', ['--prefix' => '/'])
+        ->assertFailed()
+        ->expectsOutputToContain('--entire-bucket');
+
+    expect(Storage::disk('wasabi')->exists($old))->toBeTrue();
+});
+
+it('operates on the entire bucket root when --entire-bucket is explicitly passed', function () {
+    $old = 'unrelated-order-doc.pdf';
+    touchWasabiBackup($old, now()->subDays(10)->getTimestamp());
+
+    config(['database_backup.path_prefix' => '']);
+
+    $this->artisan('backup:cleanup', ['--entire-bucket' => true])
+        ->assertSuccessful()
+        ->expectsOutputToContain('Deleted 1 backup(s) older than 7 day(s).');
+
+    expect(Storage::disk('wasabi')->exists($old))->toBeFalse();
 });
