@@ -388,6 +388,13 @@ class ReleaseNotesSeeder extends Seeder
                 'description' => 'The WasteFlow Resource Recovery Rating™ tier (Platinum through Improvement Required) is now resolved from the client\'s diversion percentage and shown on their monthly Certificate of Waste Diversion, colour-matched to the tier configured under Settings > Recovery Rating. Previously the tiers were fully configurable by admins but never surfaced anywhere in the app.',
                 'released_at' => now(),
             ],
+            [
+                'version' => '1.10.9',
+                'type' => 'feature',
+                'title' => 'Automatic cleanup of old database backups on Wasabi',
+                'description' => 'Database backups uploaded to Wasabi were never removed, so storage usage grew without bound. A new `backup:cleanup` command now deletes backup objects older than 7 days (configurable), and runs automatically every day shortly after the backup itself when scheduling is enabled.',
+                'released_at' => now(),
+            ],
         ];
 
         foreach ($notes as $note) {

@@ -128,4 +128,19 @@ return [
 
     'schedule_time' => env('DATABASE_BACKUP_SCHEDULE_TIME', '03:00'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Retention (cleanup)
+    |--------------------------------------------------------------------------
+    |
+    | Backup objects older than this many days are deleted by `backup:cleanup`.
+    | It runs on the same daily schedule as the backup itself (shortly after,
+    | see cleanup_schedule_time) when schedule_enabled is true above.
+    |
+    */
+
+    'retention_days' => (int) env('DATABASE_BACKUP_RETENTION_DAYS', 7),
+
+    'cleanup_schedule_time' => env('DATABASE_BACKUP_CLEANUP_SCHEDULE_TIME', '03:30'),
+
 ];
