@@ -94,23 +94,29 @@ class SheqComplianceController extends Controller
         $fileName = Str::uuid().'.'.$file->getClientOriginalExtension();
         $path = $file->storeAs('sheq-compliance', $fileName, $disk);
 
-        $nextSortOrder = (int) (Media::where('collection', self::COLLECTION)
-            ->whereNull('mediable_type')
-            ->max('sort_order') ?? 0) + 1;
+        // Locking the max() read inside the same transaction as the insert prevents two
+        // concurrent uploads from both computing the same "next" sort_order - the second
+        // transaction's locked read blocks until the first commits its new row.
+        $document = DB::transaction(function () use ($validated, $file, $fileName, $disk, $path, $request) {
+            $nextSortOrder = (int) (Media::where('collection', self::COLLECTION)
+                ->whereNull('mediable_type')
+                ->lockForUpdate()
+                ->max('sort_order') ?? 0) + 1;
 
-        $document = Media::create([
-            'collection' => self::COLLECTION,
-            'sort_order' => $nextSortOrder,
-            'title' => $validated['title'],
-            'description' => $validated['description'] ?? null,
-            'original_name' => $file->getClientOriginalName(),
-            'file_name' => $fileName,
-            'mime_type' => $file->getMimeType(),
-            'disk' => $disk,
-            'path' => $path,
-            'file_size' => $file->getSize(),
-            'uploaded_by' => $request->user()->id,
-        ]);
+            return Media::create([
+                'collection' => self::COLLECTION,
+                'sort_order' => $nextSortOrder,
+                'title' => $validated['title'],
+                'description' => $validated['description'] ?? null,
+                'original_name' => $file->getClientOriginalName(),
+                'file_name' => $fileName,
+                'mime_type' => $file->getMimeType(),
+                'disk' => $disk,
+                'path' => $path,
+                'file_size' => $file->getSize(),
+                'uploaded_by' => $request->user()->id,
+            ]);
+        });
 
         $document->companies()->sync($validated['company_ids'] ?? []);
 

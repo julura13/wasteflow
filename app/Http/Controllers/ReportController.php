@@ -430,19 +430,33 @@ class ReportController extends Controller
         $periodEnd = Carbon::createFromDate($year, $month, 1)->endOfMonth();
         $tier = RecoveryRatingTier::forPercentage($divertedFromLandfillPercentage);
 
+        $companyNameUpper = Str::upper($reportData['companyName']);
+        $percentageDisplay = number_format($divertedFromLandfillPercentage, 1);
+        $monthYearUpper = Str::upper($periodEnd->format('F Y'));
+        $tierNameUpper = $tier ? Str::upper($tier->name) : null;
+
+        $summaryText = $tierNameUpper
+            ? "A DIVERSION OF {$percentageDisplay}% WAS ACHIEVED FOR {$monthYearUpper}, EARNING A {$tierNameUpper} RESOURCE RECOVERY RATING\u{2122}, DEMONSTRATING {$companyNameUpper}\u{2019}S CONTINUED WASTE DIVERSION SUCCESS"
+            : "A DIVERSION OF {$percentageDisplay}% WAS ACHIEVED FOR THE MONTH OF {$monthYearUpper} DEMONSTRATING THE CONTINUED SUCCESS OF {$companyNameUpper}\u{2019}S WASTE DIVERSION PROGRAM";
+
         $options = new Options;
         $options->set('isHtml5ParserEnabled', true);
         $options->set('isRemoteEnabled', false);
         $options->set('defaultFont', 'DejaVu Sans');
 
+        $summarySizing = $this->certificateSummaryFontSize($summaryText);
+
         $dompdf = new Dompdf($options);
         $html = view('reports.client-monthly-certificate-pdf', [
-            'companyNameUpper' => Str::upper($reportData['companyName']),
-            'percentageDisplay' => number_format($divertedFromLandfillPercentage, 1),
-            'monthYearUpper' => Str::upper($periodEnd->format('F Y')),
+            'companyNameUpper' => $companyNameUpper,
+            'companyNameFontSize' => $this->certificateCompanyNameFontSize($companyNameUpper),
+            'percentageDisplay' => $percentageDisplay,
+            'monthYearUpper' => $monthYearUpper,
             'completeDateUpper' => Str::upper($periodEnd->format('d F Y')),
-            'tierNameUpper' => $tier ? Str::upper($tier->name) : null,
+            'tierNameUpper' => $tierNameUpper,
             'tierColor' => $tier?->color,
+            'summaryFontSize' => $summarySizing['size'],
+            'summaryLineHeight' => $summarySizing['lineHeight'],
         ])->render();
 
         $dompdf->loadHtml($html);
@@ -455,6 +469,36 @@ class ReportController extends Controller
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ]);
+    }
+
+    /**
+     * Font size (pt) for the certificate's company-name field, scaled down for long company
+     * names so they don't wrap past the fixed-height field on the certificate background.
+     */
+    private function certificateCompanyNameFontSize(string $companyNameUpper): float
+    {
+        return match (true) {
+            strlen($companyNameUpper) <= 20 => 30.0,
+            strlen($companyNameUpper) <= 35 => 22.0,
+            default => 17.0,
+        };
+    }
+
+    /**
+     * Font size/line-height (pt) for the certificate's summary sentence, scaled down as the
+     * assembled sentence grows (longer company/tier names) so it stays within the fixed-height
+     * field above the signature line instead of overflowing onto it.
+     *
+     * @return array{size: float, lineHeight: float}
+     */
+    private function certificateSummaryFontSize(string $summaryText): array
+    {
+        return match (true) {
+            strlen($summaryText) <= 150 => ['size' => 13.5, 'lineHeight' => 1.5],
+            strlen($summaryText) <= 180 => ['size' => 11.5, 'lineHeight' => 1.35],
+            strlen($summaryText) <= 210 => ['size' => 9.5, 'lineHeight' => 1.25],
+            default => ['size' => 8.0, 'lineHeight' => 1.2],
+        };
     }
 
     /**
