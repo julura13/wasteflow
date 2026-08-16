@@ -1,5 +1,6 @@
 <?php
 
+use App\Jobs\CleanupDatabaseBackupsJob;
 use App\Jobs\CleanupLocalOrderMediaJob;
 use App\Jobs\DatabaseBackupJob;
 use Illuminate\Foundation\Inspiring;
@@ -21,5 +22,9 @@ Schedule::command('recurring-orders:create')
 if (config('database_backup.schedule_enabled')) {
     Schedule::job(new DatabaseBackupJob)
         ->dailyAt((string) config('database_backup.schedule_time', '03:00'))
+        ->withoutOverlapping();
+
+    Schedule::job(new CleanupDatabaseBackupsJob)
+        ->dailyAt((string) config('database_backup.cleanup_schedule_time', '03:30'))
         ->withoutOverlapping();
 }
