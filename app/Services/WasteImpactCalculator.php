@@ -21,12 +21,6 @@ class WasteImpactCalculator
     /** Trees saved per kg of paper recycled (20 trees per tonne = 20/1000 per kg) */
     private const TREES_PER_KG_PAPER = 20 / 1000;
 
-    /** kWh of energy saved equivalent to one barrel of oil */
-    private const KWH_PER_BARREL_OF_OIL = 1700.0;
-
-    /** kWh of energy saved equivalent to powering one home for one month */
-    private const KWH_PER_HOME_POWERED_ONE_MONTH = 900.0;
-
     /** Energy saved factors (per kg) by simple category key */
     private const ENERGY_FACTORS = [
         'paper' => 10,
@@ -253,8 +247,8 @@ class WasteImpactCalculator
         return [
             'treesSaved' => $treesSaved,
             'energySaved' => $energySaved,
-            'barrelsOfOilSaved' => round($energySaved / self::KWH_PER_BARREL_OF_OIL, 2),
-            'homesPoweredOneMonth' => round($energySaved / self::KWH_PER_HOME_POWERED_ONE_MONTH, 2),
+            'barrelsOfOilSaved' => $equivalency['barrelsOfOilSaved'],
+            'homesPoweredOneMonth' => $equivalency['homesPoweredOneMonth'],
             'waterSaved' => $waterSaved,
             'co2Saved' => $co2Saved,
             'electricityEquivalentKwhSaGrid' => $equivalency['electricityEquivalentKwhSaGrid'],
@@ -290,8 +284,8 @@ class WasteImpactCalculator
         return [
             'treesSaved' => $treesSaved,
             'energySaved' => $energySaved,
-            'barrelsOfOilSaved' => round($energySaved / self::KWH_PER_BARREL_OF_OIL, 2),
-            'homesPoweredOneMonth' => round($energySaved / self::KWH_PER_HOME_POWERED_ONE_MONTH, 2),
+            'barrelsOfOilSaved' => $equivalency['barrelsOfOilSaved'],
+            'homesPoweredOneMonth' => $equivalency['homesPoweredOneMonth'],
             'waterSaved' => $waterSaved,
             'co2Saved' => $co2Saved,
             'electricityEquivalentKwhSaGrid' => $equivalency['electricityEquivalentKwhSaGrid'],

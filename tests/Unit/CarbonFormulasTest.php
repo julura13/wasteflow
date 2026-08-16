@@ -138,28 +138,31 @@ test('buildCarbonWeightsFromWasteStreams lifecycle with grade-split plastics', f
     expect($lifecycle)->toBe(420.36);
 });
 
-test('WasteImpactCalculator derives barrels of oil and homes powered from energy saved', function () {
+test('WasteImpactCalculator derives barrels of oil and homes powered from lifecycle CO2e (EPA factors)', function () {
     $calculator = new WasteImpactCalculator;
 
-    // 100 kg paper × 10 kWh/kg energy factor = 1000 kWh energy saved
+    // 100 kg paper × 10 kWh/kg energy factor = 1000 kWh energy saved (unaffected by this formula)
+    // 100 kg paper × (0.5 scope3 + 0.78 landfill avoidance) kg CO2e/kg = 128 kg CO2e lifecycle saving
     $categoryWeights = ['paper' => 100];
 
     $impact = $calculator->calculateImpactFromCategoryWeights($categoryWeights);
 
     expect($impact['energySaved'])->toBe(1000.0)
-        ->and($impact['barrelsOfOilSaved'])->toBe(0.59)   // 1000 ÷ 1700
-        ->and($impact['homesPoweredOneMonth'])->toBe(1.11); // 1000 ÷ 900
+        ->and($impact['co2Saved'])->toBe(128.0)
+        ->and($impact['barrelsOfOilSaved'])->toBe(0.3)     // 128 ÷ 431.9 (EPA kg CO2e/barrel)
+        ->and($impact['homesPoweredOneMonth'])->toBe(0.32); // 128 ÷ 399.83 (EPA kg CO2e/home/month)
 });
 
-test('WasteImpactCalculator carbon-weights path also derives barrels of oil and homes powered', function () {
+test('WasteImpactCalculator carbon-weights path also derives barrels of oil and homes powered from lifecycle CO2e', function () {
     $calculator = new WasteImpactCalculator;
 
-    // 100 kg paper (carbon-key path) × 10 kWh/kg = 1000 kWh energy saved
+    // 100 kg paper (carbon-key path) → same 128 kg CO2e lifecycle saving as the category-weights path
     $carbonWeights = array_merge(WasteImpactCalculator::defaultCarbonWeights(), ['paper' => 100]);
 
     $impact = $calculator->calculateImpactFromCarbonWeights($carbonWeights);
 
     expect($impact['energySaved'])->toBe(1000.0)
-        ->and($impact['barrelsOfOilSaved'])->toBe(0.59)
-        ->and($impact['homesPoweredOneMonth'])->toBe(1.11);
+        ->and($impact['co2Saved'])->toBe(128.0)
+        ->and($impact['barrelsOfOilSaved'])->toBe(0.3)
+        ->and($impact['homesPoweredOneMonth'])->toBe(0.32);
 });

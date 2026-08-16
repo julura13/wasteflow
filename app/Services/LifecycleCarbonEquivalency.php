@@ -22,11 +22,25 @@ class LifecycleCarbonEquivalency
     private const KG_CO2E_PER_CAR_YEAR = 4600.0;
 
     /**
+     * kg CO₂e per barrel of crude oil — equivalency: barrels = CO₂e ÷ this.
+     * EPA Greenhouse Gas Equivalencies Calculator: 5.80 mmbtu/barrel × 20.31 kg C/mmbtu × 44/12 kg CO2/kg C.
+     */
+    private const KG_CO2E_PER_BARREL_OF_OIL = 431.9;
+
+    /**
+     * kg CO₂e per home's electricity use for one month — equivalency: homes = CO₂e ÷ this.
+     * EPA Greenhouse Gas Equivalencies Calculator: 4.798 metric tons CO2/home/year ÷ 12 months.
+     */
+    private const KG_CO2E_PER_HOME_POWERED_ONE_MONTH = 399.83;
+
+    /**
      * @return array{
      *     electricityEquivalentKwhSaGrid: float,
      *     transportEquivalentKm: float,
      *     fuelEquivalentLitresPetrol: float,
-     *     carsOffRoadAnnualEquivalent: float
+     *     carsOffRoadAnnualEquivalent: float,
+     *     barrelsOfOilSaved: float,
+     *     homesPoweredOneMonth: float
      * }
      */
     public function fromLifecycleSavingKgCo2e(float $lifecycleSavingKgCo2e): array
@@ -37,6 +51,8 @@ class LifecycleCarbonEquivalency
                 'transportEquivalentKm' => 0.0,
                 'fuelEquivalentLitresPetrol' => 0.0,
                 'carsOffRoadAnnualEquivalent' => 0.0,
+                'barrelsOfOilSaved' => 0.0,
+                'homesPoweredOneMonth' => 0.0,
             ];
         }
 
@@ -45,6 +61,8 @@ class LifecycleCarbonEquivalency
             'transportEquivalentKm' => round($lifecycleSavingKgCo2e / self::KG_CO2E_PER_KM_TRANSPORT, 2),
             'fuelEquivalentLitresPetrol' => round($lifecycleSavingKgCo2e / self::KG_CO2E_PER_LITRE_PETROL, 2),
             'carsOffRoadAnnualEquivalent' => round($lifecycleSavingKgCo2e / self::KG_CO2E_PER_CAR_YEAR, 4),
+            'barrelsOfOilSaved' => round($lifecycleSavingKgCo2e / self::KG_CO2E_PER_BARREL_OF_OIL, 2),
+            'homesPoweredOneMonth' => round($lifecycleSavingKgCo2e / self::KG_CO2E_PER_HOME_POWERED_ONE_MONTH, 2),
         ];
     }
 }
