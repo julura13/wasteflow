@@ -85,6 +85,46 @@ function useIsPrintMedia() {
     return printing;
 }
 
+/** Client name + reporting period the client asked to see in the "Save as PDF" filename Chrome suggests for Ctrl+P. */
+function buildPrintDocumentTitle(scopeDisplayName, filters) {
+    const monthLabel = (value) => MONTHS.find((m) => m.value === value)?.label;
+    const fromLabel = filters?.month && filters?.year ? `${monthLabel(filters.month)} ${filters.year}` : '';
+    const isRange = filters?.to_month && filters?.to_year
+        && (filters.to_month !== filters.month || filters.to_year !== filters.year);
+    const dateLabel = isRange ? `${fromLabel} to ${monthLabel(filters.to_month)} ${filters.to_year}` : fromLabel;
+
+    // Strip characters that are illegal in filenames on Windows/macOS, since the browser uses this title as-is.
+    const safeScope = (scopeDisplayName || '').replace(/[\\/:*?"<>|]+/g, '-').trim();
+
+    return [safeScope, 'WasteFlow Resource Intelligence Report', dateLabel].filter(Boolean).join(' - ');
+}
+
+/** Swaps document.title to printTitle only for the duration of the print dialog, so Ctrl+P's "Save as PDF" suggests it as the filename without renaming the browser tab. */
+function usePrintDocumentTitle(printTitle) {
+    useEffect(() => {
+        if (!printTitle) {
+            return undefined;
+        }
+        let previousTitle = null;
+        const before = () => {
+            previousTitle = document.title;
+            document.title = printTitle;
+        };
+        const after = () => {
+            if (previousTitle !== null) {
+                document.title = previousTitle;
+                previousTitle = null;
+            }
+        };
+        window.addEventListener('beforeprint', before);
+        window.addEventListener('afterprint', after);
+        return () => {
+            window.removeEventListener('beforeprint', before);
+            window.removeEventListener('afterprint', after);
+        };
+    }, [printTitle]);
+}
+
 /** Donut using ResponsiveContainer – matches dashboard pattern exactly. */
 function ClassificationDonut({ title, totalLabel, percentage, fill, totalKg, printMode = false }) {
     const pct = Math.min(100, Math.max(0, parseFloat(percentage) || 0));
@@ -262,6 +302,7 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
     const hasData = !!filters?.company_id;
     const printMedia = useIsPrintMedia();
     const printMode = isPrint || printMedia;
+    usePrintDocumentTitle(hasData ? buildPrintDocumentTitle(rd.scopeDisplayName, filters) : null);
 
     return (
         <DashboardLayout title="Resource Intelligence Report">
