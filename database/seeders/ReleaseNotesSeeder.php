@@ -402,6 +402,20 @@ class ReleaseNotesSeeder extends Seeder
                 'description' => 'The Waste Management Performance Trends chart title could land at the bottom of a page while its chart printed on the next, without a report header on the new page. It now moves to its own page with the report header intact. The Lifecycle Carbon Avoided paragraph in the methodology section could also split mid-sentence across a page break; it now stays intact on a single page.',
                 'released_at' => now(),
             ],
+            [
+                'version' => '1.10.11',
+                'type' => 'improvement',
+                'title' => 'Resource Intelligence PDF filename now includes client name and period',
+                'description' => 'Printing the Resource Intelligence report with Ctrl+P and saving as PDF used to suggest the same generic filename for every client. The suggested filename now includes the client name and reporting period, e.g. "Weskus Mall - WasteFlow Resource Intelligence Report - August 2026".',
+                'released_at' => now(),
+            ],
+            [
+                'version' => '1.10.12',
+                'type' => 'improvement',
+                'title' => 'SHEQ Compliance visibility is now role-based, not per-document',
+                'description' => 'Previously each SHEQ Compliance document could be individually restricted to specific companies. Visibility is now controlled at the section level via a new "view-sheq-compliance" permission: anyone whose role has that permission sees the SHEQ Compliance menu item and every document in it. Create or edit a role under Settings > Roles to grant it, then assign that role to the users who need access.',
+                'released_at' => now(),
+            ],
         ];
 
         foreach ($notes as $note) {

@@ -248,24 +248,26 @@ export default function DashboardLayout({ children }) {
                                 <span className="ml-auto h-2 w-2 rounded-full bg-primary-500" />
                             )}
                         </Link>
-                        <Link
-                            href="/sheq-compliance"
-                            className={`group relative flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                                url.startsWith('/sheq-compliance')
-                                    ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
-                                    : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'
-                            }`}
-                        >
-                            <ShieldCheck
-                                className={`mr-3 h-5 w-5 ${
-                                    url.startsWith('/sheq-compliance') ? 'text-blue-500' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'
+                        {permissions.includes('view-sheq-compliance') && (
+                            <Link
+                                href="/sheq-compliance"
+                                className={`group relative flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                                    url.startsWith('/sheq-compliance')
+                                        ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
+                                        : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'
                                 }`}
-                            />
-                            SHEQ Compliance
-                            {hasUnseenSheqCompliance && (
-                                <span className="ml-auto h-2 w-2 rounded-full bg-primary-500" />
-                            )}
-                        </Link>
+                            >
+                                <ShieldCheck
+                                    className={`mr-3 h-5 w-5 ${
+                                        url.startsWith('/sheq-compliance') ? 'text-blue-500' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'
+                                    }`}
+                                />
+                                SHEQ Compliance
+                                {hasUnseenSheqCompliance && (
+                                    <span className="ml-auto h-2 w-2 rounded-full bg-primary-500" />
+                                )}
+                            </Link>
+                        )}
                         {user?.is_admin && (
                             <Link
                                 href="/client-hub"
@@ -373,33 +375,35 @@ export default function DashboardLayout({ children }) {
                                 )}
                             </Link>
                         </div>
-                        <div className="border-t border-gray-200 dark:border-gray-700 p-2">
-                            <Link
-                                href="/sheq-compliance"
-                                title={sidebarCollapsed ? 'SHEQ Compliance' : undefined}
-                                className={`group relative flex items-center rounded-lg text-sm font-medium transition-colors ${
-                                    sidebarCollapsed ? 'justify-center px-2 py-2' : 'px-3 py-2'
-                                } ${
-                                    url.startsWith('/sheq-compliance')
-                                        ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
-                                        : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'
-                                }`}
-                            >
-                                <ShieldCheck
-                                    className={`h-5 w-5 shrink-0 ${sidebarCollapsed ? '' : 'mr-3'} ${
-                                        url.startsWith('/sheq-compliance') ? 'text-blue-500' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'
+                        {permissions.includes('view-sheq-compliance') && (
+                            <div className="border-t border-gray-200 dark:border-gray-700 p-2">
+                                <Link
+                                    href="/sheq-compliance"
+                                    title={sidebarCollapsed ? 'SHEQ Compliance' : undefined}
+                                    className={`group relative flex items-center rounded-lg text-sm font-medium transition-colors ${
+                                        sidebarCollapsed ? 'justify-center px-2 py-2' : 'px-3 py-2'
+                                    } ${
+                                        url.startsWith('/sheq-compliance')
+                                            ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
+                                            : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'
                                     }`}
-                                />
-                                {!sidebarCollapsed && <span className="truncate">SHEQ Compliance</span>}
-                                {hasUnseenSheqCompliance && (
-                                    <span
-                                        className={`absolute h-2 w-2 rounded-full bg-primary-500 ${
-                                            sidebarCollapsed ? 'top-1.5 right-1.5' : 'right-3 top-1/2 -translate-y-1/2'
+                                >
+                                    <ShieldCheck
+                                        className={`h-5 w-5 shrink-0 ${sidebarCollapsed ? '' : 'mr-3'} ${
+                                            url.startsWith('/sheq-compliance') ? 'text-blue-500' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'
                                         }`}
                                     />
-                                )}
-                            </Link>
-                        </div>
+                                    {!sidebarCollapsed && <span className="truncate">SHEQ Compliance</span>}
+                                    {hasUnseenSheqCompliance && (
+                                        <span
+                                            className={`absolute h-2 w-2 rounded-full bg-primary-500 ${
+                                                sidebarCollapsed ? 'top-1.5 right-1.5' : 'right-3 top-1/2 -translate-y-1/2'
+                                            }`}
+                                        />
+                                    )}
+                                </Link>
+                            </div>
+                        )}
                         {user?.is_admin && (
                             <div className="border-t border-gray-200 dark:border-gray-700 p-2">
                                 <Link

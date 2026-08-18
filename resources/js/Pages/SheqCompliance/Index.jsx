@@ -10,7 +10,7 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import { Plus, Edit2, Trash2, Download, Eye, FileText, ArrowUp, ArrowDown } from 'lucide-react';
 
-export default function SheqComplianceIndex({ documents, companies }) {
+export default function SheqComplianceIndex({ documents }) {
     const { auth } = usePage().props;
     const canManage = auth.user?.permissions?.includes('manage-documents') ?? false;
 
@@ -23,13 +23,12 @@ export default function SheqComplianceIndex({ documents, companies }) {
         title: '',
         description: '',
         file: null,
-        company_ids: [],
     });
 
     const resetForm = () => {
         form.reset();
         form.clearErrors();
-        form.setData({ title: '', description: '', file: null, company_ids: [] });
+        form.setData({ title: '', description: '', file: null });
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
@@ -48,16 +47,10 @@ export default function SheqComplianceIndex({ documents, companies }) {
             title: document.title ?? '',
             description: document.description ?? '',
             file: null,
-            company_ids: document.company_ids ?? [],
         });
         setEditingId(document.id);
         setMode('edit');
         setModalOpen(true);
-    };
-
-    const handleCompanyIdsChange = (event) => {
-        const selected = Array.from(event.target.selectedOptions, (option) => parseInt(option.value, 10));
-        form.setData('company_ids', selected);
     };
 
     const closeModal = () => {
@@ -136,24 +129,6 @@ export default function SheqComplianceIndex({ documents, companies }) {
             header: 'Uploaded',
             cell: ({ getValue }) => <span className="text-sm text-gray-600 dark:text-gray-400">{getValue()}</span>,
         },
-        ...(canManage
-            ? [
-                  {
-                      id: 'visibility',
-                      header: 'Visible to',
-                      cell: ({ row }) => {
-                          const names = row.original.company_names || [];
-                          return names.length === 0 ? (
-                              <span className="text-sm text-gray-600 dark:text-gray-400">All clients</span>
-                          ) : (
-                              <span className="text-sm text-gray-600 dark:text-gray-400" title={names.join(', ')}>
-                                  {names.join(', ')}
-                              </span>
-                          );
-                      },
-                  },
-              ]
-            : []),
         {
             id: 'actions',
             header: 'Actions',
@@ -253,7 +228,7 @@ export default function SheqComplianceIndex({ documents, companies }) {
                             </h2>
                             <p className="text-sm text-gray-600 dark:text-gray-400">
                                 {mode === 'create'
-                                    ? 'Provide a title, optional description, and a file. Visible to all clients unless you restrict it below.'
+                                    ? 'Provide a title, optional description, and a file.'
                                     : 'Update the details below, and optionally replace the file.'}
                             </p>
                         </div>
@@ -297,28 +272,6 @@ export default function SheqComplianceIndex({ documents, companies }) {
                                 />
                                 <InputError message={form.errors.file} className="mt-2" />
                                 <p className="mt-1 text-xs text-gray-500">Up to 10MB.</p>
-                            </div>
-
-                            <div>
-                                <InputLabel htmlFor="sheq-document-companies" value="Visible to" />
-                                <select
-                                    id="sheq-document-companies"
-                                    multiple
-                                    size={Math.min(6, Math.max(3, (companies?.length ?? 0) + 1))}
-                                    value={form.data.company_ids}
-                                    onChange={handleCompanyIdsChange}
-                                    className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm dark:bg-gray-700 dark:text-gray-100"
-                                >
-                                    {companies?.map((c) => (
-                                        <option key={c.id} value={c.id}>
-                                            {c.name}
-                                        </option>
-                                    ))}
-                                </select>
-                                <p className="mt-1 text-xs text-gray-500">
-                                    Leave nothing selected to show this document to all clients. Hold Ctrl (Windows/Linux) or Cmd (Mac) to select multiple companies.
-                                </p>
-                                <InputError message={form.errors.company_ids} className="mt-2" />
                             </div>
                         </div>
 
