@@ -395,6 +395,13 @@ class ReleaseNotesSeeder extends Seeder
                 'description' => 'Database backups uploaded to Wasabi were never removed, so storage usage grew without bound. A new `backup:cleanup` command now deletes backup objects older than 7 days (configurable), and runs automatically every day shortly after the backup itself when scheduling is enabled.',
                 'released_at' => now(),
             ],
+            [
+                'version' => '1.10.10',
+                'type' => 'bugfix',
+                'title' => 'Fixed Resource Intelligence report print pagination',
+                'description' => 'The Waste Management Performance Trends chart title could land at the bottom of a page while its chart printed on the next, without a report header on the new page. It now moves to its own page with the report header intact. The Lifecycle Carbon Avoided paragraph in the methodology section could also split mid-sentence across a page break; it now stays intact on a single page.',
+                'released_at' => now(),
+            ],
         ];
 
         foreach ($notes as $note) {
