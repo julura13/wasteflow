@@ -33,10 +33,11 @@
             text-align: center;
         }
         .company-name {
-            left: 74.5mm;
-            top: 113.5mm;
-            width: 126.2mm;
-            height: 19mm;
+            left: 65mm;
+            top: 119mm;
+            width: 145mm;
+            height: 14mm;
+            white-space: nowrap;
             font-family: 'DejaVu Serif', serif;
             font-weight: bold;
             color: #387026;

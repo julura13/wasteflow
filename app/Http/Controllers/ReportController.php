@@ -476,16 +476,25 @@ class ReportController extends Controller
     }
 
     /**
-     * Font size (pt) for the certificate's company-name field, scaled down for long company
-     * names so they don't wrap past the fixed-height field on the certificate background.
+     * Font size (pt) for the certificate's company-name field, shrunk so the name always
+     * renders on a single line within the fixed-width field on the certificate background.
+     *
+     * Character-count buckets used to drive this (e.g. "<=20 chars => 30pt") but character
+     * count doesn't track rendered width - "DEVONBOSCH ESTATE" (17 chars) measures wider at
+     * 30pt than "WESKUS MALL" (11 chars) because of the actual glyph widths involved, so it
+     * wrapped onto a second line and collided with the summary text below it. Measuring the
+     * real font's metrics instead of guessing from length fixes this for every name, not just
+     * the ones we happened to test.
      */
     private function certificateCompanyNameFontSize(string $companyNameUpper): float
     {
-        return match (true) {
-            strlen($companyNameUpper) <= 20 => 30.0,
-            strlen($companyNameUpper) <= 35 => 22.0,
-            default => 17.0,
-        };
+        return $this->fontSizeToFitOneLine(
+            $companyNameUpper,
+            base_path('vendor/dompdf/dompdf/lib/fonts/DejaVuSerif-Bold.ttf'),
+            maxWidthMm: 145.0,
+            maxSize: 30.0,
+            minSize: 12.0,
+        );
     }
 
     /**
@@ -506,18 +515,48 @@ class ReportController extends Controller
     }
 
     /**
-     * Font size (pt) for the certificate's date field, scaled down for longer month names
-     * (e.g. "30 SEPTEMBER 2026" vs "31 MAY 2026") so the date never wraps onto a second line
-     * and collides with the "Date" label printed on the certificate background below it.
+     * Font size (pt) for the certificate's date field, shrunk so the date always renders on a
+     * single line within the fixed-width field and never wraps onto the "Date" label printed
+     * on the certificate background below it (see {@see certificateCompanyNameFontSize} for
+     * why this measures the real font's metrics instead of guessing from character count).
      */
     private function certificateDateFontSize(string $completeDateUpper): float
     {
-        return match (true) {
-            strlen($completeDateUpper) <= 11 => 12.5,
-            strlen($completeDateUpper) <= 13 => 11.5,
-            strlen($completeDateUpper) <= 15 => 10.0,
-            default => 9.0,
-        };
+        return $this->fontSizeToFitOneLine(
+            $completeDateUpper,
+            base_path('vendor/dompdf/dompdf/lib/fonts/DejaVuSans.ttf'),
+            maxWidthMm: 34.7,
+            maxSize: 12.5,
+            minSize: 8.0,
+        );
+    }
+
+    /**
+     * Largest font size (pt), stepping down from $maxSize to $minSize in 0.5pt increments, at
+     * which $text renders on a single line no wider than $maxWidthMm when set in $fontFile -
+     * measured with that font's real glyph metrics via imagettfbbox() rather than guessed from
+     * character count. Falls back to $maxSize if GD/FreeType or the font file isn't available,
+     * so the certificate still renders (just without the shrink-to-fit protection). Falls back
+     * to $minSize (best-effort, may overflow slightly rather than wrap) if nothing fits.
+     */
+    private function fontSizeToFitOneLine(string $text, string $fontFile, float $maxWidthMm, float $maxSize, float $minSize): float
+    {
+        if (! function_exists('imagettfbbox') || ! is_file($fontFile)) {
+            return $maxSize;
+        }
+
+        $maxWidthPt = $maxWidthMm * 2.83464567;
+
+        for ($size = $maxSize; $size > $minSize; $size -= 0.5) {
+            $box = imagettfbbox($size, 0, $fontFile, $text);
+            $widthPt = abs($box[2] - $box[0]) * 0.75;
+
+            if ($widthPt <= $maxWidthPt) {
+                return $size;
+            }
+        }
+
+        return $minSize;
     }
 
     /**
