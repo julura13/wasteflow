@@ -278,9 +278,9 @@ class RebateTrackerReportService
     /**
      * @param  Collection<int, array<string, mixed>>  $rebateData
      * @param  array{start_date: string, end_date: string, company_id: ?int, branch_id: ?int, site_id: ?int}  $filters
-     * @param  bool  $showProviderBreakdown  Internal-only section (client role never sees it) - see RebateTracker.jsx.
+     * @param  bool  $canViewProvider  Internal-only: which service provider handled a load (client role never sees it) - see RebateTracker.jsx.
      */
-    public function renderRebateTrackerPdfBinary(Collection $rebateData, array $filters, float $totalRebate, float $totalWeight, bool $showProviderBreakdown): string
+    public function renderRebateTrackerPdfBinary(Collection $rebateData, array $filters, float $totalRebate, float $totalWeight, bool $canViewProvider): string
     {
         $options = new Options;
         $options->set('isHtml5ParserEnabled', true);
@@ -293,7 +293,8 @@ class RebateTrackerReportService
             'filters' => $filters,
             'totalRebate' => $totalRebate,
             'totalWeight' => $totalWeight,
-            'providerBreakdown' => $showProviderBreakdown ? $this->providerBreakdown($rebateData) : collect(),
+            'canViewProvider' => $canViewProvider,
+            'providerBreakdown' => $canViewProvider ? $this->providerBreakdown($rebateData) : collect(),
         ])->render();
 
         $dompdf->loadHtml($html);

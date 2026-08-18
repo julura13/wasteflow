@@ -191,7 +191,9 @@
                 <th>Site</th>
                 <th>Tracking No</th>
                 <th>Grade</th>
+                @if($canViewProvider)
                 <th>Provider</th>
+                @endif
                 <th class="text-right">Weight (kg)</th>
                 <th class="text-right">Rate (R/kg)</th>
                 <th class="text-right">Total (R)</th>
@@ -206,14 +208,16 @@
                 <td>{{ $item['site_name'] }}</td>
                 <td class="tracking-cell">{{ $item['tracking_numbers'] ?? '—' }}</td>
                 <td>{{ $item['grade'] }}</td>
+                @if($canViewProvider)
                 <td>{{ $item['service_provider_name'] ?? '—' }}</td>
+                @endif
                 <td class="text-right">{{ number_format($item['weight'], 2) }}</td>
                 <td class="text-right">{{ number_format($item['rate'], 2) }}</td>
                 <td class="text-right">{{ number_format($item['total'], 2) }}</td>
             </tr>
             @empty
             <tr>
-                <td colspan="10" style="text-align: center; padding: 20px;">No rebate data found for the selected filters.</td>
+                <td colspan="{{ $canViewProvider ? 10 : 9 }}" style="text-align: center; padding: 20px;">No rebate data found for the selected filters.</td>
             </tr>
             @endforelse
         </tbody>

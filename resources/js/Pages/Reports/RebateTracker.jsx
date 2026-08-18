@@ -9,7 +9,7 @@ import { formatDateYyyyMmDd } from '@/utils/formatDateYyyyMmDd';
 const siteOptionLabel = (site) =>
     `${site.name}${site.branch?.company ? ` (${site.branch.company.name})` : ''}`;
 
-export default function RebateTracker({ rebateData, providerBreakdown = [], companies, filters, totalRebate, totalWeight }) {
+export default function RebateTracker({ rebateData, providerBreakdown = [], canViewProvider = false, companies, filters, totalRebate, totalWeight }) {
     const { flash } = usePage().props;
     const [pdfExportUuid, setPdfExportUuid] = useState(null);
     const [pdfStatus, setPdfStatus] = useState(null);
@@ -378,9 +378,11 @@ export default function RebateTracker({ rebateData, providerBreakdown = [], comp
                                         <th className="px-4 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                             Grade
                                         </th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                            Provider
-                                        </th>
+                                        {canViewProvider && (
+                                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                                Provider
+                                            </th>
+                                        )}
                                         <th className="px-4 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                             Weight (kg)
                                         </th>
@@ -416,9 +418,11 @@ export default function RebateTracker({ rebateData, providerBreakdown = [], comp
                                             <td className="px-4 py-3 whitespace-nowrap text-base text-gray-900 dark:text-gray-100">
                                                 {item.grade}
                                             </td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-base text-gray-900 dark:text-gray-100">
-                                                {item.service_provider_name ?? '—'}
-                                            </td>
+                                            {canViewProvider && (
+                                                <td className="px-4 py-3 whitespace-nowrap text-base text-gray-900 dark:text-gray-100">
+                                                    {item.service_provider_name ?? '—'}
+                                                </td>
+                                            )}
                                             <td className="px-4 py-3 whitespace-nowrap text-base text-gray-900 dark:text-gray-100">
                                                 {Number(item.weight).toFixed(2)}
                                             </td>

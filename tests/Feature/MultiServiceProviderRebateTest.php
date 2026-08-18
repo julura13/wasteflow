@@ -1,13 +1,17 @@
 <?php
 
 use App\Models\Branch;
+use App\Models\Classification;
 use App\Models\Company;
+use App\Models\Facility;
+use App\Models\Grade;
 use App\Models\Material;
 use App\Models\Order;
 use App\Models\OrderWasteStream;
 use App\Models\ServiceProvider;
 use App\Models\Site;
 use App\Models\User;
+use App\Models\WasteStream;
 use Carbon\Carbon;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -26,10 +30,10 @@ function createRebateFixtures(): array
     $providerA = ServiceProvider::create(['name' => 'Provider A', 'is_active' => true]);
     $providerB = ServiceProvider::create(['name' => 'Provider B', 'is_active' => true]);
 
-    $facility = \App\Models\Facility::firstOrCreate(['name' => 'MSP Facility'], ['facility_type' => 'recycling', 'is_active' => true]);
-    $classification = \App\Models\Classification::firstOrCreate(['name' => 'Recycling'], ['is_active' => true]);
-    $wasteStream = \App\Models\WasteStream::firstOrCreate(['name' => 'Paper'], ['is_active' => true]);
-    $grade = \App\Models\Grade::firstOrCreate(['name' => 'MSP Grade'], ['is_active' => true]);
+    $facility = Facility::firstOrCreate(['name' => 'MSP Facility'], ['facility_type' => 'recycling', 'is_active' => true]);
+    $classification = Classification::firstOrCreate(['name' => 'Recycling'], ['is_active' => true]);
+    $wasteStream = WasteStream::firstOrCreate(['name' => 'Paper'], ['is_active' => true]);
+    $grade = Grade::firstOrCreate(['name' => 'MSP Grade'], ['is_active' => true]);
 
     $material = Material::create([
         'waste_stream_id' => $wasteStream->id,
@@ -146,6 +150,8 @@ it('breaks rebate totals out per service provider when a finalized order has loa
 
     $response->assertOk();
 
+    expect($response->viewData('page')['props']['canViewProvider'])->toBeTrue();
+
     $providerBreakdown = collect($response->viewData('page')['props']['providerBreakdown'])->keyBy('provider_name');
 
     expect($providerBreakdown->has('Provider A'))->toBeTrue();
@@ -209,8 +215,9 @@ it('hides the provider breakdown from a client-role user even though the rebate 
 
     // The client still sees their own rebate totals...
     expect(collect($props['rebateData'])->sum('weight'))->toBe(100.0);
-    // ...but never the internal per-provider breakdown.
+    // ...but never the internal per-provider breakdown, or the Provider column in the table.
     expect($props['providerBreakdown'])->toBe([]);
+    expect($props['canViewProvider'])->toBeFalse();
 });
 
 it('keeps two service providers that share a name as separate rows instead of merging their totals', function () {
