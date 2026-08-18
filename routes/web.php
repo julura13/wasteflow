@@ -168,7 +168,11 @@ Route::middleware(['auth', 'verified', 'permission:view-sheq-compliance'])->pref
 
 // Client Hub adverts (WCP-39): admin-managed popup announcements shown to client-role users on
 // login. dismiss/read are two independent flags - see ClientHubAdvertController for why.
+// index renders the admin management list or a client's own read-only advert list, branching
+// on role inside the controller (same pattern as SheqComplianceController/DocumentController) -
+// so clients have a permanent place to find an advert again after dismissing its popup.
 Route::middleware(['auth', 'verified'])->prefix('client-hub')->name('client-hub.')->group(function () {
+    Route::get('/', [ClientHubAdvertController::class, 'index'])->name('index');
     Route::get('/{clientHubAdvert}/view', [ClientHubAdvertController::class, 'view'])->name('view');
 
     Route::middleware(['role:client'])->group(function () {
@@ -178,7 +182,6 @@ Route::middleware(['auth', 'verified'])->prefix('client-hub')->name('client-hub.
     });
 
     Route::middleware(['role:admin'])->group(function () {
-        Route::get('/', [ClientHubAdvertController::class, 'index'])->name('index');
         Route::post('/', [ClientHubAdvertController::class, 'store'])->name('store');
         Route::put('/{clientHubAdvert}', [ClientHubAdvertController::class, 'update'])->name('update');
         Route::delete('/{clientHubAdvert}', [ClientHubAdvertController::class, 'destroy'])->name('destroy');

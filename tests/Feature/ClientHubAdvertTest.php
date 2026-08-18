@@ -271,6 +271,40 @@ it('shows the admin management list with all adverts', function () {
         );
 });
 
+it('shows a client their own read-only advert list, with read state, so they can find an advert again after the popup', function () {
+    $seen = ClientHubAdvert::factory()->create(['title' => 'Seen Advert']);
+    $unseen = ClientHubAdvert::factory()->create(['title' => 'Unseen Advert']);
+    ClientHubAdvert::factory()->create(['title' => 'Inactive Advert', 'is_active' => false]);
+
+    $client = User::factory()->create();
+    $client->assignRole('client');
+    $this->actingAs($client)->post("/client-hub/{$seen->id}/read");
+
+    $response = $this->actingAs($client)
+        ->get('/client-hub')
+        ->assertSuccessful()
+        ->assertInertia(fn ($page) => $page
+            ->component('ClientHub/Index')
+            ->has('adverts', 2)
+        );
+
+    $adverts = collect($response->viewData('page')['props']['adverts'])->keyBy('title');
+    expect($adverts->has('Inactive Advert'))->toBeFalse();
+    expect($adverts['Seen Advert']['read_at'])->not->toBeNull();
+    expect($adverts['Unseen Advert']['read_at'])->toBeNull();
+});
+
+it('forbids a non-admin, non-client role from viewing the client hub index', function () {
+    ClientHubAdvert::factory()->create();
+
+    $manager = User::factory()->create();
+    $manager->assignRole('manager');
+
+    $this->actingAs($manager)
+        ->get('/client-hub')
+        ->assertForbidden();
+});
+
 it('deletes the file from storage when an advert is deleted', function () {
     $file = UploadedFile::fake()->image('advert.png');
     $path = $file->storeAs('client-hub', 'test.png', 'local');
