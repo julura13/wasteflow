@@ -1,7 +1,9 @@
 <?php
 
+use App\Http\Controllers\ReportController;
 use App\Models\Company;
 use App\Models\User;
+use Database\Seeders\RecoveryRatingTierSeeder;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -70,6 +72,7 @@ it('includes the resolved Resource Recovery Rating tier name and colour in the c
         'percentageDisplay' => '82.0',
         'monthYearUpper' => 'JULY 2026',
         'completeDateUpper' => '31 JULY 2026',
+        'dateFontSize' => 12.5,
         'tierNameUpper' => 'GOLD',
         'tierColor' => '#D4AF37',
         'summaryFontSize' => 13.5,
@@ -89,6 +92,7 @@ it('falls back to the original certificate wording when no tier is resolved', fu
         'percentageDisplay' => '82.0',
         'monthYearUpper' => 'JULY 2026',
         'completeDateUpper' => '31 JULY 2026',
+        'dateFontSize' => 12.5,
         'tierNameUpper' => null,
         'tierColor' => null,
         'summaryFontSize' => 13.5,
@@ -99,22 +103,40 @@ it('falls back to the original certificate wording when no tier is resolved', fu
         ->and($html)->toContain('DEMONSTRATING THE');
 });
 
-it('shrinks the certificate company-name font size for long company names', function () {
-    $controller = new ReflectionClass(\App\Http\Controllers\ReportController::class);
+it('shrinks the certificate company-name font size for long company names, measured against the real font metrics', function () {
+    $controller = new ReflectionClass(ReportController::class);
     $method = $controller->getMethod('certificateCompanyNameFontSize');
     $method->setAccessible(true);
-    $instance = app(\App\Http\Controllers\ReportController::class);
+    $instance = app(ReportController::class);
 
     expect($method->invoke($instance, 'ACME CO'))->toBe(30.0)
-        ->and($method->invoke($instance, 'A MODERATELY LONG COMPANY NAME LTD'))->toBe(22.0)
-        ->and($method->invoke($instance, 'DCP CAPE TOWN DEPOT(DURBAN CONTAINER PARK)'))->toBe(17.0);
+        ->and($method->invoke($instance, 'A MODERATELY LONG COMPANY NAME LTD'))->toBe(16.0)
+        ->and($method->invoke($instance, 'DCP CAPE TOWN DEPOT(DURBAN CONTAINER PARK)'))->toBe(13.0);
+});
+
+it('fits "DEVONBOSCH ESTATE" and "VAN RIEBEECKSTRAND PRIMARY SCHOOL" on one line at a legible size, both sent to us as broken screenshots', function () {
+    // Regression test: two customers sent screenshots of their certificates broken in slightly
+    // different ways. "DEVONBOSCH ESTATE" (17 chars) wrapped its second line onto the summary
+    // text below it - the old character-count heuristic classified it into the same "<=20 chars
+    // => 30pt" bucket as "WESKUS MALL" (11 chars), but it measures wider at 30pt than the field
+    // allowed. "VAN RIEBEECKSTRAND PRIMARY SCHOOL" (34 chars) also wrapped for the same reason.
+    // Fixed by both measuring the real font metrics instead of guessing from length, and by
+    // widening the field itself - the certificate background has much more clear space to the
+    // right than the original field width assumed.
+    $controller = new ReflectionClass(ReportController::class);
+    $method = $controller->getMethod('certificateCompanyNameFontSize');
+    $method->setAccessible(true);
+    $instance = app(ReportController::class);
+
+    expect($method->invoke($instance, 'DEVONBOSCH ESTATE'))->toBe(30.0)
+        ->and($method->invoke($instance, 'VAN RIEBEECKSTRAND PRIMARY SCHOOL'))->toBeGreaterThanOrEqual(16.0);
 });
 
 it('shrinks the certificate summary font size as the assembled sentence grows', function () {
-    $controller = new ReflectionClass(\App\Http\Controllers\ReportController::class);
+    $controller = new ReflectionClass(ReportController::class);
     $method = $controller->getMethod('certificateSummaryFontSize');
     $method->setAccessible(true);
-    $instance = app(\App\Http\Controllers\ReportController::class);
+    $instance = app(ReportController::class);
 
     expect($method->invoke($instance, str_repeat('A', 100)))->toBe(['size' => 13.5, 'lineHeight' => 1.5])
         ->and($method->invoke($instance, str_repeat('A', 170)))->toBe(['size' => 11.5, 'lineHeight' => 1.35])
@@ -122,8 +144,40 @@ it('shrinks the certificate summary font size as the assembled sentence grows', 
         ->and($method->invoke($instance, str_repeat('A', 250)))->toBe(['size' => 8.0, 'lineHeight' => 1.2]);
 });
 
+it('shrinks the certificate date font size for longer month names, so the date never wraps onto the "Date" label below it', function () {
+    $controller = new ReflectionClass(ReportController::class);
+    $method = $controller->getMethod('certificateDateFontSize');
+    $method->setAccessible(true);
+    $instance = app(ReportController::class);
+
+    expect($method->invoke($instance, '31 MAY 2026'))->toBe(12.5)
+        ->and($method->invoke($instance, '30 JUNE 2026'))->toBe(12.5)
+        ->and($method->invoke($instance, '31 AUGUST 2026'))->toBeLessThan(12.5)
+        ->and($method->invoke($instance, '30 SEPTEMBER 2026'))->toBeLessThan($method->invoke($instance, '31 AUGUST 2026'));
+});
+
+it('positions the company-name field with a gap below the "WASTEFLOW CONGRATULATES" label baked into the certificate background', function () {
+    // Regression test: the field used to start at the same vertical position as the label
+    // above it (top: 113.5mm), so the company name sat flush against "WASTEFLOW
+    // CONGRATULATES" with no visible gap. It now starts further down.
+    $path = resource_path('views/reports/client-monthly-certificate-pdf.blade.php');
+    $contents = file_get_contents($path);
+
+    expect($contents)->toContain('.company-name')
+        ->and($contents)->not->toContain('top: 113.5mm');
+});
+
+it('falls back to the maximum font size when the font file used for measurement is missing, so the certificate still renders', function () {
+    $controller = new ReflectionClass(ReportController::class);
+    $method = $controller->getMethod('fontSizeToFitOneLine');
+    $method->setAccessible(true);
+    $instance = app(ReportController::class);
+
+    expect($method->invoke($instance, 'ANY TEXT', '/nonexistent/font.ttf', 100.0, 30.0, 10.0))->toBe(30.0);
+});
+
 it('resolves a Resource Recovery Rating tier for the certificate based on the diversion percentage achieved', function () {
-    $this->seed(\Database\Seeders\RecoveryRatingTierSeeder::class);
+    $this->seed(RecoveryRatingTierSeeder::class);
 
     $user = User::factory()->create();
     $user->assignRole('manager');

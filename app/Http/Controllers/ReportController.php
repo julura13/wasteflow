@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Jobs\GenerateWasteManagementPdfJob;
 use App\Models\Branch;
 use App\Models\Company;
+use App\Models\Material;
 use App\Models\RecoveryRatingTier;
 use App\Models\Site;
 use App\Models\User;
@@ -29,6 +30,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class ReportController extends Controller
 {
@@ -433,6 +435,7 @@ class ReportController extends Controller
         $companyNameUpper = Str::upper($reportData['companyName']);
         $percentageDisplay = number_format($divertedFromLandfillPercentage, 1);
         $monthYearUpper = Str::upper($periodEnd->format('F Y'));
+        $completeDateUpper = Str::upper($periodEnd->format('d F Y'));
         $tierNameUpper = $tier ? Str::upper($tier->name) : null;
 
         $summaryText = $tierNameUpper
@@ -452,7 +455,8 @@ class ReportController extends Controller
             'companyNameFontSize' => $this->certificateCompanyNameFontSize($companyNameUpper),
             'percentageDisplay' => $percentageDisplay,
             'monthYearUpper' => $monthYearUpper,
-            'completeDateUpper' => Str::upper($periodEnd->format('d F Y')),
+            'completeDateUpper' => $completeDateUpper,
+            'dateFontSize' => $this->certificateDateFontSize($completeDateUpper),
             'tierNameUpper' => $tierNameUpper,
             'tierColor' => $tier?->color,
             'summaryFontSize' => $summarySizing['size'],
@@ -472,16 +476,25 @@ class ReportController extends Controller
     }
 
     /**
-     * Font size (pt) for the certificate's company-name field, scaled down for long company
-     * names so they don't wrap past the fixed-height field on the certificate background.
+     * Font size (pt) for the certificate's company-name field, shrunk so the name always
+     * renders on a single line within the fixed-width field on the certificate background.
+     *
+     * Character-count buckets used to drive this (e.g. "<=20 chars => 30pt") but character
+     * count doesn't track rendered width - "DEVONBOSCH ESTATE" (17 chars) measures wider at
+     * 30pt than "WESKUS MALL" (11 chars) because of the actual glyph widths involved, so it
+     * wrapped onto a second line and collided with the summary text below it. Measuring the
+     * real font's metrics instead of guessing from length fixes this for every name, not just
+     * the ones we happened to test.
      */
     private function certificateCompanyNameFontSize(string $companyNameUpper): float
     {
-        return match (true) {
-            strlen($companyNameUpper) <= 20 => 30.0,
-            strlen($companyNameUpper) <= 35 => 22.0,
-            default => 17.0,
-        };
+        return $this->fontSizeToFitOneLine(
+            $companyNameUpper,
+            base_path('vendor/dompdf/dompdf/lib/fonts/DejaVuSerif-Bold.ttf'),
+            maxWidthMm: 145.0,
+            maxSize: 30.0,
+            minSize: 12.0,
+        );
     }
 
     /**
@@ -499,6 +512,51 @@ class ReportController extends Controller
             strlen($summaryText) <= 210 => ['size' => 9.5, 'lineHeight' => 1.25],
             default => ['size' => 8.0, 'lineHeight' => 1.2],
         };
+    }
+
+    /**
+     * Font size (pt) for the certificate's date field, shrunk so the date always renders on a
+     * single line within the fixed-width field and never wraps onto the "Date" label printed
+     * on the certificate background below it (see {@see certificateCompanyNameFontSize} for
+     * why this measures the real font's metrics instead of guessing from character count).
+     */
+    private function certificateDateFontSize(string $completeDateUpper): float
+    {
+        return $this->fontSizeToFitOneLine(
+            $completeDateUpper,
+            base_path('vendor/dompdf/dompdf/lib/fonts/DejaVuSans.ttf'),
+            maxWidthMm: 34.7,
+            maxSize: 12.5,
+            minSize: 8.0,
+        );
+    }
+
+    /**
+     * Largest font size (pt), stepping down from $maxSize to $minSize in 0.5pt increments, at
+     * which $text renders on a single line no wider than $maxWidthMm when set in $fontFile -
+     * measured with that font's real glyph metrics via imagettfbbox() rather than guessed from
+     * character count. Falls back to $maxSize if GD/FreeType or the font file isn't available,
+     * so the certificate still renders (just without the shrink-to-fit protection). Falls back
+     * to $minSize (best-effort, may overflow slightly rather than wrap) if nothing fits.
+     */
+    private function fontSizeToFitOneLine(string $text, string $fontFile, float $maxWidthMm, float $maxSize, float $minSize): float
+    {
+        if (! function_exists('imagettfbbox') || ! is_file($fontFile)) {
+            return $maxSize;
+        }
+
+        $maxWidthPt = $maxWidthMm * 2.83464567;
+
+        for ($size = $maxSize; $size > $minSize; $size -= 0.5) {
+            $box = imagettfbbox($size, 0, $fontFile, $text);
+            $widthPt = abs($box[2] - $box[0]) * 0.75;
+
+            if ($widthPt <= $maxWidthPt) {
+                return $size;
+            }
+        }
+
+        return $minSize;
     }
 
     /**
@@ -537,7 +595,7 @@ class ReportController extends Controller
     /**
      * One-time print-preview page visited by Browsershot (no auth middleware — token is the credential).
      */
-    public function resourceIntelligencePrintPreview(string $token): \Inertia\Response
+    public function resourceIntelligencePrintPreview(string $token): Response
     {
         $payload = cache()->get('ri_pdf_print_'.$token);
         abort_if(! $payload, 404);
@@ -984,7 +1042,7 @@ class ReportController extends Controller
     /**
      * Material-level weights for the reporting date range from finalized order waste streams (single source of truth with dashboard).
      *
-     * @return \Illuminate\Support\Collection<int, object{material_id: int, total_weight: float, material: \App\Models\Material}>
+     * @return Collection<int, object{material_id: int, total_weight: float, material: Material}>
      */
     private function getMaterialSummaries(?Company $company = null, ?Branch $branch = null, ?Site $site = null, ?string $startDate = null, ?string $endDate = null)
     {
@@ -1094,7 +1152,7 @@ class ReportController extends Controller
      * filtered to the Recycling classification, sorted alphabetically, and split
      * into two equal halves for the two-column report layout.
      *
-     * @param  Collection<int, object{material_id: int, total_weight: float, material: \App\Models\Material}>  $materialSummaries
+     * @param  Collection<int, object{material_id: int, total_weight: float, material: Material}>  $materialSummaries
      * @return array{0: list<array{name: string, qty: float}>, 1: list<array{name: string, qty: float}>}
      */
     private function getRecyclingCommodities(Collection $materialSummaries): array

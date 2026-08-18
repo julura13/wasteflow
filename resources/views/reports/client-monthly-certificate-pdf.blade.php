@@ -33,10 +33,11 @@
             text-align: center;
         }
         .company-name {
-            left: 74.5mm;
-            top: 113.5mm;
-            width: 126.2mm;
-            height: 19mm;
+            left: 65mm;
+            top: 119mm;
+            width: 145mm;
+            height: 14mm;
+            white-space: nowrap;
             font-family: 'DejaVu Serif', serif;
             font-weight: bold;
             color: #387026;
@@ -53,8 +54,8 @@
             top: 159mm;
             width: 34.7mm;
             height: 8mm;
-            font-size: 12.5pt;
             color: #1a1a1a;
+            white-space: nowrap;
         }
     </style>
 </head>
@@ -87,7 +88,7 @@
             @endif
         </div>
 
-        <div class="field certificate-date">{{ $completeDateUpper }}</div>
+        <div class="field certificate-date" style="font-size: {{ $dateFontSize }}pt">{{ $completeDateUpper }}</div>
     </div>
 </body>
 </html>
