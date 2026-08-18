@@ -416,6 +416,13 @@ class ReleaseNotesSeeder extends Seeder
                 'description' => 'Previously each SHEQ Compliance document could be individually restricted to specific companies. Visibility is now controlled at the section level via a new "view-sheq-compliance" permission: anyone whose role has that permission sees the SHEQ Compliance menu item and every document in it. Create or edit a role under Settings > Roles to grant it, then assign that role to the users who need access.',
                 'released_at' => now(),
             ],
+            [
+                'version' => '1.10.13',
+                'type' => 'bugfix',
+                'title' => 'Fixed certificate date wrapping onto the "Date" label',
+                'description' => 'On the Certificate of Waste Diversion PDF, dates for months with longer names (e.g. "31 AUGUST 2026", "30 SEPTEMBER 2026") could wrap onto a second line and overlap the "Date" label printed below it. The date field now shrinks its font size for longer dates so it always stays on one line.',
+                'released_at' => now(),
+            ],
         ];
 
         foreach ($notes as $note) {
