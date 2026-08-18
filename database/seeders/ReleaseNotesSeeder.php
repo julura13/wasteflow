@@ -437,6 +437,13 @@ class ReleaseNotesSeeder extends Seeder
                 'description' => 'The "Rebate by Service Provider" breakdown box was already hidden from client logins, but the per-row Provider column in the main table was not, so clients could see which service provider handled each load. The Provider column is now hidden for clients on both the on-screen report and the downloaded PDF, matching the breakdown box.',
                 'released_at' => now(),
             ],
+            [
+                'version' => '1.10.16',
+                'type' => 'feature',
+                'title' => 'Client Hub menu item for clients',
+                'description' => 'Clients previously only saw Client Hub adverts via a one-time popup on login and the notification bell - once dismissed, there was no way to find one again. A "Client Hub" link now appears in the sidebar for client logins (alongside Documents and SHEQ Compliance), showing all of their active adverts with read/unread status so they can revisit any of them at any time.',
+                'released_at' => now(),
+            ],
         ];
 
         foreach ($notes as $note) {
