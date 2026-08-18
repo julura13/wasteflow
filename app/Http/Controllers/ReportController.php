@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Jobs\GenerateWasteManagementPdfJob;
 use App\Models\Branch;
 use App\Models\Company;
+use App\Models\Material;
 use App\Models\RecoveryRatingTier;
 use App\Models\Site;
 use App\Models\User;
@@ -29,6 +30,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class ReportController extends Controller
 {
@@ -433,6 +435,7 @@ class ReportController extends Controller
         $companyNameUpper = Str::upper($reportData['companyName']);
         $percentageDisplay = number_format($divertedFromLandfillPercentage, 1);
         $monthYearUpper = Str::upper($periodEnd->format('F Y'));
+        $completeDateUpper = Str::upper($periodEnd->format('d F Y'));
         $tierNameUpper = $tier ? Str::upper($tier->name) : null;
 
         $summaryText = $tierNameUpper
@@ -452,7 +455,8 @@ class ReportController extends Controller
             'companyNameFontSize' => $this->certificateCompanyNameFontSize($companyNameUpper),
             'percentageDisplay' => $percentageDisplay,
             'monthYearUpper' => $monthYearUpper,
-            'completeDateUpper' => Str::upper($periodEnd->format('d F Y')),
+            'completeDateUpper' => $completeDateUpper,
+            'dateFontSize' => $this->certificateDateFontSize($completeDateUpper),
             'tierNameUpper' => $tierNameUpper,
             'tierColor' => $tier?->color,
             'summaryFontSize' => $summarySizing['size'],
@@ -502,6 +506,21 @@ class ReportController extends Controller
     }
 
     /**
+     * Font size (pt) for the certificate's date field, scaled down for longer month names
+     * (e.g. "30 SEPTEMBER 2026" vs "31 MAY 2026") so the date never wraps onto a second line
+     * and collides with the "Date" label printed on the certificate background below it.
+     */
+    private function certificateDateFontSize(string $completeDateUpper): float
+    {
+        return match (true) {
+            strlen($completeDateUpper) <= 11 => 12.5,
+            strlen($completeDateUpper) <= 13 => 11.5,
+            strlen($completeDateUpper) <= 15 => 10.0,
+            default => 9.0,
+        };
+    }
+
+    /**
      * Build and store the PDF for a queued export (invoked from {@see GenerateWasteManagementPdfJob}).
      */
     public function completeWasteManagementReportExport(WasteManagementReportExport $export, User $user): void
@@ -537,7 +556,7 @@ class ReportController extends Controller
     /**
      * One-time print-preview page visited by Browsershot (no auth middleware — token is the credential).
      */
-    public function resourceIntelligencePrintPreview(string $token): \Inertia\Response
+    public function resourceIntelligencePrintPreview(string $token): Response
     {
         $payload = cache()->get('ri_pdf_print_'.$token);
         abort_if(! $payload, 404);
@@ -984,7 +1003,7 @@ class ReportController extends Controller
     /**
      * Material-level weights for the reporting date range from finalized order waste streams (single source of truth with dashboard).
      *
-     * @return \Illuminate\Support\Collection<int, object{material_id: int, total_weight: float, material: \App\Models\Material}>
+     * @return Collection<int, object{material_id: int, total_weight: float, material: Material}>
      */
     private function getMaterialSummaries(?Company $company = null, ?Branch $branch = null, ?Site $site = null, ?string $startDate = null, ?string $endDate = null)
     {
@@ -1094,7 +1113,7 @@ class ReportController extends Controller
      * filtered to the Recycling classification, sorted alphabetically, and split
      * into two equal halves for the two-column report layout.
      *
-     * @param  Collection<int, object{material_id: int, total_weight: float, material: \App\Models\Material}>  $materialSummaries
+     * @param  Collection<int, object{material_id: int, total_weight: float, material: Material}>  $materialSummaries
      * @return array{0: list<array{name: string, qty: float}>, 1: list<array{name: string, qty: float}>}
      */
     private function getRecyclingCommodities(Collection $materialSummaries): array

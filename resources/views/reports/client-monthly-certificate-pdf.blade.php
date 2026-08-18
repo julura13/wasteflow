@@ -53,8 +53,8 @@
             top: 159mm;
             width: 34.7mm;
             height: 8mm;
-            font-size: 12.5pt;
             color: #1a1a1a;
+            white-space: nowrap;
         }
     </style>
 </head>
@@ -87,7 +87,7 @@
             @endif
         </div>
 
-        <div class="field certificate-date">{{ $completeDateUpper }}</div>
+        <div class="field certificate-date" style="font-size: {{ $dateFontSize }}pt">{{ $completeDateUpper }}</div>
     </div>
 </body>
 </html>

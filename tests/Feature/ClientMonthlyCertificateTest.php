@@ -1,7 +1,9 @@
 <?php
 
+use App\Http\Controllers\ReportController;
 use App\Models\Company;
 use App\Models\User;
+use Database\Seeders\RecoveryRatingTierSeeder;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -70,6 +72,7 @@ it('includes the resolved Resource Recovery Rating tier name and colour in the c
         'percentageDisplay' => '82.0',
         'monthYearUpper' => 'JULY 2026',
         'completeDateUpper' => '31 JULY 2026',
+        'dateFontSize' => 12.5,
         'tierNameUpper' => 'GOLD',
         'tierColor' => '#D4AF37',
         'summaryFontSize' => 13.5,
@@ -89,6 +92,7 @@ it('falls back to the original certificate wording when no tier is resolved', fu
         'percentageDisplay' => '82.0',
         'monthYearUpper' => 'JULY 2026',
         'completeDateUpper' => '31 JULY 2026',
+        'dateFontSize' => 12.5,
         'tierNameUpper' => null,
         'tierColor' => null,
         'summaryFontSize' => 13.5,
@@ -100,10 +104,10 @@ it('falls back to the original certificate wording when no tier is resolved', fu
 });
 
 it('shrinks the certificate company-name font size for long company names', function () {
-    $controller = new ReflectionClass(\App\Http\Controllers\ReportController::class);
+    $controller = new ReflectionClass(ReportController::class);
     $method = $controller->getMethod('certificateCompanyNameFontSize');
     $method->setAccessible(true);
-    $instance = app(\App\Http\Controllers\ReportController::class);
+    $instance = app(ReportController::class);
 
     expect($method->invoke($instance, 'ACME CO'))->toBe(30.0)
         ->and($method->invoke($instance, 'A MODERATELY LONG COMPANY NAME LTD'))->toBe(22.0)
@@ -111,10 +115,10 @@ it('shrinks the certificate company-name font size for long company names', func
 });
 
 it('shrinks the certificate summary font size as the assembled sentence grows', function () {
-    $controller = new ReflectionClass(\App\Http\Controllers\ReportController::class);
+    $controller = new ReflectionClass(ReportController::class);
     $method = $controller->getMethod('certificateSummaryFontSize');
     $method->setAccessible(true);
-    $instance = app(\App\Http\Controllers\ReportController::class);
+    $instance = app(ReportController::class);
 
     expect($method->invoke($instance, str_repeat('A', 100)))->toBe(['size' => 13.5, 'lineHeight' => 1.5])
         ->and($method->invoke($instance, str_repeat('A', 170)))->toBe(['size' => 11.5, 'lineHeight' => 1.35])
@@ -122,8 +126,20 @@ it('shrinks the certificate summary font size as the assembled sentence grows', 
         ->and($method->invoke($instance, str_repeat('A', 250)))->toBe(['size' => 8.0, 'lineHeight' => 1.2]);
 });
 
+it('shrinks the certificate date font size for longer month names, so the date never wraps onto the "Date" label below it', function () {
+    $controller = new ReflectionClass(ReportController::class);
+    $method = $controller->getMethod('certificateDateFontSize');
+    $method->setAccessible(true);
+    $instance = app(ReportController::class);
+
+    expect($method->invoke($instance, '31 MAY 2026'))->toBe(12.5)
+        ->and($method->invoke($instance, '30 JUNE 2026'))->toBe(11.5)
+        ->and($method->invoke($instance, '31 AUGUST 2026'))->toBe(10.0)
+        ->and($method->invoke($instance, '30 SEPTEMBER 2026'))->toBe(9.0);
+});
+
 it('resolves a Resource Recovery Rating tier for the certificate based on the diversion percentage achieved', function () {
-    $this->seed(\Database\Seeders\RecoveryRatingTierSeeder::class);
+    $this->seed(RecoveryRatingTierSeeder::class);
 
     $user = User::factory()->create();
     $user->assignRole('manager');
