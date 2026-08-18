@@ -7,7 +7,6 @@ use App\Models\Document;
 use App\Models\Media;
 use App\Models\ReleaseNote;
 use App\Models\User;
-use App\Services\CompanyUserService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Inertia\Middleware;
@@ -21,8 +20,6 @@ class HandleInertiaRequests extends Middleware
      * each run their own near-identical query on every request for a client-role user.
      */
     private ?Collection $clientHubAdvertsForUser = null;
-
-    public function __construct(private readonly CompanyUserService $companyUserService) {}
 
     /**
      * The root template that is loaded on the first page visit.
@@ -88,13 +85,15 @@ class HandleInertiaRequests extends Middleware
             'hasUnseenSheqCompliance' => function () use ($request) {
                 $user = $request->user();
 
-                if (! $user) {
+                if (! $user || ! $user->can('view-sheq-compliance')) {
                     return false;
                 }
 
-                $query = Media::query()->where('collection', 'sheq_compliance')->whereNull('mediable_type');
-
-                return $this->companyUserService->scopeVisibleToUser($query, $user)->unseenByUser($user->id)->exists();
+                return Media::query()
+                    ->where('collection', 'sheq_compliance')
+                    ->whereNull('mediable_type')
+                    ->unseenByUser($user->id)
+                    ->exists();
             },
             'clientHubPopupAdvert' => function () use ($request) {
                 $user = $request->user();

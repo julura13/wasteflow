@@ -1,12 +1,32 @@
 <?php
 
+use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\BranchController;
+use App\Http\Controllers\ClientHubAdvertController;
+use App\Http\Controllers\CompanyController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\GlobalSearchController;
+use App\Http\Controllers\MaterialController;
+use App\Http\Controllers\MediaController;
+use App\Http\Controllers\OrderController;
+use App\Http\Controllers\OrderSeederController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\RecurringOrderController;
+use App\Http\Controllers\ReleaseNoteController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\RoleController;
+use App\Http\Controllers\ServiceProviderController;
 use App\Http\Controllers\Settings\ClassificationController;
 use App\Http\Controllers\Settings\ContainerOptionController;
 use App\Http\Controllers\Settings\FacilityController;
 use App\Http\Controllers\Settings\GradeController;
 use App\Http\Controllers\Settings\RecoveryRatingController;
 use App\Http\Controllers\Settings\WasteStreamController;
+use App\Http\Controllers\SheqComplianceController;
+use App\Http\Controllers\SiteController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\WasteTypeController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -14,28 +34,28 @@ Route::get('/', function () {
     return redirect('/login');
 });
 
-Route::get('/dashboard', [App\Http\Controllers\DashboardController::class, 'index'])
+Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified', 'permission:view-dashboard'])->name('dashboard');
 
-Route::get('/dashboard/branches', [App\Http\Controllers\DashboardController::class, 'getBranches'])
+Route::get('/dashboard/branches', [DashboardController::class, 'getBranches'])
     ->middleware(['auth', 'verified', 'permission:view-dashboard'])->name('dashboard.branches');
 
-Route::get('/dashboard/sites', [App\Http\Controllers\DashboardController::class, 'getSites'])
+Route::get('/dashboard/sites', [DashboardController::class, 'getSites'])
     ->middleware(['auth', 'verified', 'permission:view-dashboard'])->name('dashboard.sites');
 
-Route::get('/dashboard/grade-month-detail', [App\Http\Controllers\DashboardController::class, 'getGradeMonthDailyDetail'])
+Route::get('/dashboard/grade-month-detail', [DashboardController::class, 'getGradeMonthDailyDetail'])
     ->middleware(['auth', 'verified', 'permission:view-dashboard'])->name('dashboard.grade-month-detail');
 
-Route::get('/dashboard/orders-for-day', [App\Http\Controllers\DashboardController::class, 'getOrdersForDay'])
+Route::get('/dashboard/orders-for-day', [DashboardController::class, 'getOrdersForDay'])
     ->middleware(['auth', 'verified', 'permission:view-dashboard'])->name('dashboard.orders-for-day');
 
-Route::get('/dashboard/container-month-detail', [App\Http\Controllers\DashboardController::class, 'getContainerMonthDailyDetail'])
+Route::get('/dashboard/container-month-detail', [DashboardController::class, 'getContainerMonthDailyDetail'])
     ->middleware(['auth', 'verified', 'permission:view-dashboard'])->name('dashboard.container-month-detail');
 
-Route::get('/dashboard/orders-for-day-by-container', [App\Http\Controllers\DashboardController::class, 'getOrdersForDayByContainer'])
+Route::get('/dashboard/orders-for-day-by-container', [DashboardController::class, 'getOrdersForDayByContainer'])
     ->middleware(['auth', 'verified', 'permission:view-dashboard'])->name('dashboard.orders-for-day-by-container');
 
-Route::get('/activity-log', [App\Http\Controllers\ActivityLogController::class, 'index'])
+Route::get('/activity-log', [ActivityLogController::class, 'index'])
     ->middleware(['auth', 'verified', 'permission:view-activity-log'])->name('activity-log.index');
 
 Route::get('/clients', function () {
@@ -43,213 +63,215 @@ Route::get('/clients', function () {
 })->middleware(['auth', 'verified', 'permission:manage-clients'])->name('clients');
 
 // Resource routes for CRUD operations
-Route::resource('companies', App\Http\Controllers\CompanyController::class)
+Route::resource('companies', CompanyController::class)
     ->middleware(['auth', 'verified', 'permission:manage-clients']);
-Route::resource('branches', App\Http\Controllers\BranchController::class)
+Route::resource('branches', BranchController::class)
     ->middleware(['auth', 'verified', 'permission:manage-clients']);
-Route::resource('collection-points', App\Http\Controllers\SiteController::class)
+Route::resource('collection-points', SiteController::class)
     ->middleware(['auth', 'verified', 'permission:manage-clients']);
 
 // Orders routes - require any order-related permission
 $ordersPermission = 'manage-waste-collections|orders-view|orders-create|orders-schedule|orders-generate-consolidated|orders-status-documents-required|orders-status-weight-required|orders-capture-documents|orders-capture-weights|orders-finalize';
-Route::get('orders/service-providers-by-date', [App\Http\Controllers\OrderController::class, 'getServiceProvidersByDate'])
+Route::get('orders/service-providers-by-date', [OrderController::class, 'getServiceProvidersByDate'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.service-providers-by-date');
-Route::get('orders/check-slip-number', [App\Http\Controllers\OrderController::class, 'checkSlipNumber'])
+Route::get('orders/check-slip-number', [OrderController::class, 'checkSlipNumber'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.check-slip-number');
-Route::get('orders/consolidated-pdf', [App\Http\Controllers\OrderController::class, 'downloadConsolidatedPDF'])
+Route::get('orders/consolidated-pdf', [OrderController::class, 'downloadConsolidatedPDF'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.consolidated-pdf');
-Route::get('orders/{order}/finalize', [App\Http\Controllers\OrderController::class, 'finalizeForm'])
+Route::get('orders/{order}/finalize', [OrderController::class, 'finalizeForm'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.finalize');
-Route::post('orders/{order}/save-weights', [App\Http\Controllers\OrderController::class, 'saveWeights'])
+Route::post('orders/{order}/save-weights', [OrderController::class, 'saveWeights'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.save-weights');
-Route::post('orders/{order}/finalize', [App\Http\Controllers\OrderController::class, 'finalize'])
+Route::post('orders/{order}/finalize', [OrderController::class, 'finalize'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.finalize.store');
-Route::post('orders/{order}/update-status', [App\Http\Controllers\OrderController::class, 'updateStatus'])
+Route::post('orders/{order}/update-status', [OrderController::class, 'updateStatus'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.update-status');
-Route::get('orders/{order}/download-pdf', [App\Http\Controllers\OrderController::class, 'downloadPDF'])
+Route::get('orders/{order}/download-pdf', [OrderController::class, 'downloadPDF'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.download-pdf');
-Route::get('orders/{order}/edit-collection-date', [App\Http\Controllers\OrderController::class, 'editCollectionDate'])
+Route::get('orders/{order}/edit-collection-date', [OrderController::class, 'editCollectionDate'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.edit-collection-date');
-Route::put('orders/{order}/collection-date', [App\Http\Controllers\OrderController::class, 'updateCollectionDate'])
+Route::put('orders/{order}/collection-date', [OrderController::class, 'updateCollectionDate'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.update-collection-date');
-Route::post('orders/{order}/delete', [App\Http\Controllers\OrderController::class, 'deleteOrder'])
+Route::post('orders/{order}/delete', [OrderController::class, 'deleteOrder'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.delete');
-Route::post('orders/export', [App\Http\Controllers\OrderController::class, 'requestOrderIndexExport'])
+Route::post('orders/export', [OrderController::class, 'requestOrderIndexExport'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.export.request');
-Route::get('orders/export/{uuid}/status', [App\Http\Controllers\OrderController::class, 'orderIndexExportStatus'])
+Route::get('orders/export/{uuid}/status', [OrderController::class, 'orderIndexExportStatus'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.export.status');
-Route::get('orders/export/{uuid}/download', [App\Http\Controllers\OrderController::class, 'downloadOrderIndexExport'])
+Route::get('orders/export/{uuid}/download', [OrderController::class, 'downloadOrderIndexExport'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.export.download');
-Route::get('orders/seeder/index', [App\Http\Controllers\OrderSeederController::class, 'index'])
+Route::get('orders/seeder/index', [OrderSeederController::class, 'index'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.seeder.index');
-Route::post('orders/seeder/generate', [App\Http\Controllers\OrderSeederController::class, 'store'])
+Route::post('orders/seeder/generate', [OrderSeederController::class, 'store'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.seeder.generate');
-Route::resource('orders', App\Http\Controllers\OrderController::class)
+Route::resource('orders', OrderController::class)
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"]);
 
 // Recurring orders
 Route::middleware(['auth', 'verified', 'permission:manage-recurring-orders'])->group(function () {
-    Route::resource('recurring-orders', App\Http\Controllers\RecurringOrderController::class)
+    Route::resource('recurring-orders', RecurringOrderController::class)
         ->except(['show']);
-    Route::post('recurring-orders/{id}/restore', [App\Http\Controllers\RecurringOrderController::class, 'restore'])
+    Route::post('recurring-orders/{id}/restore', [RecurringOrderController::class, 'restore'])
         ->name('recurring-orders.restore');
 });
 
-Route::resource('waste-types', App\Http\Controllers\WasteTypeController::class)
+Route::resource('waste-types', WasteTypeController::class)
     ->middleware(['auth', 'verified', 'permission:manage-services']);
-Route::resource('service-providers', App\Http\Controllers\ServiceProviderController::class)
+Route::resource('service-providers', ServiceProviderController::class)
     ->middleware(['auth', 'verified', 'permission:manage-services']);
-Route::patch('materials/{material}/rebate-rate', [App\Http\Controllers\MaterialController::class, 'updateRebateRate'])
+Route::patch('materials/{material}/rebate-rate', [MaterialController::class, 'updateRebateRate'])
     ->middleware(['auth', 'verified', 'permission:manage-services'])->name('materials.update-rebate-rate');
-Route::patch('materials/{material}/rebate-share', [App\Http\Controllers\MaterialController::class, 'updateRebateShare'])
+Route::patch('materials/{material}/rebate-share', [MaterialController::class, 'updateRebateShare'])
     ->middleware(['auth', 'verified', 'permission:manage-services'])->name('materials.update-rebate-share');
-Route::get('materials/export/pdf', [App\Http\Controllers\MaterialController::class, 'exportPdf'])
+Route::get('materials/export/pdf', [MaterialController::class, 'exportPdf'])
     ->middleware(['auth', 'verified', 'permission:manage-services'])->name('materials.export.pdf');
-Route::resource('materials', App\Http\Controllers\MaterialController::class)
+Route::resource('materials', MaterialController::class)
     ->middleware(['auth', 'verified', 'permission:manage-services']);
 
 // Media routes (used in orders – same permission as orders)
 Route::middleware(['auth', 'verified', "permission:{$ordersPermission}"])->prefix('media')->name('media.')->group(function () {
-    Route::post('/upload', [App\Http\Controllers\MediaController::class, 'upload'])->name('upload');
-    Route::get('/{media}/download', [App\Http\Controllers\MediaController::class, 'download'])->name('download');
-    Route::delete('/{media}', [App\Http\Controllers\MediaController::class, 'destroy'])->name('destroy');
+    Route::post('/upload', [MediaController::class, 'upload'])->name('upload');
+    Route::get('/{media}/download', [MediaController::class, 'download'])->name('download');
+    Route::delete('/{media}', [MediaController::class, 'destroy'])->name('destroy');
 });
 
 // Documents (viewable by all authenticated users; upload/edit/delete restricted to manage-documents)
 Route::middleware(['auth', 'verified'])->prefix('documents')->name('documents.')->group(function () {
-    Route::get('/', [App\Http\Controllers\DocumentController::class, 'index'])->name('index');
-    Route::get('/{document}/view', [App\Http\Controllers\DocumentController::class, 'view'])->name('view');
-    Route::get('/{document}/download', [App\Http\Controllers\DocumentController::class, 'download'])->name('download');
+    Route::get('/', [DocumentController::class, 'index'])->name('index');
+    Route::get('/{document}/view', [DocumentController::class, 'view'])->name('view');
+    Route::get('/{document}/download', [DocumentController::class, 'download'])->name('download');
 
     Route::middleware(['permission:manage-documents'])->group(function () {
-        Route::post('/', [App\Http\Controllers\DocumentController::class, 'store'])->name('store');
-        Route::put('/{document}', [App\Http\Controllers\DocumentController::class, 'update'])->name('update');
-        Route::delete('/{document}', [App\Http\Controllers\DocumentController::class, 'destroy'])->name('destroy');
+        Route::post('/', [DocumentController::class, 'store'])->name('store');
+        Route::put('/{document}', [DocumentController::class, 'update'])->name('update');
+        Route::delete('/{document}', [DocumentController::class, 'destroy'])->name('destroy');
     });
 });
 
-// SHEQ Compliance / HSE File documents (viewable by all authenticated users; same access
-// rules as Documents, stored as standalone `media` rows with collection=sheq_compliance)
-Route::middleware(['auth', 'verified'])->prefix('sheq-compliance')->name('sheq-compliance.')->group(function () {
-    Route::get('/', [App\Http\Controllers\SheqComplianceController::class, 'index'])->name('index');
-    Route::get('/{sheqCompliance}/view', [App\Http\Controllers\SheqComplianceController::class, 'view'])->name('view');
-    Route::get('/{sheqCompliance}/download', [App\Http\Controllers\SheqComplianceController::class, 'download'])->name('download');
+// SHEQ Compliance / HSE File documents, stored as standalone `media` rows with
+// collection=sheq_compliance. Visibility is folder-level: the whole section requires
+// view-sheq-compliance, and every document within it is visible to anyone with that
+// permission (no more per-document company restriction).
+Route::middleware(['auth', 'verified', 'permission:view-sheq-compliance'])->prefix('sheq-compliance')->name('sheq-compliance.')->group(function () {
+    Route::get('/', [SheqComplianceController::class, 'index'])->name('index');
+    Route::get('/{sheqCompliance}/view', [SheqComplianceController::class, 'view'])->name('view');
+    Route::get('/{sheqCompliance}/download', [SheqComplianceController::class, 'download'])->name('download');
 
     Route::middleware(['permission:manage-documents'])->group(function () {
-        Route::post('/', [App\Http\Controllers\SheqComplianceController::class, 'store'])->name('store');
-        Route::put('/{sheqCompliance}', [App\Http\Controllers\SheqComplianceController::class, 'update'])->name('update');
-        Route::delete('/{sheqCompliance}', [App\Http\Controllers\SheqComplianceController::class, 'destroy'])->name('destroy');
-        Route::post('/{sheqCompliance}/move-up', [App\Http\Controllers\SheqComplianceController::class, 'moveUp'])->name('move-up');
-        Route::post('/{sheqCompliance}/move-down', [App\Http\Controllers\SheqComplianceController::class, 'moveDown'])->name('move-down');
+        Route::post('/', [SheqComplianceController::class, 'store'])->name('store');
+        Route::put('/{sheqCompliance}', [SheqComplianceController::class, 'update'])->name('update');
+        Route::delete('/{sheqCompliance}', [SheqComplianceController::class, 'destroy'])->name('destroy');
+        Route::post('/{sheqCompliance}/move-up', [SheqComplianceController::class, 'moveUp'])->name('move-up');
+        Route::post('/{sheqCompliance}/move-down', [SheqComplianceController::class, 'moveDown'])->name('move-down');
     });
 });
 
 // Client Hub adverts (WCP-39): admin-managed popup announcements shown to client-role users on
 // login. dismiss/read are two independent flags - see ClientHubAdvertController for why.
 Route::middleware(['auth', 'verified'])->prefix('client-hub')->name('client-hub.')->group(function () {
-    Route::get('/{clientHubAdvert}/view', [App\Http\Controllers\ClientHubAdvertController::class, 'view'])->name('view');
+    Route::get('/{clientHubAdvert}/view', [ClientHubAdvertController::class, 'view'])->name('view');
 
     Route::middleware(['role:client'])->group(function () {
-        Route::post('/read-all', [App\Http\Controllers\ClientHubAdvertController::class, 'readAll'])->name('read-all');
-        Route::post('/{clientHubAdvert}/dismiss', [App\Http\Controllers\ClientHubAdvertController::class, 'dismiss'])->name('dismiss');
-        Route::post('/{clientHubAdvert}/read', [App\Http\Controllers\ClientHubAdvertController::class, 'read'])->name('read');
+        Route::post('/read-all', [ClientHubAdvertController::class, 'readAll'])->name('read-all');
+        Route::post('/{clientHubAdvert}/dismiss', [ClientHubAdvertController::class, 'dismiss'])->name('dismiss');
+        Route::post('/{clientHubAdvert}/read', [ClientHubAdvertController::class, 'read'])->name('read');
     });
 
     Route::middleware(['role:admin'])->group(function () {
-        Route::get('/', [App\Http\Controllers\ClientHubAdvertController::class, 'index'])->name('index');
-        Route::post('/', [App\Http\Controllers\ClientHubAdvertController::class, 'store'])->name('store');
-        Route::put('/{clientHubAdvert}', [App\Http\Controllers\ClientHubAdvertController::class, 'update'])->name('update');
-        Route::delete('/{clientHubAdvert}', [App\Http\Controllers\ClientHubAdvertController::class, 'destroy'])->name('destroy');
+        Route::get('/', [ClientHubAdvertController::class, 'index'])->name('index');
+        Route::post('/', [ClientHubAdvertController::class, 'store'])->name('store');
+        Route::put('/{clientHubAdvert}', [ClientHubAdvertController::class, 'update'])->name('update');
+        Route::delete('/{clientHubAdvert}', [ClientHubAdvertController::class, 'destroy'])->name('destroy');
     });
 });
 
 // Unauthenticated print-preview used by Browsershot — auth via short-lived cache token
-Route::get('/reports/resource-intelligence/print/{token}', [App\Http\Controllers\ReportController::class, 'resourceIntelligencePrintPreview'])
+Route::get('/reports/resource-intelligence/print/{token}', [ReportController::class, 'resourceIntelligencePrintPreview'])
     ->name('reports.resource-intelligence.print-preview');
 
 Route::middleware(['auth', 'verified', 'permission:view-reports'])->prefix('reports')->name('reports.')->group(function () {
     Route::get('/', function () {
         return Inertia::render('Reports/Index');
     })->name('index');
-    Route::get('/rebate-tracker', [App\Http\Controllers\OrderController::class, 'rebateTracker'])->name('rebate-tracker');
-    Route::post('/rebate-tracker/pdf', [App\Http\Controllers\OrderController::class, 'requestRebateTrackerPdf'])->name('rebate-tracker-pdf.request');
-    Route::get('/rebate-tracker/pdf/{uuid}/status', [App\Http\Controllers\OrderController::class, 'rebateTrackerPdfStatus'])->name('rebate-tracker-pdf.status');
-    Route::get('/rebate-tracker/pdf/{uuid}/download', [App\Http\Controllers\OrderController::class, 'downloadRebateTrackerPdf'])->name('rebate-tracker-pdf.download');
-    Route::get('/waste-stream-collection', [App\Http\Controllers\OrderController::class, 'wasteStreamCollectionReport'])->name('waste-stream-collection');
-    Route::post('/waste-stream-collection/pdf', [App\Http\Controllers\OrderController::class, 'requestWasteStreamCollectionPdf'])->name('waste-stream-collection-pdf.request');
-    Route::get('/waste-stream-collection/pdf/{uuid}/status', [App\Http\Controllers\OrderController::class, 'wasteStreamCollectionPdfStatus'])->name('waste-stream-collection-pdf.status');
-    Route::get('/waste-stream-collection/pdf/{uuid}/download', [App\Http\Controllers\OrderController::class, 'downloadWasteStreamCollectionPdf'])->name('waste-stream-collection-pdf.download');
-    Route::get('/average-weight-wheelie-bins', [App\Http\Controllers\OrderController::class, 'getAverageWeightForWheelieBins'])->name('average-weight-wheelie-bins');
-    Route::get('/customer-order-frequencies/export-pdf', [App\Http\Controllers\ReportController::class, 'customerOrderFrequenciesExportPdf'])
+    Route::get('/rebate-tracker', [OrderController::class, 'rebateTracker'])->name('rebate-tracker');
+    Route::post('/rebate-tracker/pdf', [OrderController::class, 'requestRebateTrackerPdf'])->name('rebate-tracker-pdf.request');
+    Route::get('/rebate-tracker/pdf/{uuid}/status', [OrderController::class, 'rebateTrackerPdfStatus'])->name('rebate-tracker-pdf.status');
+    Route::get('/rebate-tracker/pdf/{uuid}/download', [OrderController::class, 'downloadRebateTrackerPdf'])->name('rebate-tracker-pdf.download');
+    Route::get('/waste-stream-collection', [OrderController::class, 'wasteStreamCollectionReport'])->name('waste-stream-collection');
+    Route::post('/waste-stream-collection/pdf', [OrderController::class, 'requestWasteStreamCollectionPdf'])->name('waste-stream-collection-pdf.request');
+    Route::get('/waste-stream-collection/pdf/{uuid}/status', [OrderController::class, 'wasteStreamCollectionPdfStatus'])->name('waste-stream-collection-pdf.status');
+    Route::get('/waste-stream-collection/pdf/{uuid}/download', [OrderController::class, 'downloadWasteStreamCollectionPdf'])->name('waste-stream-collection-pdf.download');
+    Route::get('/average-weight-wheelie-bins', [OrderController::class, 'getAverageWeightForWheelieBins'])->name('average-weight-wheelie-bins');
+    Route::get('/customer-order-frequencies/export-pdf', [ReportController::class, 'customerOrderFrequenciesExportPdf'])
         ->middleware('permission:view-reports-all')
         ->name('customer-order-frequencies.export-pdf');
-    Route::get('/customer-order-frequencies/export', [App\Http\Controllers\ReportController::class, 'customerOrderFrequenciesExport'])
+    Route::get('/customer-order-frequencies/export', [ReportController::class, 'customerOrderFrequenciesExport'])
         ->middleware('permission:view-reports-all')
         ->name('customer-order-frequencies.export');
-    Route::get('/customer-order-frequencies', [App\Http\Controllers\ReportController::class, 'customerOrderFrequencies'])
+    Route::get('/customer-order-frequencies', [ReportController::class, 'customerOrderFrequencies'])
         ->middleware('permission:view-reports-all')
         ->name('customer-order-frequencies');
-    Route::get('/management-report/export-pdf', [App\Http\Controllers\ReportController::class, 'managementReportExportPdf'])
+    Route::get('/management-report/export-pdf', [ReportController::class, 'managementReportExportPdf'])
         ->middleware('permission:view-reports-all')
         ->name('management-report.export-pdf');
-    Route::get('/management-report/export', [App\Http\Controllers\ReportController::class, 'managementReportExport'])
+    Route::get('/management-report/export', [ReportController::class, 'managementReportExport'])
         ->middleware('permission:view-reports-all')
         ->name('management-report.export');
-    Route::get('/management-report', [App\Http\Controllers\ReportController::class, 'managementReport'])
+    Route::get('/management-report', [ReportController::class, 'managementReport'])
         ->middleware('permission:view-reports-all')
         ->name('management-report');
-    Route::get('/waste-management', [App\Http\Controllers\ReportController::class, 'wasteManagement'])->name('waste-management');
-    Route::post('/waste-management/pdf/request', [App\Http\Controllers\ReportController::class, 'requestWasteManagementPdf'])->name('waste-management-pdf.request');
-    Route::get('/waste-management/pdf/{uuid}/status', [App\Http\Controllers\ReportController::class, 'wasteManagementPdfStatus'])->name('waste-management-pdf.status');
-    Route::get('/waste-management/pdf/{uuid}/download', [App\Http\Controllers\ReportController::class, 'downloadWasteManagementPdf'])->name('waste-management-pdf.download');
-    Route::get('/waste-management/certificate', [App\Http\Controllers\ReportController::class, 'downloadClientMonthlyCertificate'])->name('waste-management-certificate.download');
-    Route::get('/waste-management/summary', [App\Http\Controllers\ReportController::class, 'wasteManagementSummary'])->name('waste-management-summary');
-    Route::get('/resource-intelligence', [App\Http\Controllers\ReportController::class, 'resourceIntelligenceView'])->name('resource-intelligence');
-    Route::get('/carbon-calculator', [App\Http\Controllers\ReportController::class, 'carbonCalculator'])
+    Route::get('/waste-management', [ReportController::class, 'wasteManagement'])->name('waste-management');
+    Route::post('/waste-management/pdf/request', [ReportController::class, 'requestWasteManagementPdf'])->name('waste-management-pdf.request');
+    Route::get('/waste-management/pdf/{uuid}/status', [ReportController::class, 'wasteManagementPdfStatus'])->name('waste-management-pdf.status');
+    Route::get('/waste-management/pdf/{uuid}/download', [ReportController::class, 'downloadWasteManagementPdf'])->name('waste-management-pdf.download');
+    Route::get('/waste-management/certificate', [ReportController::class, 'downloadClientMonthlyCertificate'])->name('waste-management-certificate.download');
+    Route::get('/waste-management/summary', [ReportController::class, 'wasteManagementSummary'])->name('waste-management-summary');
+    Route::get('/resource-intelligence', [ReportController::class, 'resourceIntelligenceView'])->name('resource-intelligence');
+    Route::get('/carbon-calculator', [ReportController::class, 'carbonCalculator'])
         ->middleware(['permission:view-carbon-calculator'])
         ->name('carbon-calculator');
-    Route::post('/carbon-calculator/calculate', [App\Http\Controllers\ReportController::class, 'carbonCalculatorCalculate'])
+    Route::post('/carbon-calculator/calculate', [ReportController::class, 'carbonCalculatorCalculate'])
         ->middleware(['permission:view-carbon-calculator'])
         ->name('carbon-calculator.calculate');
-    Route::get('/landfill-space-calculator', [App\Http\Controllers\ReportController::class, 'landfillSpaceCalculator'])
+    Route::get('/landfill-space-calculator', [ReportController::class, 'landfillSpaceCalculator'])
         ->middleware(['permission:view-landfill-space-calculator'])
         ->name('landfill-space-calculator');
-    Route::post('/landfill-space-calculator/calculate', [App\Http\Controllers\ReportController::class, 'landfillSpaceCalculatorCalculate'])
+    Route::post('/landfill-space-calculator/calculate', [ReportController::class, 'landfillSpaceCalculatorCalculate'])
         ->middleware(['permission:view-landfill-space-calculator'])
         ->name('landfill-space-calculator.calculate');
-    Route::get('/water-calculator', [App\Http\Controllers\ReportController::class, 'waterCalculator'])
+    Route::get('/water-calculator', [ReportController::class, 'waterCalculator'])
         ->middleware(['permission:view-water-calculator'])
         ->name('water-calculator');
-    Route::post('/water-calculator/calculate', [App\Http\Controllers\ReportController::class, 'waterCalculatorCalculate'])
+    Route::post('/water-calculator/calculate', [ReportController::class, 'waterCalculatorCalculate'])
         ->middleware(['permission:view-water-calculator'])
         ->name('water-calculator.calculate');
 
     // API endpoints for cascading dropdowns
-    Route::get('/waste-management/branches', [App\Http\Controllers\ReportController::class, 'getBranches'])->name('waste-management-branches');
-    Route::get('/waste-management/sites', [App\Http\Controllers\ReportController::class, 'getSites'])->name('waste-management-sites');
+    Route::get('/waste-management/branches', [ReportController::class, 'getBranches'])->name('waste-management-branches');
+    Route::get('/waste-management/sites', [ReportController::class, 'getSites'])->name('waste-management-sites');
 });
 
 // Roles and permissions management
 Route::middleware(['auth', 'verified', 'permission:manage-roles'])->prefix('roles')->name('roles.')->group(function () {
-    Route::get('/', [App\Http\Controllers\RoleController::class, 'index'])->name('index');
-    Route::get('/create', [App\Http\Controllers\RoleController::class, 'create'])->name('create');
-    Route::post('/', [App\Http\Controllers\RoleController::class, 'store'])->name('store');
-    Route::get('/{role}/edit', [App\Http\Controllers\RoleController::class, 'edit'])->name('edit');
-    Route::put('/{role}', [App\Http\Controllers\RoleController::class, 'update'])->name('update');
+    Route::get('/', [RoleController::class, 'index'])->name('index');
+    Route::get('/create', [RoleController::class, 'create'])->name('create');
+    Route::post('/', [RoleController::class, 'store'])->name('store');
+    Route::get('/{role}/edit', [RoleController::class, 'edit'])->name('edit');
+    Route::put('/{role}', [RoleController::class, 'update'])->name('update');
 });
 
 // User management (WasteFlow staff – roles and permissions)
 Route::middleware(['auth', 'verified', 'permission:manage-users'])->prefix('users')->name('users.')->group(function () {
-    Route::get('/', [App\Http\Controllers\UserController::class, 'index'])->name('index');
-    Route::get('/create', [App\Http\Controllers\UserController::class, 'create'])->name('create');
-    Route::post('/', [App\Http\Controllers\UserController::class, 'store'])->name('store');
-    Route::get('/{user}/edit', [App\Http\Controllers\UserController::class, 'edit'])->name('edit');
-    Route::put('/{user}', [App\Http\Controllers\UserController::class, 'update'])->name('update');
-    Route::delete('/{user}', [App\Http\Controllers\UserController::class, 'destroy'])->name('destroy');
-    Route::post('/{user}/impersonate', [App\Http\Controllers\UserController::class, 'impersonate'])->name('impersonate');
+    Route::get('/', [UserController::class, 'index'])->name('index');
+    Route::get('/create', [UserController::class, 'create'])->name('create');
+    Route::post('/', [UserController::class, 'store'])->name('store');
+    Route::get('/{user}/edit', [UserController::class, 'edit'])->name('edit');
+    Route::put('/{user}', [UserController::class, 'update'])->name('update');
+    Route::delete('/{user}', [UserController::class, 'destroy'])->name('destroy');
+    Route::post('/{user}/impersonate', [UserController::class, 'impersonate'])->name('impersonate');
 });
 
-Route::middleware(['auth'])->post('/users/impersonate/leave', [App\Http\Controllers\UserController::class, 'leaveImpersonation'])->name('users.impersonate.leave');
+Route::middleware(['auth'])->post('/users/impersonate/leave', [UserController::class, 'leaveImpersonation'])->name('users.impersonate.leave');
 
 Route::middleware(['auth', 'verified', 'permission:manage-settings'])->prefix('settings')->name('settings.')->group(function () {
     Route::get('/', function () {
@@ -266,16 +288,16 @@ Route::middleware(['auth', 'verified', 'permission:manage-settings'])->prefix('s
     Route::put('recovery-rating', [RecoveryRatingController::class, 'update'])->name('recovery-rating.update');
 });
 
-Route::middleware('auth')->get('/search', App\Http\Controllers\GlobalSearchController::class)->name('search');
+Route::middleware('auth')->get('/search', GlobalSearchController::class)->name('search');
 
 Route::middleware(['auth', 'role:admin'])->group(function () {
-    Route::post('/release-notes/{releaseNote}/read', [App\Http\Controllers\ReleaseNoteController::class, 'markAsRead'])->name('release-notes.read');
-    Route::post('/release-notes/read-all', [App\Http\Controllers\ReleaseNoteController::class, 'markAllAsRead'])->name('release-notes.read-all');
-    Route::post('/notifications/{notificationId}/read', [App\Http\Controllers\ReleaseNoteController::class, 'markNotificationAsRead'])->name('notifications.read');
+    Route::post('/release-notes/{releaseNote}/read', [ReleaseNoteController::class, 'markAsRead'])->name('release-notes.read');
+    Route::post('/release-notes/read-all', [ReleaseNoteController::class, 'markAllAsRead'])->name('release-notes.read-all');
+    Route::post('/notifications/{notificationId}/read', [ReleaseNoteController::class, 'markNotificationAsRead'])->name('notifications.read');
 });
 
 Route::middleware('auth')->group(function () {
-    Route::get('/release-notes', [App\Http\Controllers\ReleaseNoteController::class, 'index'])->name('release-notes.index');
+    Route::get('/release-notes', [ReleaseNoteController::class, 'index'])->name('release-notes.index');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::post('/profile/avatar', [ProfileController::class, 'uploadAvatar'])->name('profile.avatar.upload');

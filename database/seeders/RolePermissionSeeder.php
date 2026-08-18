@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 class RolePermissionSeeder extends Seeder
 {
@@ -14,7 +15,7 @@ class RolePermissionSeeder extends Seeder
     public function run(): void
     {
         // Reset cached roles and permissions
-        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
         // Remove dead/duplicate permissions from a previous iteration of the permission set:
         // 'view-orders' and 'create-orders' were superseded by the granular 'orders-view'/'orders-create'
@@ -52,6 +53,7 @@ class RolePermissionSeeder extends Seeder
             'view-activity-log',         // view activity log / audit trail (filter by order)
             'manage-recurring-orders',   // create / edit / delete recurring order templates (admin only)
             'manage-documents',          // upload / edit / delete documents (admin only; everyone can view)
+            'view-sheq-compliance',      // see the SHEQ Compliance menu item/section at all (folder-level gate, not per-document)
         ];
 
         foreach ($permissions as $permission) {

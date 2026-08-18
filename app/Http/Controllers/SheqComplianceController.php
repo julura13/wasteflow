@@ -5,10 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreSheqComplianceDocumentRequest;
 use App\Http\Requests\UpdateSheqComplianceDocumentRequest;
 use App\Models\ActivityLog;
-use App\Models\Company;
 use App\Models\Media;
-use App\Models\User;
-use App\Services\CompanyUserService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,19 +18,16 @@ use Inertia\Response;
 
 /**
  * SHEQ Compliance documents (Safety, Health, Environment & Quality / "HSE File").
- * Same shape and access rules as DocumentController, but standalone (not attached to
- * any Order/etc.) media rows filtered by collection = self::COLLECTION.
+ * Same shape as DocumentController, but standalone (not attached to any Order/etc.)
+ * media rows filtered by collection = self::COLLECTION.
  *
- * Visibility: a document with no companies attached (via the media_company pivot) is
- * visible to every client, matching the original behaviour. Attaching companies restricts
- * it to client-role users belonging to one of those companies. Internal staff (anyone
- * without the client/company_user role) always see everything, regardless of restriction.
+ * Visibility is folder-level: the whole section is gated behind the view-sheq-compliance
+ * permission (see routes/web.php). Anyone with that permission sees every document in the
+ * section — there is no per-document restriction.
  */
 class SheqComplianceController extends Controller
 {
     private const COLLECTION = 'sheq_compliance';
-
-    public function __construct(private readonly CompanyUserService $companyUserService) {}
 
     /**
      * Display a listing of SHEQ compliance documents, marking any unseen ones as seen.
@@ -41,15 +35,14 @@ class SheqComplianceController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
-        $canManage = $user->can('manage-documents');
 
-        $this->visibleTo(Media::query(), $user)
+        $this->scoped(Media::query())
             ->unseenByUser($user->id)
             ->get()
             ->each(fn (Media $media) => $media->markSeenBy($user));
 
-        $documents = $this->visibleTo(Media::query(), $user)
-            ->with(['uploadedBy:id,name', 'companies:id,name'])
+        $documents = $this->scoped(Media::query())
+            ->with('uploadedBy:id,name')
             ->orderBy('sort_order')
             ->orderBy('created_at')
             ->paginate(15)
@@ -61,24 +54,19 @@ class SheqComplianceController extends Controller
                 'human_readable_size' => $media->human_readable_size,
                 'uploaded_by' => $media->uploadedBy?->name,
                 'created_at' => $media->created_at->format('Y-m-d H:i'),
-                'company_ids' => $canManage ? $media->companies->pluck('id') : null,
-                'company_names' => $canManage ? $media->companies->pluck('name') : null,
             ]);
 
         return Inertia::render('SheqCompliance/Index', [
             'documents' => $documents,
-            'companies' => $canManage ? Company::query()->orderBy('name')->get(['id', 'name']) : [],
         ]);
     }
 
     /**
-     * Scope a Media query to only the SHEQ compliance documents the given user may see.
+     * Scope a Media query to SHEQ compliance documents (standalone rows, not attached to another model).
      */
-    private function visibleTo(Builder $query, User $user): Builder
+    private function scoped(Builder $query): Builder
     {
-        $query = $query->where('collection', self::COLLECTION)->whereNull('mediable_type');
-
-        return $this->companyUserService->scopeVisibleToUser($query, $user);
+        return $query->where('collection', self::COLLECTION)->whereNull('mediable_type');
     }
 
     /**
@@ -117,8 +105,6 @@ class SheqComplianceController extends Controller
                 'uploaded_by' => $request->user()->id,
             ]);
         });
-
-        $document->companies()->sync($validated['company_ids'] ?? []);
 
         ActivityLog::log('sheq_compliance_document_uploaded', "SHEQ Compliance document \"{$document->title}\" uploaded", $document, [
             'media_id' => $document->id,
@@ -161,8 +147,6 @@ class SheqComplianceController extends Controller
         }
 
         $sheqCompliance->save();
-
-        $sheqCompliance->companies()->sync($validated['company_ids'] ?? []);
 
         ActivityLog::log('sheq_compliance_document_updated', "SHEQ Compliance document \"{$sheqCompliance->title}\" updated", $sheqCompliance, [
             'media_id' => $sheqCompliance->id,
@@ -244,10 +228,9 @@ class SheqComplianceController extends Controller
     /**
      * Download a SHEQ compliance document file.
      */
-    public function download(Request $request, Media $sheqCompliance)
+    public function download(Media $sheqCompliance)
     {
         abort_unless($sheqCompliance->collection === self::COLLECTION && $sheqCompliance->mediable_type === null, 404);
-        abort_unless($this->companyUserService->canViewRestrictedModel($request->user(), $sheqCompliance), 403);
 
         $disk = Storage::disk($sheqCompliance->disk);
 
@@ -261,10 +244,9 @@ class SheqComplianceController extends Controller
     /**
      * View a SHEQ compliance document file inline in the browser.
      */
-    public function view(Request $request, Media $sheqCompliance)
+    public function view(Media $sheqCompliance)
     {
         abort_unless($sheqCompliance->collection === self::COLLECTION && $sheqCompliance->mediable_type === null, 404);
-        abort_unless($this->companyUserService->canViewRestrictedModel($request->user(), $sheqCompliance), 403);
 
         $disk = Storage::disk($sheqCompliance->disk);
 
