@@ -786,110 +786,123 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                         </div>
                                     </div>
                                 )}
+                            </div>
+                        </div>
 
-                                {/* Waste management performance trends (Jan-Dec line graph) */}
-                                {wasteManagementTrendByYear.length > 0 && (
-                                    <div className="mt-4 pt-4 border-t border-gray-100">
-                                        <SectionHeader>WASTE MANAGEMENT PERFORMANCE TRENDS</SectionHeader>
-                                        <div className="pt-4">
-                                            {printMode ? (
-                                                <LineChart width={700} height={260} data={wasteManagementTrendMonthlyPoints} margin={{ left: 10, right: 20, top: 5, bottom: 5 }}>
-                                                    <CartesianGrid strokeDasharray="3 3" />
-                                                    <XAxis dataKey="month" tick={{ fontSize: 10 }} />
-                                                    <YAxis tick={{ fontSize: 10 }} />
-                                                    <Legend wrapperStyle={{ fontSize: 10 }} />
-                                                    {wasteManagementTrendByYear.map((row) => (
-                                                        <Line key={row.name} type="monotone" dataKey={row.name} stroke={TREND_COLORS[row.name] ?? '#828282'} dot={false} isAnimationActive={false} />
-                                                    ))}
-                                                </LineChart>
-                                            ) : (
-                                                <ResponsiveContainer width="100%" height={260}>
-                                                    <LineChart data={wasteManagementTrendMonthlyPoints} margin={{ left: 10, right: 20, top: 5, bottom: 5 }}>
+                        {/* ── PAGE: WASTE MANAGEMENT PERFORMANCE TRENDS + CUMULATIVE IMPACT (own page, own header — keeps the trends title with its chart) ── */}
+                        {(wasteManagementTrendByYear.length > 0 || cumulativeImpact.length > 0) && (
+                            <div className={`border-t-4 border-gray-100 ${printMode ? 'print-page-break' : ''}`}>
+                                {printMode && (
+                                    <ReportHeader
+                                        scopeDisplayName={rd.scopeDisplayName}
+                                        reportingPeriodLabel={rd.reportingPeriodLabel}
+                                    />
+                                )}
+                                <div className="p-4 space-y-4">
+                                    {/* Waste management performance trends (Jan-Dec line graph) */}
+                                    {wasteManagementTrendByYear.length > 0 && (
+                                        <div>
+                                            <SectionHeader>WASTE MANAGEMENT PERFORMANCE TRENDS</SectionHeader>
+                                            <div className="pt-4">
+                                                {printMode ? (
+                                                    <LineChart width={700} height={260} data={wasteManagementTrendMonthlyPoints} margin={{ left: 10, right: 20, top: 5, bottom: 5 }}>
                                                         <CartesianGrid strokeDasharray="3 3" />
                                                         <XAxis dataKey="month" tick={{ fontSize: 10 }} />
                                                         <YAxis tick={{ fontSize: 10 }} />
-                                                        <Tooltip formatter={(v) => `${fmtN(v)} kg`} />
                                                         <Legend wrapperStyle={{ fontSize: 10 }} />
                                                         {wasteManagementTrendByYear.map((row) => (
                                                             <Line key={row.name} type="monotone" dataKey={row.name} stroke={TREND_COLORS[row.name] ?? '#828282'} dot={false} isAnimationActive={false} />
                                                         ))}
                                                     </LineChart>
-                                                </ResponsiveContainer>
-                                            )}
+                                                ) : (
+                                                    <ResponsiveContainer width="100%" height={260}>
+                                                        <LineChart data={wasteManagementTrendMonthlyPoints} margin={{ left: 10, right: 20, top: 5, bottom: 5 }}>
+                                                            <CartesianGrid strokeDasharray="3 3" />
+                                                            <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                                                            <YAxis tick={{ fontSize: 10 }} />
+                                                            <Tooltip formatter={(v) => `${fmtN(v)} kg`} />
+                                                            <Legend wrapperStyle={{ fontSize: 10 }} />
+                                                            {wasteManagementTrendByYear.map((row) => (
+                                                                <Line key={row.name} type="monotone" dataKey={row.name} stroke={TREND_COLORS[row.name] ?? '#828282'} dot={false} isAnimationActive={false} />
+                                                            ))}
+                                                        </LineChart>
+                                                    </ResponsiveContainer>
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
+                                    )}
 
-                                {/* Cumulative impact bar chart */}
-                                {cumulativeImpact.length > 0 && (
-                                    <div className="mt-4 pt-4 border-t border-gray-100">
-                                        <SectionHeader>CUMULATIVE IMPACT DASHBOARD</SectionHeader>
-                                        <div className="pt-4">
-                                            {printMode ? (
-                                                <BarChart width={700} height={200} data={cumulativeImpact}
-                                                    layout="vertical" margin={{ left: 20, right: 40, top: 5, bottom: 5 }}>
-                                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                                                    <XAxis type="number" tick={{ fontSize: 10 }} />
-                                                    <YAxis type="category" dataKey="name" width={240} tick={{ fontSize: 10 }} />
-                                                    <Bar dataKey="value" isAnimationActive={false}>
-                                                        {cumulativeImpact.map((entry, i) => (
-                                                            <Cell key={i} fill={entry.color} />
-                                                        ))}
-                                                    </Bar>
-                                                </BarChart>
-                                            ) : (
-                                                <ResponsiveContainer width="100%" height={200}>
-                                                    <BarChart data={cumulativeImpact}
+                                    {/* Cumulative impact bar chart */}
+                                    {cumulativeImpact.length > 0 && (
+                                        <div className={wasteManagementTrendByYear.length > 0 ? 'mt-4 pt-4 border-t border-gray-100' : ''}>
+                                            <SectionHeader>CUMULATIVE IMPACT DASHBOARD</SectionHeader>
+                                            <div className="pt-4">
+                                                {printMode ? (
+                                                    <BarChart width={700} height={200} data={cumulativeImpact}
                                                         layout="vertical" margin={{ left: 20, right: 40, top: 5, bottom: 5 }}>
                                                         <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                                                         <XAxis type="number" tick={{ fontSize: 10 }} />
                                                         <YAxis type="category" dataKey="name" width={240} tick={{ fontSize: 10 }} />
-                                                        <Tooltip formatter={(v) => fmtN(v)} />
                                                         <Bar dataKey="value" isAnimationActive={false}>
                                                             {cumulativeImpact.map((entry, i) => (
                                                                 <Cell key={i} fill={entry.color} />
                                                             ))}
                                                         </Bar>
                                                     </BarChart>
-                                                </ResponsiveContainer>
-                                            )}
-                                        </div>
+                                                ) : (
+                                                    <ResponsiveContainer width="100%" height={200}>
+                                                        <BarChart data={cumulativeImpact}
+                                                            layout="vertical" margin={{ left: 20, right: 40, top: 5, bottom: 5 }}>
+                                                            <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                                                            <XAxis type="number" tick={{ fontSize: 10 }} />
+                                                            <YAxis type="category" dataKey="name" width={240} tick={{ fontSize: 10 }} />
+                                                            <Tooltip formatter={(v) => fmtN(v)} />
+                                                            <Bar dataKey="value" isAnimationActive={false}>
+                                                                {cumulativeImpact.map((entry, i) => (
+                                                                    <Cell key={i} fill={entry.color} />
+                                                                ))}
+                                                            </Bar>
+                                                        </BarChart>
+                                                    </ResponsiveContainer>
+                                                )}
+                                            </div>
 
-                                        {/* Landfill Airspace Saved + Diversion Rate + Recovery Rate + Carbon Avoidance Intensity tiles */}
-                                        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                                            <div className="text-center p-3 bg-teal-50 rounded-lg border border-teal-100">
-                                                <Layers className="w-8 h-8 mx-auto mb-1 text-teal-600" />
-                                                <p className="text-xs text-gray-600 mb-1">Landfill Airspace Saved</p>
-                                                <p className="text-lg font-bold text-teal-600">
-                                                    {fmtN(summary.landfillSpaceSaved ?? 0)} m³
-                                                </p>
-                                            </div>
-                                            <div className="text-center p-3 bg-purple-50 rounded-lg border border-purple-100">
-                                                <Percent className="w-8 h-8 mx-auto mb-1 text-purple-600" />
-                                                <p className="text-xs text-gray-600 mb-1">Diversion Rate</p>
-                                                <p className="text-lg font-bold text-purple-600">
-                                                    {fmtOneDecimal(summary.divertedFromLandfill ?? 0)}%
-                                                </p>
-                                            </div>
-                                            <div className="text-center p-3 bg-sky-50 rounded-lg border border-sky-100">
-                                                <Recycle className="w-8 h-8 mx-auto mb-1 text-sky-600" />
-                                                <p className="text-xs text-gray-600 mb-1">Recovery Rate</p>
-                                                <p className="text-lg font-bold text-sky-600">
-                                                    {fmtOneDecimal(ct.recovery?.percentage ?? 0)}%
-                                                </p>
-                                            </div>
-                                            <div className="text-center p-3 bg-emerald-50 rounded-lg border border-emerald-100">
-                                                <Gauge className="w-8 h-8 mx-auto mb-1 text-emerald-600" />
-                                                <p className="text-xs text-gray-600 mb-1">Carbon Avoidance Intensity</p>
-                                                <p className="text-lg font-bold text-emerald-600">
-                                                    {fmtN(summary.carbonAvoidanceIntensity ?? 0)} kg CO₂e/t
-                                                </p>
+                                            {/* Landfill Airspace Saved + Diversion Rate + Recovery Rate + Carbon Avoidance Intensity tiles */}
+                                            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                                <div className="text-center p-3 bg-teal-50 rounded-lg border border-teal-100">
+                                                    <Layers className="w-8 h-8 mx-auto mb-1 text-teal-600" />
+                                                    <p className="text-xs text-gray-600 mb-1">Landfill Airspace Saved</p>
+                                                    <p className="text-lg font-bold text-teal-600">
+                                                        {fmtN(summary.landfillSpaceSaved ?? 0)} m³
+                                                    </p>
+                                                </div>
+                                                <div className="text-center p-3 bg-purple-50 rounded-lg border border-purple-100">
+                                                    <Percent className="w-8 h-8 mx-auto mb-1 text-purple-600" />
+                                                    <p className="text-xs text-gray-600 mb-1">Diversion Rate</p>
+                                                    <p className="text-lg font-bold text-purple-600">
+                                                        {fmtOneDecimal(summary.divertedFromLandfill ?? 0)}%
+                                                    </p>
+                                                </div>
+                                                <div className="text-center p-3 bg-sky-50 rounded-lg border border-sky-100">
+                                                    <Recycle className="w-8 h-8 mx-auto mb-1 text-sky-600" />
+                                                    <p className="text-xs text-gray-600 mb-1">Recovery Rate</p>
+                                                    <p className="text-lg font-bold text-sky-600">
+                                                        {fmtOneDecimal(ct.recovery?.percentage ?? 0)}%
+                                                    </p>
+                                                </div>
+                                                <div className="text-center p-3 bg-emerald-50 rounded-lg border border-emerald-100">
+                                                    <Gauge className="w-8 h-8 mx-auto mb-1 text-emerald-600" />
+                                                    <p className="text-xs text-gray-600 mb-1">Carbon Avoidance Intensity</p>
+                                                    <p className="text-lg font-bold text-emerald-600">
+                                                        {fmtN(summary.carbonAvoidanceIntensity ?? 0)} kg CO₂e/t
+                                                    </p>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                )}
+                                    )}
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         {/* ── PAGE 4: METHODOLOGY — client: keep content; add logo at end; readable copy ── */}
                         <div className="border-t-4 border-gray-100 p-4 sm:p-5 bg-white print-page-break">
@@ -914,7 +927,7 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                 </ul>
                             </div>
 
-                            <div className="mt-6 pt-4 border-t border-gray-200 max-w-4xl">
+                            <div className="mt-6 pt-4 print:mt-4 print:pt-3 border-t border-gray-200 max-w-4xl">
                                 <div className="font-bold text-sm mb-2" style={{ color: NAVY }}>Resource Intelligence™ Indicators</div>
                                 <p className="text-sm text-gray-600 mb-2 leading-relaxed">The WasteFlow Resource Intelligence™ methodology calculates the following key performance indicators:</p>
                                 <ul className="grid grid-cols-1 sm:grid-cols-2 list-disc pl-5 gap-x-6 text-sm text-gray-600 leading-relaxed">
@@ -934,13 +947,13 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                 </ul>
                             </div>
 
-                            <div className="mt-6 pt-4 border-t border-gray-200 space-y-2.5 text-sm text-gray-600 leading-relaxed max-w-4xl">
+                            <div className="mt-6 pt-4 print:mt-4 print:pt-3 border-t border-gray-200 space-y-2.5 text-sm text-gray-600 leading-relaxed max-w-4xl">
                                 <p><span className="font-semibold text-gray-800">Carbon Avoidance Intensity (CAI).</span> Measures the lifecycle greenhouse gas emissions avoided for every ton of waste managed. This KPI enables organisations to compare environmental performance over time regardless of changes in waste volumes.</p>
                                 <p><span className="font-semibold text-gray-800">WasteFlow Resource Recovery Rating™.</span> Determined by calculating the percentage of total waste diverted from landfill through reuse, recycling and organic recovery. The rating provides a consistent benchmark for measuring operational resource recovery performance and supports continual improvement through month-on-month comparison.</p>
-                                <p><span className="font-semibold text-gray-800">Lifecycle Carbon Avoided.</span> Represents the estimated greenhouse gas emissions prevented through resource recovery activities when compared with conventional disposal or the use of virgin materials. This indicator reflects the combined environmental benefit of avoided upstream (Scope 3) emissions and avoided landfill emissions resulting from WasteFlow&rsquo;s resource recovery activities.</p>
+                                <p className="print:break-inside-avoid-page print:pt-10"><span className="font-semibold text-gray-800">Lifecycle Carbon Avoided.</span> Represents the estimated greenhouse gas emissions prevented through resource recovery activities when compared with conventional disposal or the use of virgin materials. This indicator reflects the combined environmental benefit of avoided upstream (Scope 3) emissions and avoided landfill emissions resulting from WasteFlow&rsquo;s resource recovery activities.</p>
                             </div>
 
-                            <div className="mt-6 pt-4 border-t border-gray-200 max-w-4xl">
+                            <div className="mt-6 pt-4 print:mt-4 print:pt-3 border-t border-gray-200 max-w-4xl">
                                 <div className="font-bold text-sm mb-2" style={{ color: NAVY }}>Reporting Statement</div>
                                 <div className="space-y-2 text-sm text-gray-600 leading-relaxed">
                                     <p>Environmental equivalencies contained within this report represent estimated environmental benefits achieved through resource recovery.</p>
@@ -949,19 +962,19 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                 </div>
                             </div>
 
-                            <div className="mt-6 pt-4 border-t border-gray-200 max-w-4xl text-center">
+                            <div className="mt-6 pt-4 print:mt-4 print:pt-3 border-t border-gray-200 max-w-4xl text-center">
                                 <p className="text-sm font-semibold" style={{ color: NAVY }}>WasteFlow Resource Intelligence™</p>
                                 <p className="mt-1 text-sm text-gray-600 italic leading-relaxed">
                                     Transforming verified operational waste data into actionable environmental intelligence. Supporting organisations through data-driven resource recovery, sustainability reporting and continuous improvement.
                                 </p>
                             </div>
 
-                            <div className="mt-6 pt-4 border-t border-gray-200 max-w-4xl">
+                            <div className="mt-6 pt-4 print:mt-4 print:pt-3 border-t border-gray-200 max-w-4xl">
                                 <div className="font-bold text-sm mb-2" style={{ color: NAVY }}>Limitations</div>
                                 <p className="text-sm text-gray-600 leading-relaxed">Environmental metrics are calculated using recognised conversion factors and lifecycle assessment methodologies. While every effort is made to ensure accuracy and consistency, reported environmental equivalencies remain estimates and may vary depending on material composition, downstream processing technologies and future revisions to published conversion factors.</p>
                             </div>
 
-                            <div className="mt-6 pt-4 border-t border-gray-200 max-w-4xl">
+                            <div className="mt-6 pt-4 print:mt-4 print:pt-3 border-t border-gray-200 max-w-4xl">
                                 <div className="font-bold text-sm mb-2" style={{ color: NAVY }}>Disclaimer</div>
                                 <p className="text-sm text-gray-600 leading-relaxed">Environmental equivalencies are estimates derived from recognised conversion factors and lifecycle assessment methodologies. Actual environmental outcomes may vary depending on material composition, processing technologies and downstream recovery pathways. These metrics are intended to support sustainability reporting and continuous improvement and should not be interpreted as a certified greenhouse gas inventory or independently verified carbon footprint assessment.</p>
                                 <p className="mt-3 text-xs text-gray-500 leading-relaxed">
@@ -971,19 +984,19 @@ export default function ResourceIntelligence({ reportData, companies, filters, i
                                     — WasteFlow Resource Intelligence™ factors – baseline 2026
                                 </p>
                             </div>
-                            <div className="mt-8 flex flex-col items-center border-t border-gray-200 dark:border-gray-600 pt-8">
+                            <div className="mt-8 print:mt-5 flex flex-col items-center border-t border-gray-200 dark:border-gray-600 pt-8 print:pt-5 print:break-inside-avoid-page">
                                 <img
                                     src="/images/logo.png"
                                     alt="WasteFlow"
-                                    className="h-20 w-auto object-contain sm:h-24"
+                                    className="h-20 w-auto object-contain sm:h-24 print:h-16"
                                 />
                                 <div
-                                    className="mt-4 h-0 w-[85%] max-w-md border-t-2"
+                                    className="mt-4 print:mt-3 h-0 w-[85%] max-w-md border-t-2"
                                     style={{ borderColor: BRAND_BLUE }}
                                     aria-hidden="true"
                                 />
                                 <p
-                                    className="mt-4 max-w-2xl px-2 text-center text-base sm:text-lg leading-snug"
+                                    className="mt-4 print:mt-3 max-w-2xl px-2 text-center text-base sm:text-lg leading-snug"
                                     style={{ color: BRAND_BLUE }}
                                 >
                                     Sustainable Waste Management
