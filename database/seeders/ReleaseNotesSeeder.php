@@ -423,6 +423,13 @@ class ReleaseNotesSeeder extends Seeder
                 'description' => 'On the Certificate of Waste Diversion PDF, dates for months with longer names (e.g. "31 AUGUST 2026", "30 SEPTEMBER 2026") could wrap onto a second line and overlap the "Date" label printed below it. The date field now shrinks its font size for longer dates so it always stays on one line.',
                 'released_at' => now(),
             ],
+            [
+                'version' => '1.10.14',
+                'type' => 'bugfix',
+                'title' => 'Fixed long company names wrapping on the certificate',
+                'description' => 'Customers sent screenshots of certificates where longer company names ("DEVONBOSCH ESTATE", "VAN RIEBEECKSTRAND PRIMARY SCHOOL") wrapped onto a second line and overlapped the summary text below, and even short names sat flush against the "WASTEFLOW CONGRATULATES" label with no gap. The company-name field is now wider (there was far more clear space on the certificate background than previously used) and starts further down, so names render larger and no longer collide with the text above or below them.',
+                'released_at' => now(),
+            ],
         ];
 
         foreach ($notes as $note) {
