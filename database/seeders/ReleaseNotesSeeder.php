@@ -430,6 +430,20 @@ class ReleaseNotesSeeder extends Seeder
                 'description' => 'Customers sent screenshots of certificates where longer company names ("DEVONBOSCH ESTATE", "VAN RIEBEECKSTRAND PRIMARY SCHOOL") wrapped onto a second line and overlapped the summary text below, and even short names sat flush against the "WASTEFLOW CONGRATULATES" label with no gap. The company-name field is now wider (there was far more clear space on the certificate background than previously used) and starts further down, so names render larger and no longer collide with the text above or below them.',
                 'released_at' => now(),
             ],
+            [
+                'version' => '1.10.15',
+                'type' => 'bugfix',
+                'title' => 'Hid the Provider column from clients on the Waste Collection & Recycling report',
+                'description' => 'The "Rebate by Service Provider" breakdown box was already hidden from client logins, but the per-row Provider column in the main table was not, so clients could see which service provider handled each load. The Provider column is now hidden for clients on both the on-screen report and the downloaded PDF, matching the breakdown box.',
+                'released_at' => now(),
+            ],
+            [
+                'version' => '1.10.16',
+                'type' => 'feature',
+                'title' => 'Client Hub menu item for clients',
+                'description' => 'Clients previously only saw Client Hub adverts via a one-time popup on login and the notification bell - once dismissed, there was no way to find one again. A "Client Hub" link now appears in the sidebar for client logins (alongside Documents and SHEQ Compliance), showing all of their active adverts with read/unread status so they can revisit any of them at any time.',
+                'released_at' => now(),
+            ],
         ];
 
         foreach ($notes as $note) {

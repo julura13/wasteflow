@@ -24,12 +24,43 @@ use Inertia\Response;
 class ClientHubAdvertController extends Controller
 {
     /**
-     * Admin management list of all adverts.
+     * Admins get the full management list; clients get a read-only list of their own adverts
+     * (with per-advert read/dismissed state) so they have a permanent place to find an advert
+     * again after closing its popup, instead of only the one-shot popup and the bell dropdown.
      */
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $user = $request->user();
+
+        if ($user->isAdmin()) {
+            $adverts = ClientHubAdvert::query()
+                ->with('uploadedBy:id,name')
+                ->latest()
+                ->get()
+                ->map(fn (ClientHubAdvert $advert) => [
+                    'id' => $advert->id,
+                    'title' => $advert->title,
+                    'details' => $advert->details,
+                    'contact_email' => $advert->contact_email,
+                    'original_name' => $advert->original_name,
+                    'mime_type' => $advert->mime_type,
+                    'human_readable_size' => $advert->human_readable_size,
+                    'is_active' => $advert->is_active,
+                    'view_url' => route('client-hub.view', $advert->id),
+                    'uploaded_by' => $advert->uploadedBy?->name,
+                    'created_at' => $advert->created_at->format('Y-m-d H:i'),
+                ]);
+
+            return Inertia::render('Settings/ClientHub/Index', [
+                'adverts' => $adverts,
+            ]);
+        }
+
+        abort_unless($user->hasRole('client'), 403);
+
         $adverts = ClientHubAdvert::query()
-            ->with('uploadedBy:id,name')
+            ->active()
+            ->with(['views' => fn ($q) => $q->where('user_id', $user->id)])
             ->latest()
             ->get()
             ->map(fn (ClientHubAdvert $advert) => [
@@ -37,16 +68,13 @@ class ClientHubAdvertController extends Controller
                 'title' => $advert->title,
                 'details' => $advert->details,
                 'contact_email' => $advert->contact_email,
-                'original_name' => $advert->original_name,
                 'mime_type' => $advert->mime_type,
-                'human_readable_size' => $advert->human_readable_size,
-                'is_active' => $advert->is_active,
                 'view_url' => route('client-hub.view', $advert->id),
-                'uploaded_by' => $advert->uploadedBy?->name,
                 'created_at' => $advert->created_at->format('Y-m-d H:i'),
+                'read_at' => $advert->views->first()?->read_at?->toIso8601String(),
             ]);
 
-        return Inertia::render('Settings/ClientHub/Index', [
+        return Inertia::render('ClientHub/Index', [
             'adverts' => $adverts,
         ]);
     }

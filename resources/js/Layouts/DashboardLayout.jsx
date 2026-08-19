@@ -149,6 +149,9 @@ export default function DashboardLayout({ children }) {
 
     const permissions = user?.permissions ?? [];
     const hasAny = (perms) => perms.some((p) => permissions.includes(p));
+    // Admins manage adverts; clients get a read-only list so they can find an advert again
+    // after dismissing its popup (see ClientHubAdvertController::index).
+    const canViewClientHub = user?.is_admin || (user?.roles ?? []).includes('client');
 
     const allNavItems = [
         { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permissions: ['view-dashboard'] },
@@ -268,7 +271,7 @@ export default function DashboardLayout({ children }) {
                                 )}
                             </Link>
                         )}
-                        {user?.is_admin && (
+                        {canViewClientHub && (
                             <Link
                                 href="/client-hub"
                                 className={`group flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
@@ -404,7 +407,7 @@ export default function DashboardLayout({ children }) {
                                 </Link>
                             </div>
                         )}
-                        {user?.is_admin && (
+                        {canViewClientHub && (
                             <div className="border-t border-gray-200 dark:border-gray-700 p-2">
                                 <Link
                                     href="/client-hub"

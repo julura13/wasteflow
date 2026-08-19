@@ -642,7 +642,7 @@ class OrderController extends Controller
             $serviceProviderId = $line['service_provider_id'] ?? $order->service_provider_id;
 
             if (isset($line['id']) && $line['id']) {
-                $wasteStream = \App\Models\OrderWasteStream::find($line['id']);
+                $wasteStream = OrderWasteStream::find($line['id']);
                 if ($wasteStream) {
                     $wasteStream->update([
                         'material_id' => $line['material_id'],
@@ -653,7 +653,7 @@ class OrderController extends Controller
                     ]);
                 }
             } else {
-                \App\Models\OrderWasteStream::create([
+                OrderWasteStream::create([
                     'order_id' => $order->id,
                     'material_id' => $line['material_id'],
                     'nett_weight' => $line['weight'],
@@ -771,7 +771,7 @@ class OrderController extends Controller
         // Move monthly summary weights from requested (or previous actual) month to actual collection month
         // so Grade Summary by month uses actual collection date
         $order->refresh();
-        app(\App\Services\ClientMonthlySummaryService::class)->moveOrderSummariesToActualCollectionDate($order, $oldActualCollectionDate);
+        app(ClientMonthlySummaryService::class)->moveOrderSummariesToActualCollectionDate($order, $oldActualCollectionDate);
 
         $actualQuantity = $validated['actual_quantity'] ?? $order->estimated_quantity;
 
@@ -934,7 +934,7 @@ class OrderController extends Controller
             'collection_date' => 'required|date',
         ]);
 
-        $collectionDate = \Carbon\Carbon::parse($validated['collection_date']);
+        $collectionDate = Carbon::parse($validated['collection_date']);
 
         $serviceProviderIds = Order::where('requested_collection_date', $collectionDate->format('Y-m-d'))
             ->whereNotNull('service_provider_id')
@@ -958,7 +958,7 @@ class OrderController extends Controller
             'service_provider_id' => 'required|exists:service_providers,id',
         ]);
 
-        $collectionDate = \Carbon\Carbon::parse($validated['collection_date']);
+        $collectionDate = Carbon::parse($validated['collection_date']);
         $serviceProvider = ServiceProvider::findOrFail($validated['service_provider_id']);
 
         $orders = Order::with(['site.branch.company', 'company', 'branch'])
@@ -1027,10 +1027,14 @@ class OrderController extends Controller
 
         $companies = $this->scopeCompaniesForUser();
 
+        // Internal-only: which service provider handled a load. Drives both the "Rebate by
+        // Service Provider" breakdown and the Provider column in the main table below.
+        $canViewProvider = $user->can('view-reports-all');
+
         return Inertia::render('Reports/RebateTracker', [
             'rebateData' => $rebateData,
-            // Internal-only breakdown - clients never see which provider handled which load.
-            'providerBreakdown' => $user->can('view-reports-all') ? $this->rebateTrackerReportService->providerBreakdown($rebateData) : [],
+            'canViewProvider' => $canViewProvider,
+            'providerBreakdown' => $canViewProvider ? $this->rebateTrackerReportService->providerBreakdown($rebateData) : [],
             'companies' => $companies,
             'filters' => [
                 'start_date' => $startDate,
