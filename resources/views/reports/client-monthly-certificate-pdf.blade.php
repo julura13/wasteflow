@@ -32,9 +32,18 @@
             position: absolute;
             text-align: center;
         }
+        .congratulates-label {
+            left: 20mm;
+            top: 105.5mm;
+            width: 243.7mm;
+            height: 8mm;
+            font-size: 15pt;
+            letter-spacing: 0.3pt;
+            color: #1a1a1a;
+        }
         .company-name {
             left: 65mm;
-            top: 119mm;
+            top: 111mm;
             width: 145mm;
             height: 14mm;
             white-space: nowrap;
@@ -74,6 +83,8 @@
         @if($templateSrc)
             <img class="background" src="{{ $templateSrc }}" alt="">
         @endif
+
+        <div class="field congratulates-label">WASTEFLOW CONGRATULATES</div>
 
         <div class="field company-name" style="font-size: {{ $companyNameFontSize }}pt">{{ $companyNameUpper }}</div>
 
