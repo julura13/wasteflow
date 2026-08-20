@@ -156,7 +156,7 @@ it('shrinks the certificate date font size for longer month names, so the date n
         ->and($method->invoke($instance, '30 SEPTEMBER 2026'))->toBeLessThan($method->invoke($instance, '31 AUGUST 2026'));
 });
 
-it('positions the company-name field with a gap below the "WASTEFLOW CONGRATULATES" label baked into the certificate background', function () {
+it('positions the company-name field with a gap below the "WASTEFLOW CONGRATULATES" label', function () {
     // Regression test: the field used to start at the same vertical position as the label
     // above it (top: 113.5mm), so the company name sat flush against "WASTEFLOW
     // CONGRATULATES" with no visible gap. It now starts further down.
@@ -165,6 +165,30 @@ it('positions the company-name field with a gap below the "WASTEFLOW CONGRATULAT
 
     expect($contents)->toContain('.company-name')
         ->and($contents)->not->toContain('top: 113.5mm');
+});
+
+it('renders "WASTEFLOW CONGRATULATES" as real text rather than relying on the background image', function () {
+    // Regression test: this label used to be flattened into certificate-template.jpg, so it
+    // inherited that image's JPEG compression and inevitably looked soft next to every other
+    // (live-text) field on the certificate - a customer sent us their own crisper reference
+    // design and asked for it to match. The background image no longer carries this text (see
+    // .congratulates-label); it's rendered the same way as every other field so it's always as
+    // sharp as the PDF viewer's own text rendering, regardless of the background's compression.
+    $html = view('reports.client-monthly-certificate-pdf', [
+        'companyNameUpper' => 'ACME CO',
+        'companyNameFontSize' => 30.0,
+        'percentageDisplay' => '82.0',
+        'monthYearUpper' => 'JULY 2026',
+        'completeDateUpper' => '31 JULY 2026',
+        'dateFontSize' => 12.5,
+        'tierNameUpper' => null,
+        'tierColor' => null,
+        'summaryFontSize' => 13.5,
+        'summaryLineHeight' => 1.5,
+    ])->render();
+
+    expect($html)->toContain('congratulates-label')
+        ->and($html)->toContain('WASTEFLOW CONGRATULATES');
 });
 
 it('falls back to the maximum font size when the font file used for measurement is missing, so the certificate still renders', function () {
