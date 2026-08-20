@@ -167,6 +167,20 @@ it('positions the company-name field with a gap below the "WASTEFLOW CONGRATULAT
         ->and($contents)->not->toContain('top: 113.5mm');
 });
 
+it('positions the certificate-date field with a gap above the underline printed on the certificate background', function () {
+    // Regression test: the field sat at top: 159mm, which put its text glyphs' bottom edge
+    // right on top of (occasionally overlapping) the "Date" signature line baked into the
+    // certificate background at ~164.5mm - a customer sent a screenshot of the date sitting
+    // directly on the line. It now starts further up, giving consistent clearance above the
+    // line regardless of the date's font size (which itself shrinks for longer month names -
+    // see certificateDateFontSize()).
+    $path = resource_path('views/reports/client-monthly-certificate-pdf.blade.php');
+    $contents = file_get_contents($path);
+
+    expect($contents)->toContain('.certificate-date')
+        ->and($contents)->not->toContain('top: 159mm');
+});
+
 it('renders "WASTEFLOW CONGRATULATES" as real text rather than relying on the background image', function () {
     // Regression test: this label used to be flattened into certificate-template.jpg, so it
     // inherited that image's JPEG compression and inevitably looked soft next to every other

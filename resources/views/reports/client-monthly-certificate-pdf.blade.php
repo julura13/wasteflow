@@ -60,7 +60,7 @@
         }
         .certificate-date {
             left: 179.5mm;
-            top: 159mm;
+            top: 156mm;
             width: 34.7mm;
             height: 8mm;
             color: #1a1a1a;

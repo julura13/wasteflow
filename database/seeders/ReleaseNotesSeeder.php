@@ -451,6 +451,13 @@ class ReleaseNotesSeeder extends Seeder
                 'description' => 'The client sent us their original certificate design as a reference, showing crisp text where ours looked visibly softer. The "WASTEFLOW CONGRATULATES" label was flattened into the certificate\'s background image, so it inherited that image\'s JPEG compression while every other field on the certificate rendered as sharp live text. It now renders as live text too, matching the reference design.',
                 'released_at' => now(),
             ],
+            [
+                'version' => '1.10.18',
+                'type' => 'bugfix',
+                'title' => 'Fixed the certificate date sitting on its underline',
+                'description' => 'On the Certificate of Waste Diversion PDF, the date text could sit directly on top of the underline printed beneath it instead of above it with clear space. The date field now has consistent breathing room above the line for every date length.',
+                'released_at' => now(),
+            ],
         ];
 
         foreach ($notes as $note) {
