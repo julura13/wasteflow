@@ -444,6 +444,13 @@ class ReleaseNotesSeeder extends Seeder
                 'description' => 'Clients previously only saw Client Hub adverts via a one-time popup on login and the notification bell - once dismissed, there was no way to find one again. A "Client Hub" link now appears in the sidebar for client logins (alongside Documents and SHEQ Compliance), showing all of their active adverts with read/unread status so they can revisit any of them at any time.',
                 'released_at' => now(),
             ],
+            [
+                'version' => '1.10.17',
+                'type' => 'bugfix',
+                'title' => 'Sharpened the "WasteFlow Congratulates" text on the certificate',
+                'description' => 'The client sent us their original certificate design as a reference, showing crisp text where ours looked visibly softer. The "WASTEFLOW CONGRATULATES" label was flattened into the certificate\'s background image, so it inherited that image\'s JPEG compression while every other field on the certificate rendered as sharp live text. It now renders as live text too, matching the reference design.',
+                'released_at' => now(),
+            ],
         ];
 
         foreach ($notes as $note) {
