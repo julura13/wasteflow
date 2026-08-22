@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreServiceProviderRequest;
+use App\Http\Requests\UpdateServiceProviderRequest;
 use App\Models\ActivityLog;
 use App\Models\ServiceProvider;
+use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -49,26 +52,9 @@ class ServiceProviderController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreServiceProviderRequest $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'types' => 'required|array|min:1',
-            'types.*' => 'in:waste_collection,recycling,hazardous,general',
-            'email' => 'nullable|email|max:255',
-            'phone' => 'nullable|string|max:20',
-            'address' => 'nullable|string',
-            'contact_person' => 'nullable|string|max:255',
-            'registration_number' => 'nullable|string|max:255',
-            'notes' => 'nullable|string|max:1000',
-            'slip_number_prefix' => 'nullable|string|max:20',
-            'is_active' => 'boolean',
-        ]);
-
-        $validated['is_active'] = $request->has('is_active') ? $request->boolean('is_active') : true;
-        $validated['slip_number_prefix'] = ! empty(trim((string) ($validated['slip_number_prefix'] ?? '')))
-            ? trim((string) $validated['slip_number_prefix'])
-            : null;
+        $validated = $this->applyServiceProviderDefaults($request);
 
         $serviceProvider = ServiceProvider::create($validated);
 
@@ -103,26 +89,9 @@ class ServiceProviderController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, ServiceProvider $serviceProvider)
+    public function update(UpdateServiceProviderRequest $request, ServiceProvider $serviceProvider)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'types' => 'required|array|min:1',
-            'types.*' => 'in:waste_collection,recycling,hazardous,general',
-            'email' => 'nullable|email|max:255',
-            'phone' => 'nullable|string|max:20',
-            'address' => 'nullable|string',
-            'contact_person' => 'nullable|string|max:255',
-            'registration_number' => 'nullable|string|max:255',
-            'notes' => 'nullable|string|max:1000',
-            'slip_number_prefix' => 'nullable|string|max:20',
-            'is_active' => 'boolean',
-        ]);
-
-        $validated['is_active'] = $request->has('is_active') ? $request->boolean('is_active') : true;
-        $validated['slip_number_prefix'] = ! empty(trim((string) ($validated['slip_number_prefix'] ?? '')))
-            ? trim((string) $validated['slip_number_prefix'])
-            : null;
+        $validated = $this->applyServiceProviderDefaults($request);
 
         $serviceProvider->update($validated);
 
@@ -149,5 +118,17 @@ class ServiceProviderController extends Controller
 
         return redirect()->route('service-providers.index')
             ->with('success', 'Service provider deleted successfully.');
+    }
+
+    protected function applyServiceProviderDefaults(FormRequest $request): array
+    {
+        $validated = $request->validated();
+
+        $validated['is_active'] = $request->has('is_active') ? $request->boolean('is_active') : true;
+        $validated['slip_number_prefix'] = ! empty(trim((string) ($validated['slip_number_prefix'] ?? '')))
+            ? trim((string) $validated['slip_number_prefix'])
+            : null;
+
+        return $validated;
     }
 }

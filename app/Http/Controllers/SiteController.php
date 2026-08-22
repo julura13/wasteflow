@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreSiteRequest;
+use App\Http\Requests\UpdateSiteRequest;
 use App\Models\ActivityLog;
 use App\Models\Branch;
 use App\Models\Company;
@@ -35,8 +37,8 @@ class SiteController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        $companies = Company::all();
-        $branches = Branch::with('company')->get();
+        $companies = Company::where('is_active', true)->orderBy('name')->get(['id', 'name']);
+        $branches = Branch::where('is_active', true)->orderBy('name')->get(['id', 'name', 'company_id']);
 
         return Inertia::render('CollectionPoints/Index', [
             'sites' => $sites,
@@ -61,19 +63,9 @@ class SiteController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreSiteRequest $request)
     {
-        $validated = $request->validate([
-            'branch_id' => 'required|exists:branches,id',
-            'name' => 'required|string|max:255',
-            'address' => 'nullable|string',
-            'contact_person' => 'nullable|string|max:255',
-            'phone' => 'nullable|string|max:20',
-            'email' => 'nullable|email|max:255',
-            'latitude' => 'nullable|numeric|between:-90,90',
-            'longitude' => 'nullable|numeric|between:-180,180',
-            'is_active' => 'boolean',
-        ]);
+        $validated = $request->validated();
 
         $site = Site::create($validated);
 
@@ -127,19 +119,9 @@ class SiteController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Site $site)
+    public function update(UpdateSiteRequest $request, Site $site)
     {
-        $validated = $request->validate([
-            'branch_id' => 'required|exists:branches,id',
-            'name' => 'required|string|max:255',
-            'address' => 'nullable|string',
-            'contact_person' => 'nullable|string|max:255',
-            'phone' => 'nullable|string|max:20',
-            'email' => 'nullable|email|max:255',
-            'latitude' => 'nullable|numeric|between:-90,90',
-            'longitude' => 'nullable|numeric|between:-180,180',
-            'is_active' => 'boolean',
-        ]);
+        $validated = $request->validated();
 
         $site->update($validated);
 
