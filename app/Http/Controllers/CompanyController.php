@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreCompanyRequest;
+use App\Http\Requests\UpdateCompanyRequest;
 use App\Models\ActivityLog;
 use App\Models\Company;
 use App\Models\ServiceProvider;
@@ -30,7 +32,8 @@ class CompanyController extends Controller
                 $query->where('is_active', $status);
             })
             ->orderBy('name')
-            ->get();
+            ->paginate(15)
+            ->withQueryString();
 
         return Inertia::render('Companies/Index', [
             'companies' => $companies,
@@ -51,22 +54,9 @@ class CompanyController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreCompanyRequest $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'nullable|email|max:255',
-            'phone' => 'nullable|string|max:20',
-            'address' => 'nullable|string',
-            'contact_person' => 'nullable|string|max:255',
-            'registration_number' => 'nullable|string|max:255',
-            'rebate_percentage' => 'nullable|numeric|min:0|max:100',
-            'default_waste_service_provider_id' => 'nullable|exists:service_providers,id',
-            'default_recycling_service_provider_id' => 'nullable|exists:service_providers,id',
-            'is_active' => 'boolean',
-        ]);
-
-        $company = Company::create($validated);
+        $company = Company::create($request->validated());
 
         ActivityLog::log('company_created', "Company {$company->name} created", $company, ['name' => $company->name]);
 
@@ -115,22 +105,9 @@ class CompanyController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Company $company)
+    public function update(UpdateCompanyRequest $request, Company $company)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'nullable|email|max:255',
-            'phone' => 'nullable|string|max:20',
-            'address' => 'nullable|string',
-            'contact_person' => 'nullable|string|max:255',
-            'registration_number' => 'nullable|string|max:255',
-            'rebate_percentage' => 'nullable|numeric|min:0|max:100',
-            'default_waste_service_provider_id' => 'nullable|exists:service_providers,id',
-            'default_recycling_service_provider_id' => 'nullable|exists:service_providers,id',
-            'is_active' => 'boolean',
-        ]);
-
-        $company->update($validated);
+        $company->update($request->validated());
 
         ActivityLog::log('company_updated', "Company {$company->name} updated", $company, ['name' => $company->name]);
 

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreMaterialRequest;
+use App\Http\Requests\UpdateMaterialRequest;
 use App\Models\ActivityLog;
 use App\Models\Classification;
 use App\Models\Facility;
@@ -13,6 +15,7 @@ use Carbon\Carbon;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -89,9 +92,9 @@ class MaterialController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreMaterialRequest $request)
     {
-        $validated = $this->validatePayload($request);
+        $validated = $this->applyMaterialDefaults($request);
 
         $material = Material::create($validated);
         $material->load(['grade:id,name', 'wasteStream:id,name']);
@@ -145,9 +148,9 @@ class MaterialController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Material $material)
+    public function update(UpdateMaterialRequest $request, Material $material)
     {
-        $validated = $this->validatePayload($request, $material->id);
+        $validated = $this->applyMaterialDefaults($request);
 
         $material->update($validated);
         $material->load(['grade:id,name', 'wasteStream:id,name']);
@@ -284,32 +287,9 @@ class MaterialController extends Controller
         return $parts === [] ? 'Filters: none (all materials)' : 'Filters: '.implode(' — ', $parts);
     }
 
-    protected function validatePayload(Request $request, ?int $materialId = null): array
+    protected function applyMaterialDefaults(FormRequest $request): array
     {
-        $baseRules = [
-            'waste_stream_id' => 'required|exists:waste_streams,id',
-            'grade_id' => 'required|exists:grades,id',
-            'classification_id' => 'required|exists:classifications,id',
-            'facility_id' => 'required|exists:facilities,id',
-            'service_provider_id' => 'nullable|exists:service_providers,id',
-            'weight_required' => 'required|string|max:255',
-            'rebate_offered' => 'sometimes|boolean',
-            'backing_document' => 'sometimes|boolean',
-            'notes' => 'nullable|string|max:2000',
-            'is_active' => 'sometimes|boolean',
-        ];
-
-        $rebateRules = $request->boolean('rebate_offered')
-            ? [
-                'rebate_rate' => 'required|numeric|min:0|max:999999.99',
-                'client_rebate_share' => 'required|numeric|min:0|max:100',
-            ]
-            : [
-                'rebate_rate' => 'nullable|numeric|min:0|max:999999.99',
-                'client_rebate_share' => 'nullable|numeric|min:0|max:100',
-            ];
-
-        $validated = $request->validate(array_merge($baseRules, $rebateRules));
+        $validated = $request->validated();
 
         $rebateOffered = $request->boolean('rebate_offered');
         $validated['rebate_offered'] = $rebateOffered;

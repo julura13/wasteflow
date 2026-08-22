@@ -68,6 +68,7 @@ Route::resource('companies', CompanyController::class)
 Route::resource('branches', BranchController::class)
     ->middleware(['auth', 'verified', 'permission:manage-clients']);
 Route::resource('collection-points', SiteController::class)
+    ->parameters(['collection-points' => 'site'])
     ->middleware(['auth', 'verified', 'permission:manage-clients']);
 
 use App\Http\Controllers\OrderExportController;
