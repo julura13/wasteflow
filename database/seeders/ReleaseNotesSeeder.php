@@ -458,6 +458,20 @@ class ReleaseNotesSeeder extends Seeder
                 'description' => 'On the Certificate of Waste Diversion PDF, the date text could sit directly on top of the underline printed beneath it instead of above it with clear space. The date field now has consistent breathing room above the line for every date length.',
                 'released_at' => now(),
             ],
+            [
+                'version' => '1.10.19',
+                'type' => 'bugfix',
+                'title' => 'Fixed editing and deleting collection points',
+                'description' => 'Saving changes on a Collection Point\'s edit form, or deleting one, silently failed to affect the intended record due to a routing mismatch introduced when the URL was changed to "collection-points". Both now correctly update or remove the collection point you\'re working with.',
+                'released_at' => now(),
+            ],
+            [
+                'version' => '1.10.20',
+                'type' => 'improvement',
+                'title' => 'Faster Company and Branch listing pages',
+                'description' => 'The Companies page loaded every company\'s branches and collection points up front; it now paginates like the other listing pages. The company/branch filter dropdowns on the Branches and Collection Points pages also only load active companies and branches now, instead of every one ever created.',
+                'released_at' => now(),
+            ],
         ];
 
         foreach ($notes as $note) {
