@@ -90,6 +90,22 @@ trait ScopeByClientTrait
     }
 
     /**
+     * Abort with 403 if the user does not have access to this order.
+     */
+    protected function ensureOrderInScope(\App\Models\Order $order): void
+    {
+        $user = Auth::user();
+        if (! $user || $user->isAdmin()) {
+            return;
+        }
+
+        $scopedCompanyIds = $this->scopedCompanyIdsForUser($user);
+        if (! empty($scopedCompanyIds) && ! in_array((int) $order->company_id, $scopedCompanyIds, true)) {
+            abort(403, 'You do not have access to this order.');
+        }
+    }
+
+    /**
      * Enforce company/branch/site to user's scope. Returns [companyId, branchId, siteId].
      */
     protected function enforceCompanyScope(?int $companyId, ?int $branchId = null, ?int $siteId = null): array

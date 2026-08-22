@@ -20,7 +20,10 @@ class ClientMonthlySummaryService
     public function rebuildFromOrderWasteStreams(?int $year = null): int
     {
         $query = OrderWasteStream::query()
-            ->with('order:id,company_id,branch_id,site_id,actual_collection_date,requested_collection_date')
+            ->with([
+                'order:id,company_id,branch_id,site_id,actual_collection_date,requested_collection_date',
+                'material:id,waste_stream_id',
+            ])
             ->whereHas('order', function ($q) {
                 $q->where(function ($q2) {
                     $q2->whereNotNull('actual_collection_date')
@@ -63,8 +66,7 @@ class ClientMonthlySummaryService
             $s = $siteId === null ? 'n' : $siteId;
             $weight = (float) $stream->nett_weight;
             $materialId = $stream->material_id;
-            $material = Material::find($materialId);
-            $wasteStreamId = $material ? $material->waste_stream_id : null;
+            $wasteStreamId = $stream->material?->waste_stream_id;
 
             $materialKey = "{$companyId}|{$b}|{$s}|{$y}|{$m}|{$materialId}";
             if (! isset($materialBuckets[$materialKey])) {
@@ -145,7 +147,7 @@ class ClientMonthlySummaryService
      * is set/changed so the Grade Summary by month uses actual collection date.
      *
      * @param  Order  $order  Order with actual_collection_date set (e.g. after finalize)
-     * @param  \Carbon\Carbon|null  $oldActualCollectionDate  Previous actual_collection_date, or null if first time setting
+     * @param  Carbon|null  $oldActualCollectionDate  Previous actual_collection_date, or null if first time setting
      */
     public function moveOrderSummariesToActualCollectionDate(Order $order, ?Carbon $oldActualCollectionDate = null): void
     {
@@ -263,17 +265,20 @@ class ClientMonthlySummaryService
     }
 
     /**
+     * @var array<int, int|null>
+     */
+    protected static array $materialWasteStreamCache = [];
+
+    /**
      * Add weight to summaries (both material and category level).
      */
     protected function addWeight(int $companyId, ?int $branchId, ?int $siteId, int $year, int $month, float $weight, int $materialId, bool $isNewRecord = false): void
     {
-        // Load material to get waste_stream_id
-        $material = \App\Models\Material::find($materialId);
-        if (! $material) {
-            return;
+        if (! array_key_exists($materialId, static::$materialWasteStreamCache)) {
+            static::$materialWasteStreamCache[$materialId] = Material::find($materialId)?->waste_stream_id;
         }
 
-        $wasteStreamId = $material->waste_stream_id;
+        $wasteStreamId = static::$materialWasteStreamCache[$materialId];
 
         // Update or create material-level summary
         $this->updateSummary(
@@ -309,13 +314,11 @@ class ClientMonthlySummaryService
      */
     protected function subtractWeight(int $companyId, ?int $branchId, ?int $siteId, int $year, int $month, float $weight, int $materialId): void
     {
-        // Load material to get waste_stream_id
-        $material = \App\Models\Material::find($materialId);
-        if (! $material) {
-            return;
+        if (! array_key_exists($materialId, static::$materialWasteStreamCache)) {
+            static::$materialWasteStreamCache[$materialId] = Material::find($materialId)?->waste_stream_id;
         }
 
-        $wasteStreamId = $material->waste_stream_id;
+        $wasteStreamId = static::$materialWasteStreamCache[$materialId];
 
         // Subtract from material-level summary
         $this->updateSummary(

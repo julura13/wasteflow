@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ActivityLog;
 use App\Models\Media;
 use App\Models\Order;
+use App\Traits\ScopeByClientTrait;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -13,18 +14,7 @@ use Throwable;
 
 class MediaController extends Controller
 {
-    /**
-     * Abort with 403 if the order does not belong to the acting user's company.
-     * Mirrors OrderController::ensureOrderInScope() so media access follows the
-     * same tenant-isolation rule as the order itself.
-     */
-    protected function ensureOrderInScope(Order $order): void
-    {
-        $user = auth()->user();
-        if ($user && $user->company_id && (int) $order->company_id !== (int) $user->company_id) {
-            abort(403, 'You do not have access to this order.');
-        }
-    }
+    use ScopeByClientTrait;
 
     /**
      * Upload a file and associate it with an order.

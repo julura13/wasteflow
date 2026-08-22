@@ -70,35 +70,43 @@ Route::resource('branches', BranchController::class)
 Route::resource('collection-points', SiteController::class)
     ->middleware(['auth', 'verified', 'permission:manage-clients']);
 
+use App\Http\Controllers\OrderExportController;
+use App\Http\Controllers\OrderWorkflowController;
+use App\Http\Controllers\Reports\CustomerOrderFrequencyReportController;
+use App\Http\Controllers\Reports\EnvironmentalCalculatorController;
+use App\Http\Controllers\Reports\ManagementReportController;
+use App\Http\Controllers\Reports\RebateTrackerReportController;
+use App\Http\Controllers\Reports\WasteStreamCollectionReportController;
+
 // Orders routes - require any order-related permission
 $ordersPermission = 'manage-waste-collections|orders-view|orders-create|orders-schedule|orders-generate-consolidated|orders-status-documents-required|orders-status-weight-required|orders-capture-documents|orders-capture-weights|orders-finalize';
-Route::get('orders/service-providers-by-date', [OrderController::class, 'getServiceProvidersByDate'])
+Route::get('orders/service-providers-by-date', [OrderExportController::class, 'getServiceProvidersByDate'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.service-providers-by-date');
-Route::get('orders/check-slip-number', [OrderController::class, 'checkSlipNumber'])
+Route::get('orders/check-slip-number', [OrderWorkflowController::class, 'checkSlipNumber'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.check-slip-number');
-Route::get('orders/consolidated-pdf', [OrderController::class, 'downloadConsolidatedPDF'])
+Route::get('orders/consolidated-pdf', [OrderExportController::class, 'downloadConsolidatedPDF'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.consolidated-pdf');
-Route::get('orders/{order}/finalize', [OrderController::class, 'finalizeForm'])
+Route::get('orders/{order}/finalize', [OrderWorkflowController::class, 'finalizeForm'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.finalize');
-Route::post('orders/{order}/save-weights', [OrderController::class, 'saveWeights'])
+Route::post('orders/{order}/save-weights', [OrderWorkflowController::class, 'saveWeights'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.save-weights');
-Route::post('orders/{order}/finalize', [OrderController::class, 'finalize'])
+Route::post('orders/{order}/finalize', [OrderWorkflowController::class, 'finalize'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.finalize.store');
-Route::post('orders/{order}/update-status', [OrderController::class, 'updateStatus'])
+Route::post('orders/{order}/update-status', [OrderWorkflowController::class, 'updateStatus'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.update-status');
-Route::get('orders/{order}/download-pdf', [OrderController::class, 'downloadPDF'])
+Route::get('orders/{order}/download-pdf', [OrderExportController::class, 'downloadPDF'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.download-pdf');
-Route::get('orders/{order}/edit-collection-date', [OrderController::class, 'editCollectionDate'])
+Route::get('orders/{order}/edit-collection-date', [OrderWorkflowController::class, 'editCollectionDate'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.edit-collection-date');
-Route::put('orders/{order}/collection-date', [OrderController::class, 'updateCollectionDate'])
+Route::put('orders/{order}/collection-date', [OrderWorkflowController::class, 'updateCollectionDate'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.update-collection-date');
 Route::post('orders/{order}/delete', [OrderController::class, 'deleteOrder'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.delete');
-Route::post('orders/export', [OrderController::class, 'requestOrderIndexExport'])
+Route::post('orders/export', [OrderExportController::class, 'requestOrderIndexExport'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.export.request');
-Route::get('orders/export/{uuid}/status', [OrderController::class, 'orderIndexExportStatus'])
+Route::get('orders/export/{uuid}/status', [OrderExportController::class, 'orderIndexExportStatus'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.export.status');
-Route::get('orders/export/{uuid}/download', [OrderController::class, 'downloadOrderIndexExport'])
+Route::get('orders/export/{uuid}/download', [OrderExportController::class, 'downloadOrderIndexExport'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.export.download');
 Route::get('orders/seeder/index', [OrderSeederController::class, 'index'])
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.seeder.index');
@@ -196,31 +204,31 @@ Route::middleware(['auth', 'verified', 'permission:view-reports'])->prefix('repo
     Route::get('/', function () {
         return Inertia::render('Reports/Index');
     })->name('index');
-    Route::get('/rebate-tracker', [OrderController::class, 'rebateTracker'])->name('rebate-tracker');
-    Route::post('/rebate-tracker/pdf', [OrderController::class, 'requestRebateTrackerPdf'])->name('rebate-tracker-pdf.request');
-    Route::get('/rebate-tracker/pdf/{uuid}/status', [OrderController::class, 'rebateTrackerPdfStatus'])->name('rebate-tracker-pdf.status');
-    Route::get('/rebate-tracker/pdf/{uuid}/download', [OrderController::class, 'downloadRebateTrackerPdf'])->name('rebate-tracker-pdf.download');
-    Route::get('/waste-stream-collection', [OrderController::class, 'wasteStreamCollectionReport'])->name('waste-stream-collection');
-    Route::post('/waste-stream-collection/pdf', [OrderController::class, 'requestWasteStreamCollectionPdf'])->name('waste-stream-collection-pdf.request');
-    Route::get('/waste-stream-collection/pdf/{uuid}/status', [OrderController::class, 'wasteStreamCollectionPdfStatus'])->name('waste-stream-collection-pdf.status');
-    Route::get('/waste-stream-collection/pdf/{uuid}/download', [OrderController::class, 'downloadWasteStreamCollectionPdf'])->name('waste-stream-collection-pdf.download');
-    Route::get('/average-weight-wheelie-bins', [OrderController::class, 'getAverageWeightForWheelieBins'])->name('average-weight-wheelie-bins');
-    Route::get('/customer-order-frequencies/export-pdf', [ReportController::class, 'customerOrderFrequenciesExportPdf'])
+    Route::get('/rebate-tracker', [RebateTrackerReportController::class, 'index'])->name('rebate-tracker');
+    Route::post('/rebate-tracker/pdf', [RebateTrackerReportController::class, 'requestPdf'])->name('rebate-tracker-pdf.request');
+    Route::get('/rebate-tracker/pdf/{uuid}/status', [RebateTrackerReportController::class, 'pdfStatus'])->name('rebate-tracker-pdf.status');
+    Route::get('/rebate-tracker/pdf/{uuid}/download', [RebateTrackerReportController::class, 'downloadPdf'])->name('rebate-tracker-pdf.download');
+    Route::get('/waste-stream-collection', [WasteStreamCollectionReportController::class, 'index'])->name('waste-stream-collection');
+    Route::post('/waste-stream-collection/pdf', [WasteStreamCollectionReportController::class, 'requestPdf'])->name('waste-stream-collection-pdf.request');
+    Route::get('/waste-stream-collection/pdf/{uuid}/status', [WasteStreamCollectionReportController::class, 'pdfStatus'])->name('waste-stream-collection-pdf.status');
+    Route::get('/waste-stream-collection/pdf/{uuid}/download', [WasteStreamCollectionReportController::class, 'downloadPdf'])->name('waste-stream-collection-pdf.download');
+    Route::get('/average-weight-wheelie-bins', [WasteStreamCollectionReportController::class, 'getAverageWeightForWheelieBins'])->name('average-weight-wheelie-bins');
+    Route::get('/customer-order-frequencies/export-pdf', [CustomerOrderFrequencyReportController::class, 'exportPdf'])
         ->middleware('permission:view-reports-all')
         ->name('customer-order-frequencies.export-pdf');
-    Route::get('/customer-order-frequencies/export', [ReportController::class, 'customerOrderFrequenciesExport'])
+    Route::get('/customer-order-frequencies/export', [CustomerOrderFrequencyReportController::class, 'export'])
         ->middleware('permission:view-reports-all')
         ->name('customer-order-frequencies.export');
-    Route::get('/customer-order-frequencies', [ReportController::class, 'customerOrderFrequencies'])
+    Route::get('/customer-order-frequencies', [CustomerOrderFrequencyReportController::class, 'index'])
         ->middleware('permission:view-reports-all')
         ->name('customer-order-frequencies');
-    Route::get('/management-report/export-pdf', [ReportController::class, 'managementReportExportPdf'])
+    Route::get('/management-report/export-pdf', [ManagementReportController::class, 'exportPdf'])
         ->middleware('permission:view-reports-all')
         ->name('management-report.export-pdf');
-    Route::get('/management-report/export', [ReportController::class, 'managementReportExport'])
+    Route::get('/management-report/export', [ManagementReportController::class, 'export'])
         ->middleware('permission:view-reports-all')
         ->name('management-report.export');
-    Route::get('/management-report', [ReportController::class, 'managementReport'])
+    Route::get('/management-report', [ManagementReportController::class, 'index'])
         ->middleware('permission:view-reports-all')
         ->name('management-report');
     Route::get('/waste-management', [ReportController::class, 'wasteManagement'])->name('waste-management');
@@ -230,22 +238,22 @@ Route::middleware(['auth', 'verified', 'permission:view-reports'])->prefix('repo
     Route::get('/waste-management/certificate', [ReportController::class, 'downloadClientMonthlyCertificate'])->name('waste-management-certificate.download');
     Route::get('/waste-management/summary', [ReportController::class, 'wasteManagementSummary'])->name('waste-management-summary');
     Route::get('/resource-intelligence', [ReportController::class, 'resourceIntelligenceView'])->name('resource-intelligence');
-    Route::get('/carbon-calculator', [ReportController::class, 'carbonCalculator'])
+    Route::get('/carbon-calculator', [EnvironmentalCalculatorController::class, 'carbonCalculator'])
         ->middleware(['permission:view-carbon-calculator'])
         ->name('carbon-calculator');
-    Route::post('/carbon-calculator/calculate', [ReportController::class, 'carbonCalculatorCalculate'])
+    Route::post('/carbon-calculator/calculate', [EnvironmentalCalculatorController::class, 'carbonCalculatorCalculate'])
         ->middleware(['permission:view-carbon-calculator'])
         ->name('carbon-calculator.calculate');
-    Route::get('/landfill-space-calculator', [ReportController::class, 'landfillSpaceCalculator'])
+    Route::get('/landfill-space-calculator', [EnvironmentalCalculatorController::class, 'landfillSpaceCalculator'])
         ->middleware(['permission:view-landfill-space-calculator'])
         ->name('landfill-space-calculator');
-    Route::post('/landfill-space-calculator/calculate', [ReportController::class, 'landfillSpaceCalculatorCalculate'])
+    Route::post('/landfill-space-calculator/calculate', [EnvironmentalCalculatorController::class, 'landfillSpaceCalculatorCalculate'])
         ->middleware(['permission:view-landfill-space-calculator'])
         ->name('landfill-space-calculator.calculate');
-    Route::get('/water-calculator', [ReportController::class, 'waterCalculator'])
+    Route::get('/water-calculator', [EnvironmentalCalculatorController::class, 'waterCalculator'])
         ->middleware(['permission:view-water-calculator'])
         ->name('water-calculator');
-    Route::post('/water-calculator/calculate', [ReportController::class, 'waterCalculatorCalculate'])
+    Route::post('/water-calculator/calculate', [EnvironmentalCalculatorController::class, 'waterCalculatorCalculate'])
         ->middleware(['permission:view-water-calculator'])
         ->name('water-calculator.calculate');
 

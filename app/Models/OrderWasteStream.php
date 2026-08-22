@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\ClientMonthlySummaryService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,6 +10,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class OrderWasteStream extends Model
 {
     use HasFactory;
+
+    public ?float $old_nett_weight = null;
+
+    public ?int $old_material_id = null;
 
     protected $table = 'order_waste_streams';
 
@@ -58,7 +63,7 @@ class OrderWasteStream extends Model
                 $wasteStream->load('order');
             }
 
-            $service = app(\App\Services\ClientMonthlySummaryService::class);
+            $service = app(ClientMonthlySummaryService::class);
 
             // Check if this was a new record (wasRecentlyCreated is set by Laravel)
             $isNewRecord = $wasteStream->wasRecentlyCreated;
@@ -84,7 +89,7 @@ class OrderWasteStream extends Model
                 $wasteStream->load('order');
             }
 
-            $service = app(\App\Services\ClientMonthlySummaryService::class);
+            $service = app(ClientMonthlySummaryService::class);
             $service->removeWeight($wasteStream);
         });
     }

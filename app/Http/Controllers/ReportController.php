@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Reports\CustomerOrderFrequencyReportController;
+use App\Http\Controllers\Reports\EnvironmentalCalculatorController;
+use App\Http\Controllers\Reports\ManagementReportController;
 use App\Jobs\GenerateWasteManagementPdfJob;
 use App\Models\Branch;
 use App\Models\Company;
@@ -76,208 +79,38 @@ class ReportController extends Controller
         $this->managementReport = $managementReport;
     }
 
-    /**
-     * Customer order frequency: last finalized order and average finalized orders per month (waste vs recycling).
-     */
+    // =========================================================================
+    // Customer Order Frequency & Management Reports (Delegated to sub-controllers)
+    // =========================================================================
+
     public function customerOrderFrequencies(Request $request)
     {
-        [$lookbackMonths, $rows] = $this->customerOrderFrequencyReportPayload($request);
-
-        return Inertia::render('Reports/CustomerOrderFrequencies', [
-            'rows' => $rows,
-            'lookback_months' => $lookbackMonths,
-        ]);
+        return app(CustomerOrderFrequencyReportController::class)->index($request);
     }
 
-    /**
-     * CSV export for customer order frequency report (same scope and lookback as the on-screen report).
-     */
     public function customerOrderFrequenciesExport(Request $request)
     {
-        [$lookbackMonths, $rows] = $this->customerOrderFrequencyReportPayload($request);
-
-        $filename = 'customer_order_frequencies_'.now()->format('Y-m-d_His').'.csv';
-
-        return response()->streamDownload(function () use ($rows, $lookbackMonths) {
-            $out = fopen('php://output', 'w');
-            fputcsv($out, [
-                'Customer',
-                'Lookback months',
-                'Waste last finalized',
-                'Waste days since last',
-                'Waste finalized in period',
-                'Waste avg per month',
-                'Recycling last finalized',
-                'Recycling days since last',
-                'Recycling finalized in period',
-                'Recycling avg per month',
-            ]);
-            foreach ($rows as $row) {
-                fputcsv($out, [
-                    $row['company_name'],
-                    $lookbackMonths,
-                    DisplayDate::formatOrEmpty($row['waste']['last_finalized_date'] ?? null),
-                    $row['waste']['days_since_last_finalized'] ?? '',
-                    $row['waste']['finalized_orders_in_period'],
-                    $row['waste']['average_orders_per_month'],
-                    DisplayDate::formatOrEmpty($row['recycling']['last_finalized_date'] ?? null),
-                    $row['recycling']['days_since_last_finalized'] ?? '',
-                    $row['recycling']['finalized_orders_in_period'],
-                    $row['recycling']['average_orders_per_month'],
-                ]);
-            }
-            fclose($out);
-        }, $filename, [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
-        ]);
+        return app(CustomerOrderFrequencyReportController::class)->export($request);
     }
 
-    /**
-     * PDF export for customer order frequency report (same scope and lookback as the on-screen report).
-     */
     public function customerOrderFrequenciesExportPdf(Request $request)
     {
-        [$lookbackMonths, $rows] = $this->customerOrderFrequencyReportPayload($request);
-
-        $options = new Options;
-        $options->set('isHtml5ParserEnabled', true);
-        $options->set('isRemoteEnabled', true);
-        $options->set('defaultFont', 'DejaVu Sans');
-
-        $dompdf = new Dompdf($options);
-        $html = view('reports.customer-order-frequencies-pdf', [
-            'rows' => $rows,
-            'lookbackMonths' => $lookbackMonths,
-        ])->render();
-
-        $dompdf->loadHtml($html);
-        $dompdf->setPaper('A4', 'landscape');
-        $dompdf->render();
-
-        $filename = 'customer_order_frequencies_'.now()->format('Y-m-d_His').'.pdf';
-
-        return response()->streamDownload(function () use ($dompdf) {
-            echo $dompdf->output();
-        }, $filename, [
-            'Content-Type' => 'application/pdf',
-        ]);
+        return app(CustomerOrderFrequencyReportController::class)->exportPdf($request);
     }
 
-    /**
-     * @return array{0: int, 1: list<array<string, mixed>>}
-     */
-    private function customerOrderFrequencyReportPayload(Request $request): array
-    {
-        $validated = $request->validate([
-            'lookback_months' => ['sometimes', 'integer', 'min:1', 'max:60'],
-        ]);
-        $lookbackMonths = (int) ($validated['lookback_months'] ?? 12);
-
-        $companies = $this->scopeCompaniesForUser();
-        $rows = $this->customerOrderFrequencyReport->buildForCompanies($companies, $lookbackMonths, now());
-
-        return [$lookbackMonths, $rows];
-    }
-
-    /**
-     * Management report: total waste diverted % and container-type totals, one row per client, for a single month.
-     */
     public function managementReport(Request $request)
     {
-        [$month, $year, $rows] = $this->managementReportPayload($request);
-
-        return Inertia::render('Reports/ManagementReport', [
-            'rows' => $rows,
-            'month' => $month,
-            'year' => $year,
-        ]);
+        return app(ManagementReportController::class)->index($request);
     }
 
-    /**
-     * CSV export for the management report (same scope and month as the on-screen report).
-     */
     public function managementReportExport(Request $request)
     {
-        [$month, $year, $rows] = $this->managementReportPayload($request);
-
-        $filename = 'management_report_'.sprintf('%04d-%02d', $year, $month).'.csv';
-
-        return response()->streamDownload(function () use ($rows) {
-            $out = fopen('php://output', 'w');
-            fputcsv($out, [
-                'Customer',
-                'Total waste diverted %',
-                'Total waste managed (kg)',
-                'Container totals',
-            ]);
-            foreach ($rows as $row) {
-                $containerSummary = collect($row['container_totals'])
-                    ->map(fn ($c) => $c['name'].': '.$c['quantity'])
-                    ->implode(', ');
-
-                fputcsv($out, [
-                    $row['company_name'],
-                    $row['total_waste_diverted_percentage'],
-                    $row['total_waste_managed_kg'],
-                    $containerSummary,
-                ]);
-            }
-            fclose($out);
-        }, $filename, [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
-        ]);
+        return app(ManagementReportController::class)->export($request);
     }
 
-    /**
-     * PDF export for the management report (same scope and month as the on-screen report).
-     */
     public function managementReportExportPdf(Request $request)
     {
-        [$month, $year, $rows] = $this->managementReportPayload($request);
-
-        $options = new Options;
-        $options->set('isHtml5ParserEnabled', true);
-        $options->set('isRemoteEnabled', true);
-        $options->set('defaultFont', 'DejaVu Sans');
-
-        $dompdf = new Dompdf($options);
-        $html = view('reports.management-report-pdf', [
-            'rows' => $rows,
-            'month' => $month,
-            'year' => $year,
-        ])->render();
-
-        $dompdf->loadHtml($html);
-        $dompdf->setPaper('A4', 'landscape');
-        $dompdf->render();
-
-        $filename = 'management_report_'.sprintf('%04d-%02d', $year, $month).'.pdf';
-
-        return response()->streamDownload(function () use ($dompdf) {
-            echo $dompdf->output();
-        }, $filename, [
-            'Content-Type' => 'application/pdf',
-        ]);
-    }
-
-    /**
-     * @return array{0: int, 1: int, 2: list<array<string, mixed>>}
-     */
-    private function managementReportPayload(Request $request): array
-    {
-        $validated = $request->validate([
-            'month' => ['sometimes', 'integer', 'min:1', 'max:12'],
-            'year' => ['sometimes', 'integer', 'min:2020', 'max:2100'],
-        ]);
-        $month = (int) ($validated['month'] ?? now()->month);
-        $year = (int) ($validated['year'] ?? now()->year);
-
-        $companies = $this->scopeCompaniesForUser();
-        $rows = $this->managementReport->buildForCompanies($companies, $month, $year);
-
-        return [$month, $year, $rows];
+        return app(ManagementReportController::class)->exportPdf($request);
     }
 
     /**
@@ -736,112 +569,38 @@ class ReportController extends Controller
         ]);
     }
 
-    /**
-     * Display the carbon calculator proofing page (manual weights, same formulas as reports).
-     */
+    // =========================================================================
+    // Environmental Calculators (Delegated to EnvironmentalCalculatorController)
+    // =========================================================================
+
     public function carbonCalculator()
     {
-        return Inertia::render('Reports/CarbonCalculator');
+        return app(EnvironmentalCalculatorController::class)->carbonCalculator();
     }
 
-    /**
-     * Run carbon calculation from manually entered weights (same logic as reports).
-     */
     public function carbonCalculatorCalculate(Request $request)
     {
-        $validated = $request->validate([
-            'weights' => ['required', 'array'],
-            'weights.paper' => ['nullable', 'numeric', 'min:0'],
-            'weights.plasticPPHD' => ['nullable', 'numeric', 'min:0'],
-            'weights.plasticPS' => ['nullable', 'numeric', 'min:0'],
-            'weights.plasticLDPE' => ['nullable', 'numeric', 'min:0'],
-            'weights.aluminium' => ['nullable', 'numeric', 'min:0'],
-            'weights.steel' => ['nullable', 'numeric', 'min:0'],
-            'weights.glass' => ['nullable', 'numeric', 'min:0'],
-            'weights.foodWaste' => ['nullable', 'numeric', 'min:0'],
-            'weights.gardenWaste' => ['nullable', 'numeric', 'min:0'],
-            'weights.batteries' => ['nullable', 'numeric', 'min:0'],
-            'weights.electronics' => ['nullable', 'numeric', 'min:0'],
-            'weights.tetrapak' => ['nullable', 'numeric', 'min:0'],
-            'weights.wood' => ['nullable', 'numeric', 'min:0'],
-        ]);
-
-        $weights = array_map(fn ($v) => (float) ($v ?? 0), $validated['weights'] ?? []);
-
-        $result = $this->carbonCalculator->calculateMaterialsCO2e($weights);
-
-        return response()->json([
-            'materials' => $result['materials'],
-            'totals' => $result['totals'],
-        ]);
+        return app(EnvironmentalCalculatorController::class)->carbonCalculatorCalculate($request);
     }
 
-    /**
-     * Display landfill space saved calculator (manual weights, same formulas as reports).
-     */
     public function landfillSpaceCalculator()
     {
-        return Inertia::render('Reports/LandfillSpaceCalculator');
+        return app(EnvironmentalCalculatorController::class)->landfillSpaceCalculator();
     }
 
-    /**
-     * Run landfill space calculation from manually entered weights (same logic as reports).
-     */
     public function landfillSpaceCalculatorCalculate(Request $request)
     {
-        $validated = $request->validate([
-            'weights' => ['required', 'array'],
-            'weights.paper' => ['nullable', 'numeric', 'min:0'],
-            'weights.plastics' => ['nullable', 'numeric', 'min:0'],
-            'weights.aluminium' => ['nullable', 'numeric', 'min:0'],
-            'weights.steel' => ['nullable', 'numeric', 'min:0'],
-            'weights.glass' => ['nullable', 'numeric', 'min:0'],
-            'weights.tetrapak' => ['nullable', 'numeric', 'min:0'],
-            'weights.organics' => ['nullable', 'numeric', 'min:0'],
-            'weights.wood' => ['nullable', 'numeric', 'min:0'],
-        ]);
-
-        $weights = array_map(fn ($v) => (float) ($v ?? 0), $validated['weights'] ?? []);
-
-        $breakdown = $this->landfillSpaceCalculator->calculate($weights);
-
-        return response()->json([
-            'breakdown' => $breakdown,
-        ]);
+        return app(EnvironmentalCalculatorController::class)->landfillSpaceCalculatorCalculate($request);
     }
 
-    /**
-     * Display water saved calculator (manual weights, same formulas as reports).
-     */
     public function waterCalculator()
     {
-        return Inertia::render('Reports/WaterCalculator');
+        return app(EnvironmentalCalculatorController::class)->waterCalculator();
     }
 
-    /**
-     * Run water calculation from manually entered weights (same logic as reports).
-     */
     public function waterCalculatorCalculate(Request $request)
     {
-        $validated = $request->validate([
-            'weights' => ['required', 'array'],
-            'weights.paper' => ['nullable', 'numeric', 'min:0'],
-            'weights.plastics' => ['nullable', 'numeric', 'min:0'],
-            'weights.aluminium' => ['nullable', 'numeric', 'min:0'],
-            'weights.steel' => ['nullable', 'numeric', 'min:0'],
-            'weights.glass' => ['nullable', 'numeric', 'min:0'],
-            'weights.tetrapak' => ['nullable', 'numeric', 'min:0'],
-            'weights.organics' => ['nullable', 'numeric', 'min:0'],
-            'weights.wood' => ['nullable', 'numeric', 'min:0'],
-        ]);
-
-        $weights = array_map(fn ($v) => (float) ($v ?? 0), $validated['weights'] ?? []);
-
-        $breakdown = $this->waterCalculator->calculate($weights);
-
-        return response()->json([
-            'breakdown' => $breakdown,
-        ]);
+        return app(EnvironmentalCalculatorController::class)->waterCalculatorCalculate($request);
     }
 
     /**
