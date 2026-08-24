@@ -53,8 +53,18 @@ class DemoOrdersSeeder extends Seeder
         }
 
         $materials = $this->materialsPool();
-        $wasteContainer = ContainerOption::query()->where('order_type', 'waste')->where('is_active', true)->first();
-        $recyclingContainer = ContainerOption::query()->where('order_type', 'recycling')->where('is_active', true)->first();
+        $wasteContainer = ContainerOption::query()
+            ->where([
+                'order_type' => 'waste',
+                'is_active' => true,
+            ])
+            ->first();
+        $recyclingContainer = ContainerOption::query()
+            ->where([
+                'order_type' => 'recycling',
+                'is_active' => true,
+            ])
+            ->first();
 
         $totalCreated = 0;
 
