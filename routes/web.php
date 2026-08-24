@@ -10,11 +10,18 @@ use App\Http\Controllers\GlobalSearchController;
 use App\Http\Controllers\MaterialController;
 use App\Http\Controllers\MediaController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\OrderExportController;
 use App\Http\Controllers\OrderSeederController;
+use App\Http\Controllers\OrderWorkflowController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RecurringOrderController;
 use App\Http\Controllers\ReleaseNoteController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\Reports\CustomerOrderFrequencyReportController;
+use App\Http\Controllers\Reports\EnvironmentalCalculatorController;
+use App\Http\Controllers\Reports\ManagementReportController;
+use App\Http\Controllers\Reports\RebateTrackerReportController;
+use App\Http\Controllers\Reports\WasteStreamCollectionReportController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\ServiceProviderController;
 use App\Http\Controllers\Settings\ClassificationController;
@@ -34,26 +41,15 @@ Route::get('/', function () {
     return redirect('/login');
 });
 
-Route::get('/dashboard', [DashboardController::class, 'index'])
-    ->middleware(['auth', 'verified', 'permission:view-dashboard'])->name('dashboard');
-
-Route::get('/dashboard/branches', [DashboardController::class, 'getBranches'])
-    ->middleware(['auth', 'verified', 'permission:view-dashboard'])->name('dashboard.branches');
-
-Route::get('/dashboard/sites', [DashboardController::class, 'getSites'])
-    ->middleware(['auth', 'verified', 'permission:view-dashboard'])->name('dashboard.sites');
-
-Route::get('/dashboard/grade-month-detail', [DashboardController::class, 'getGradeMonthDailyDetail'])
-    ->middleware(['auth', 'verified', 'permission:view-dashboard'])->name('dashboard.grade-month-detail');
-
-Route::get('/dashboard/orders-for-day', [DashboardController::class, 'getOrdersForDay'])
-    ->middleware(['auth', 'verified', 'permission:view-dashboard'])->name('dashboard.orders-for-day');
-
-Route::get('/dashboard/container-month-detail', [DashboardController::class, 'getContainerMonthDailyDetail'])
-    ->middleware(['auth', 'verified', 'permission:view-dashboard'])->name('dashboard.container-month-detail');
-
-Route::get('/dashboard/orders-for-day-by-container', [DashboardController::class, 'getOrdersForDayByContainer'])
-    ->middleware(['auth', 'verified', 'permission:view-dashboard'])->name('dashboard.orders-for-day-by-container');
+Route::middleware(['auth', 'verified', 'permission:view-dashboard'])->prefix('dashboard')->group(function () {
+    Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/branches', [DashboardController::class, 'getBranches'])->name('dashboard.branches');
+    Route::get('/sites', [DashboardController::class, 'getSites'])->name('dashboard.sites');
+    Route::get('/grade-month-detail', [DashboardController::class, 'getGradeMonthDailyDetail'])->name('dashboard.grade-month-detail');
+    Route::get('/orders-for-day', [DashboardController::class, 'getOrdersForDay'])->name('dashboard.orders-for-day');
+    Route::get('/container-month-detail', [DashboardController::class, 'getContainerMonthDailyDetail'])->name('dashboard.container-month-detail');
+    Route::get('/orders-for-day-by-container', [DashboardController::class, 'getOrdersForDayByContainer'])->name('dashboard.orders-for-day-by-container');
+});
 
 Route::get('/activity-log', [ActivityLogController::class, 'index'])
     ->middleware(['auth', 'verified', 'permission:view-activity-log'])->name('activity-log.index');
@@ -63,56 +59,33 @@ Route::get('/clients', function () {
 })->middleware(['auth', 'verified', 'permission:manage-clients'])->name('clients');
 
 // Resource routes for CRUD operations
-Route::resource('companies', CompanyController::class)
-    ->middleware(['auth', 'verified', 'permission:manage-clients']);
-Route::resource('branches', BranchController::class)
-    ->middleware(['auth', 'verified', 'permission:manage-clients']);
-Route::resource('collection-points', SiteController::class)
-    ->parameters(['collection-points' => 'site'])
-    ->middleware(['auth', 'verified', 'permission:manage-clients']);
-
-use App\Http\Controllers\OrderExportController;
-use App\Http\Controllers\OrderWorkflowController;
-use App\Http\Controllers\Reports\CustomerOrderFrequencyReportController;
-use App\Http\Controllers\Reports\EnvironmentalCalculatorController;
-use App\Http\Controllers\Reports\ManagementReportController;
-use App\Http\Controllers\Reports\RebateTrackerReportController;
-use App\Http\Controllers\Reports\WasteStreamCollectionReportController;
+Route::middleware(['auth', 'verified', 'permission:manage-clients'])->group(function () {
+    Route::resource('companies', CompanyController::class);
+    Route::resource('branches', BranchController::class);
+    Route::resource('collection-points', SiteController::class)
+        ->parameters(['collection-points' => 'site']);
+});
 
 // Orders routes - require any order-related permission
 $ordersPermission = 'manage-waste-collections|orders-view|orders-create|orders-schedule|orders-generate-consolidated|orders-status-documents-required|orders-status-weight-required|orders-capture-documents|orders-capture-weights|orders-finalize';
-Route::get('orders/service-providers-by-date', [OrderExportController::class, 'getServiceProvidersByDate'])
-    ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.service-providers-by-date');
-Route::get('orders/check-slip-number', [OrderWorkflowController::class, 'checkSlipNumber'])
-    ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.check-slip-number');
-Route::get('orders/consolidated-pdf', [OrderExportController::class, 'downloadConsolidatedPDF'])
-    ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.consolidated-pdf');
-Route::get('orders/{order}/finalize', [OrderWorkflowController::class, 'finalizeForm'])
-    ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.finalize');
-Route::post('orders/{order}/save-weights', [OrderWorkflowController::class, 'saveWeights'])
-    ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.save-weights');
-Route::post('orders/{order}/finalize', [OrderWorkflowController::class, 'finalize'])
-    ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.finalize.store');
-Route::post('orders/{order}/update-status', [OrderWorkflowController::class, 'updateStatus'])
-    ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.update-status');
-Route::get('orders/{order}/download-pdf', [OrderExportController::class, 'downloadPDF'])
-    ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.download-pdf');
-Route::get('orders/{order}/edit-collection-date', [OrderWorkflowController::class, 'editCollectionDate'])
-    ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.edit-collection-date');
-Route::put('orders/{order}/collection-date', [OrderWorkflowController::class, 'updateCollectionDate'])
-    ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.update-collection-date');
-Route::post('orders/{order}/delete', [OrderController::class, 'deleteOrder'])
-    ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.delete');
-Route::post('orders/export', [OrderExportController::class, 'requestOrderIndexExport'])
-    ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.export.request');
-Route::get('orders/export/{uuid}/status', [OrderExportController::class, 'orderIndexExportStatus'])
-    ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.export.status');
-Route::get('orders/export/{uuid}/download', [OrderExportController::class, 'downloadOrderIndexExport'])
-    ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.export.download');
-Route::get('orders/seeder/index', [OrderSeederController::class, 'index'])
-    ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.seeder.index');
-Route::post('orders/seeder/generate', [OrderSeederController::class, 'store'])
-    ->middleware(['auth', 'verified', "permission:{$ordersPermission}"])->name('orders.seeder.generate');
+Route::middleware(['auth', 'verified', "permission:{$ordersPermission}"])->prefix('orders')->name('orders.')->group(function () {
+    Route::get('service-providers-by-date', [OrderExportController::class, 'getServiceProvidersByDate'])->name('service-providers-by-date');
+    Route::get('check-slip-number', [OrderWorkflowController::class, 'checkSlipNumber'])->name('check-slip-number');
+    Route::get('consolidated-pdf', [OrderExportController::class, 'downloadConsolidatedPDF'])->name('consolidated-pdf');
+    Route::get('export/{uuid}/status', [OrderExportController::class, 'orderIndexExportStatus'])->name('export.status');
+    Route::get('export/{uuid}/download', [OrderExportController::class, 'downloadOrderIndexExport'])->name('export.download');
+    Route::post('export', [OrderExportController::class, 'requestOrderIndexExport'])->name('export.request');
+    Route::get('seeder/index', [OrderSeederController::class, 'index'])->name('seeder.index');
+    Route::post('seeder/generate', [OrderSeederController::class, 'store'])->name('seeder.generate');
+    Route::get('{order}/finalize', [OrderWorkflowController::class, 'finalizeForm'])->name('finalize');
+    Route::post('{order}/finalize', [OrderWorkflowController::class, 'finalize'])->name('finalize.store');
+    Route::post('{order}/save-weights', [OrderWorkflowController::class, 'saveWeights'])->name('save-weights');
+    Route::post('{order}/update-status', [OrderWorkflowController::class, 'updateStatus'])->name('update-status');
+    Route::get('{order}/download-pdf', [OrderExportController::class, 'downloadPDF'])->name('download-pdf');
+    Route::get('{order}/edit-collection-date', [OrderWorkflowController::class, 'editCollectionDate'])->name('edit-collection-date');
+    Route::put('{order}/collection-date', [OrderWorkflowController::class, 'updateCollectionDate'])->name('update-collection-date');
+    Route::post('{order}/delete', [OrderController::class, 'deleteOrder'])->name('delete');
+});
 Route::resource('orders', OrderController::class)
     ->middleware(['auth', 'verified', "permission:{$ordersPermission}"]);
 
@@ -124,18 +97,14 @@ Route::middleware(['auth', 'verified', 'permission:manage-recurring-orders'])->g
         ->name('recurring-orders.restore');
 });
 
-Route::resource('waste-types', WasteTypeController::class)
-    ->middleware(['auth', 'verified', 'permission:manage-services']);
-Route::resource('service-providers', ServiceProviderController::class)
-    ->middleware(['auth', 'verified', 'permission:manage-services']);
-Route::patch('materials/{material}/rebate-rate', [MaterialController::class, 'updateRebateRate'])
-    ->middleware(['auth', 'verified', 'permission:manage-services'])->name('materials.update-rebate-rate');
-Route::patch('materials/{material}/rebate-share', [MaterialController::class, 'updateRebateShare'])
-    ->middleware(['auth', 'verified', 'permission:manage-services'])->name('materials.update-rebate-share');
-Route::get('materials/export/pdf', [MaterialController::class, 'exportPdf'])
-    ->middleware(['auth', 'verified', 'permission:manage-services'])->name('materials.export.pdf');
-Route::resource('materials', MaterialController::class)
-    ->middleware(['auth', 'verified', 'permission:manage-services']);
+Route::middleware(['auth', 'verified', 'permission:manage-services'])->group(function () {
+    Route::resource('waste-types', WasteTypeController::class);
+    Route::resource('service-providers', ServiceProviderController::class);
+    Route::patch('materials/{material}/rebate-rate', [MaterialController::class, 'updateRebateRate'])->name('materials.update-rebate-rate');
+    Route::patch('materials/{material}/rebate-share', [MaterialController::class, 'updateRebateShare'])->name('materials.update-rebate-share');
+    Route::get('materials/export/pdf', [MaterialController::class, 'exportPdf'])->name('materials.export.pdf');
+    Route::resource('materials', MaterialController::class);
+});
 
 // Media routes (used in orders – same permission as orders)
 Route::middleware(['auth', 'verified', "permission:{$ordersPermission}"])->prefix('media')->name('media.')->group(function () {
