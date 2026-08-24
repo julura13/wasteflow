@@ -30,12 +30,12 @@ use App\Http\Controllers\Settings\FacilityController;
 use App\Http\Controllers\Settings\GradeController;
 use App\Http\Controllers\Settings\RecoveryRatingController;
 use App\Http\Controllers\Settings\WasteStreamController;
+use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SheqComplianceController;
 use App\Http\Controllers\SiteController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WasteTypeController;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
 Route::get('/', function () {
     return redirect('/login');
@@ -53,10 +53,6 @@ Route::middleware(['auth', 'verified', 'permission:view-dashboard'])->prefix('da
 
 Route::get('/activity-log', [ActivityLogController::class, 'index'])
     ->middleware(['auth', 'verified', 'permission:view-activity-log'])->name('activity-log.index');
-
-Route::get('/clients', function () {
-    return Inertia::render('Clients/Index');
-})->middleware(['auth', 'verified', 'permission:manage-clients'])->name('clients');
 
 // Resource routes for CRUD operations
 Route::middleware(['auth', 'verified', 'permission:manage-clients'])->group(function () {
@@ -171,9 +167,7 @@ Route::get('/reports/resource-intelligence/print/{token}', [ReportController::cl
     ->name('reports.resource-intelligence.print-preview');
 
 Route::middleware(['auth', 'verified', 'permission:view-reports'])->prefix('reports')->name('reports.')->group(function () {
-    Route::get('/', function () {
-        return Inertia::render('Reports/Index');
-    })->name('index');
+    Route::get('/', [ReportController::class, 'index'])->name('index');
     Route::get('/rebate-tracker', [RebateTrackerReportController::class, 'index'])->name('rebate-tracker');
     Route::post('/rebate-tracker/pdf', [RebateTrackerReportController::class, 'requestPdf'])->name('rebate-tracker-pdf.request');
     Route::get('/rebate-tracker/pdf/{uuid}/status', [RebateTrackerReportController::class, 'pdfStatus'])->name('rebate-tracker-pdf.status');
@@ -255,9 +249,7 @@ Route::middleware(['auth', 'verified', 'permission:manage-users'])->prefix('user
 Route::middleware(['auth'])->post('/users/impersonate/leave', [UserController::class, 'leaveImpersonation'])->name('users.impersonate.leave');
 
 Route::middleware(['auth', 'verified', 'permission:manage-settings'])->prefix('settings')->name('settings.')->group(function () {
-    Route::get('/', function () {
-        return Inertia::render('Settings/Index');
-    })->name('index');
+    Route::get('/', [SettingsController::class, 'index'])->name('index');
 
     Route::resource('waste-streams', WasteStreamController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::resource('grades', GradeController::class)->only(['index', 'store', 'update', 'destroy']);

@@ -79,6 +79,11 @@ class ReportController extends Controller
         $this->managementReport = $managementReport;
     }
 
+    public function index(): Response
+    {
+        return Inertia::render('Reports/Index');
+    }
+
     // =========================================================================
     // Customer Order Frequency & Management Reports (Delegated to sub-controllers)
     // =========================================================================
