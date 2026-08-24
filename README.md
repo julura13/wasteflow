@@ -86,10 +86,12 @@ make init
 
 `make init` will:
 1. Copy `.env.example` → `.env` (if it doesn't already exist) and install PHP dependencies via a throwaway container — no local PHP/Composer needed
-2. Ask a few questions: app name, local port, and whether to seed extra demo data (sample companies/branches/sites, service providers, and orders)
+2. Ask a few questions: app name, local port, and whether to also seed 30 sample orders per company (with activity logs)
 3. Start the Docker containers (app, MySQL, Meilisearch)
-4. Generate the app key, install frontend dependencies, run migrations, and seed the database
-5. Start the Vite dev server
+4. Generate the app key, install frontend dependencies, run migrations, and seed the database — companies/branches/sites and service providers are always seeded; orders are seeded if you opted in
+5. Index Meilisearch and build frontend assets
+
+Note: companies, branches/sites, and service providers are seeded every time, regardless of how you answer the orders question — a fresh setup always has something to look at.
 
 When it finishes, the app is running — see **Default Users** below to log in.
 
