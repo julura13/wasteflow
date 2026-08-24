@@ -86,7 +86,7 @@ make init
 
 `make init` will:
 1. Copy `.env.example` → `.env` (if it doesn't already exist) and install PHP dependencies via a throwaway container — no local PHP/Composer needed
-2. Ask a few questions: app name, local port, and whether to seed extra demo data
+2. Ask a few questions: app name, local port, and whether to seed extra demo data (sample companies/branches/sites, service providers, and orders)
 3. Start the Docker containers (app, MySQL, Meilisearch)
 4. Generate the app key, install frontend dependencies, run migrations, and seed the database
 5. Start the Vite dev server
