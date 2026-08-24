@@ -76,6 +76,7 @@ if [[ "$SEED_DEMO" =~ ^[Yy] ]]; then
 	vendor/bin/sail artisan db:seed --class=ServiceProviderSeeder
 	vendor/bin/sail artisan db:seed --class=CompanySeeder
 	vendor/bin/sail artisan db:seed --class=MonthlyReportDataSeeder
+	vendor/bin/sail artisan db:seed --class=DemoOrdersSeeder
 fi
 
 echo "Building frontend assets..."
