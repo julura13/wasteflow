@@ -290,7 +290,11 @@ it('does not duplicate a content_view record when marking the same SHEQ complian
     $document->markSeenBy($client);
     $document->markSeenBy($client);
 
-    expect(ContentView::where('viewable_type', Media::class)->where('viewable_id', $document->id)->where('user_id', $client->id)->count())->toBe(1);
+    expect(ContentView::where([
+        'viewable_type' => Media::class,
+        'viewable_id' => $document->id,
+        'user_id' => $client->id,
+    ])->count())->toBe(1);
 });
 
 it('does not flag SHEQ compliance as unseen when a document exists in a different media collection', function () {

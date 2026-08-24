@@ -28,7 +28,10 @@ class StoreRecurringOrderRequest extends FormRequest
             'quantity_lines.*.container_option_id' => [
                 'required',
                 'integer',
-                Rule::exists('container_options', 'id')->where(fn ($q) => $q->where('order_type', $orderType)->where('is_active', true)),
+                Rule::exists('container_options', 'id')->where(fn ($q) => $q->where([
+                    'order_type' => $orderType,
+                    'is_active' => true,
+                ])),
             ],
             'quantity_lines.*.quantity' => ['required', 'integer', 'min:1'],
             'quantity_lines.*.description' => ['nullable', 'string', 'max:255'],

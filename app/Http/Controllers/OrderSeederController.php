@@ -97,8 +97,10 @@ class OrderSeederController extends Controller
                     $requestedDate = $workdays[array_rand($workdays)];
 
                     $recyclingOption = ContainerOption::query()
-                        ->where('order_type', 'recycling')
-                        ->where('is_active', true)
+                        ->where([
+                            'order_type' => 'recycling',
+                            'is_active' => true,
+                        ])
                         ->inRandomOrder()
                         ->first();
                     if (! $recyclingOption) {
@@ -143,8 +145,10 @@ class OrderSeederController extends Controller
                     $requestedDate = $workdays[array_rand($workdays)];
 
                     $wasteOption = ContainerOption::query()
-                        ->where('order_type', 'waste')
-                        ->where('is_active', true)
+                        ->where([
+                            'order_type' => 'waste',
+                            'is_active' => true,
+                        ])
                         ->inRandomOrder()
                         ->first();
                     if (! $wasteOption) {

@@ -73,9 +73,11 @@ class MigrateOrderDocumentsToWasabiCommand extends Command
     private function baseQuery(): Builder
     {
         return Media::query()
-            ->where('mediable_type', Order::class)
-            ->where('collection', 'supporting_documents')
-            ->where('disk', 'local')
+            ->where([
+                'mediable_type' => Order::class,
+                'collection' => 'supporting_documents',
+                'disk' => 'local',
+            ])
             ->whereNull('local_deleted_at')
             ->whereHas('mediable', function (Builder $q): void {
                 $q->whereIn('status', ['documents_required', 'finalized']);

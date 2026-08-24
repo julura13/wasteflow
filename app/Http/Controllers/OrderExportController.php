@@ -132,8 +132,10 @@ class OrderExportController extends Controller
     public function orderIndexExportStatus(Request $request, string $uuid)
     {
         $export = OrderIndexExport::query()
-            ->where('uuid', $uuid)
-            ->where('user_id', $request->user()->id)
+            ->where([
+                'uuid' => $uuid,
+                'user_id' => $request->user()->id,
+            ])
             ->firstOrFail();
 
         return response()->json([
@@ -148,8 +150,10 @@ class OrderExportController extends Controller
     public function downloadOrderIndexExport(Request $request, string $uuid)
     {
         $export = OrderIndexExport::query()
-            ->where('uuid', $uuid)
-            ->where('user_id', $request->user()->id)
+            ->where([
+                'uuid' => $uuid,
+                'user_id' => $request->user()->id,
+            ])
             ->firstOrFail();
 
         if ($export->status !== OrderIndexExport::STATUS_COMPLETED) {

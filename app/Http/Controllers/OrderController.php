@@ -147,14 +147,18 @@ class OrderController extends Controller
             ->get();
         $serviceProviders = ServiceProvider::active()->get();
         $containerOptionsWaste = ContainerOption::query()
-            ->where('is_active', true)
-            ->where('order_type', 'waste')
+            ->where([
+                'is_active' => true,
+                'order_type' => 'waste',
+            ])
             ->orderBy('name')
             ->get(['id', 'name', 'slug']);
 
         $containerOptionsRecycling = ContainerOption::query()
-            ->where('is_active', true)
-            ->where('order_type', 'recycling')
+            ->where([
+                'is_active' => true,
+                'order_type' => 'recycling',
+            ])
             ->orderBy('name')
             ->get(['id', 'name', 'slug']);
 
@@ -186,7 +190,10 @@ class OrderController extends Controller
                 'required',
                 'integer',
                 Rule::exists('container_options', 'id')->where(function ($query) use ($orderType) {
-                    $query->where('order_type', $orderType)->where('is_active', true);
+                    $query->where([
+                        'order_type' => $orderType,
+                        'is_active' => true,
+                    ]);
                 }),
             ],
             'quantity_lines.*.quantity' => 'required|integer|min:1',

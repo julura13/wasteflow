@@ -61,10 +61,12 @@ it('deletes order and removes weights and documents and updates client monthly s
         'nett_weight' => 100.5,
     ]);
 
-    $summary = ClientMonthlyMaterialSummary::where('company_id', $company->id)
-        ->where('year', 2025)
-        ->where('month', 12)
-        ->where('material_id', $material->id)
+    $summary = ClientMonthlyMaterialSummary::where([
+        'company_id' => $company->id,
+        'year' => 2025,
+        'month' => 12,
+        'material_id' => $material->id,
+    ])
         ->first();
 
     expect($summary)->not->toBeNull()
@@ -94,10 +96,12 @@ it('deletes order and removes weights and documents and updates client monthly s
     expect(OrderWasteStream::where('order_id', $order->id)->count())->toBe(0);
     expect(Media::where('mediable_type', Order::class)->where('mediable_id', $order->id)->count())->toBe(0);
 
-    $summaryAfter = ClientMonthlyMaterialSummary::where('company_id', $company->id)
-        ->where('year', 2025)
-        ->where('month', 12)
-        ->where('material_id', $material->id)
+    $summaryAfter = ClientMonthlyMaterialSummary::where([
+        'company_id' => $company->id,
+        'year' => 2025,
+        'month' => 12,
+        'material_id' => $material->id,
+    ])
         ->first();
 
     if ($summaryAfter) {

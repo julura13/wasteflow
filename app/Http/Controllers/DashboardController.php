@@ -211,8 +211,10 @@ class DashboardController extends Controller
 
         $query = Order::query()
             ->with(['site:id,name,branch_id', 'site.branch:id,name,company_id', 'site.branch.company:id,name'])
-            ->where('status', 'finalized')
-            ->where('order_type', 'waste')
+            ->where([
+                'status' => 'finalized',
+                'order_type' => 'waste',
+            ])
             ->where(function ($q) use ($date) {
                 $q->where('actual_collection_date', $date)
                     ->orWhere(function ($q2) use ($date) {

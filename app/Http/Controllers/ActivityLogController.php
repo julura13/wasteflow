@@ -25,8 +25,10 @@ class ActivityLogController extends Controller
             $order = Order::withTrashed()->where('tracking_number', $trackingNumber)->first();
             if ($order) {
                 $entries = ActivityLog::query()
-                    ->where('subject_type', Order::class)
-                    ->where('subject_id', $order->id)
+                    ->where([
+                        'subject_type' => Order::class,
+                        'subject_id' => $order->id,
+                    ])
                     ->with('causer:id,name,email')
                     ->orderBy('created_at')
                     ->get();

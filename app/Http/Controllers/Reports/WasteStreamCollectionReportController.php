@@ -117,8 +117,10 @@ class WasteStreamCollectionReportController extends Controller
     public function pdfStatus(Request $request, string $uuid)
     {
         $export = WasteStreamCollectionReportExport::query()
-            ->where('uuid', $uuid)
-            ->where('user_id', $request->user()->id)
+            ->where([
+                'uuid' => $uuid,
+                'user_id' => $request->user()->id,
+            ])
             ->firstOrFail();
 
         return response()->json([
@@ -133,8 +135,10 @@ class WasteStreamCollectionReportController extends Controller
     public function downloadPdf(Request $request, string $uuid)
     {
         $export = WasteStreamCollectionReportExport::query()
-            ->where('uuid', $uuid)
-            ->where('user_id', $request->user()->id)
+            ->where([
+                'uuid' => $uuid,
+                'user_id' => $request->user()->id,
+            ])
             ->firstOrFail();
 
         if ($export->status !== WasteStreamCollectionReportExport::STATUS_COMPLETED) {

@@ -209,8 +209,10 @@ class ReportController extends Controller
     public function wasteManagementPdfStatus(Request $request, string $uuid)
     {
         $export = WasteManagementReportExport::query()
-            ->where('uuid', $uuid)
-            ->where('user_id', $request->user()->id)
+            ->where([
+                'uuid' => $uuid,
+                'user_id' => $request->user()->id,
+            ])
             ->firstOrFail();
 
         return response()->json([
@@ -225,8 +227,10 @@ class ReportController extends Controller
     public function downloadWasteManagementPdf(Request $request, string $uuid)
     {
         $export = WasteManagementReportExport::query()
-            ->where('uuid', $uuid)
-            ->where('user_id', $request->user()->id)
+            ->where([
+                'uuid' => $uuid,
+                'user_id' => $request->user()->id,
+            ])
             ->firstOrFail();
 
         if ($export->status !== WasteManagementReportExport::STATUS_COMPLETED) {

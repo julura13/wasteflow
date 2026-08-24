@@ -196,5 +196,9 @@ it('does not duplicate a content_view record when marking the same document seen
     $document->markSeenBy($client);
     $document->markSeenBy($client);
 
-    expect(ContentView::where('viewable_type', Document::class)->where('viewable_id', $document->id)->where('user_id', $client->id)->count())->toBe(1);
+    expect(ContentView::where([
+        'viewable_type' => Document::class,
+        'viewable_id' => $document->id,
+        'user_id' => $client->id,
+    ])->count())->toBe(1);
 });

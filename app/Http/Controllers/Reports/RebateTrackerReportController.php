@@ -122,8 +122,10 @@ class RebateTrackerReportController extends Controller
     public function pdfStatus(Request $request, string $uuid)
     {
         $export = RebateReportExport::query()
-            ->where('uuid', $uuid)
-            ->where('user_id', $request->user()->id)
+            ->where([
+                'uuid' => $uuid,
+                'user_id' => $request->user()->id,
+            ])
             ->firstOrFail();
 
         return response()->json([
@@ -138,8 +140,10 @@ class RebateTrackerReportController extends Controller
     public function downloadPdf(Request $request, string $uuid)
     {
         $export = RebateReportExport::query()
-            ->where('uuid', $uuid)
-            ->where('user_id', $request->user()->id)
+            ->where([
+                'uuid' => $uuid,
+                'user_id' => $request->user()->id,
+            ])
             ->firstOrFail();
 
         if ($export->status !== RebateReportExport::STATUS_COMPLETED) {
