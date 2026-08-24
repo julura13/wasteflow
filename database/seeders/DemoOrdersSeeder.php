@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\ActivityLog;
 use App\Models\Classification;
 use App\Models\Company;
 use App\Models\ContainerOption;
@@ -107,11 +108,38 @@ class DemoOrdersSeeder extends Seeder
                     }
                 }
 
+                $this->logActivity($order, $creator, $status);
+
                 $totalCreated++;
             }
         }
 
         $this->command?->info("Created {$totalCreated} demo orders across {$companies->count()} companies (".self::ORDERS_PER_COMPANY.' each).');
+    }
+
+    private function logActivity(Order $order, User $creator, string $status): void
+    {
+        ActivityLog::create([
+            'log_name' => 'order_created',
+            'description' => "Order {$order->tracking_number} created",
+            'subject_type' => Order::class,
+            'subject_id' => $order->id,
+            'causer_id' => $creator->id,
+            'properties' => ['tracking_number' => $order->tracking_number, 'order_type' => $order->order_type],
+        ]);
+
+        if ($status === 'pending') {
+            return;
+        }
+
+        ActivityLog::create([
+            'log_name' => 'order_status_changed',
+            'description' => "Order {$order->tracking_number} status changed from pending to {$status}",
+            'subject_type' => Order::class,
+            'subject_id' => $order->id,
+            'causer_id' => $creator->id,
+            'properties' => ['tracking_number' => $order->tracking_number, 'old_status' => 'pending', 'new_status' => $status],
+        ]);
     }
 
     /**

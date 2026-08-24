@@ -33,7 +33,7 @@ APP_PORT_INPUT=${APP_PORT_INPUT:-80}
 if [ -n "${SEED_DEMO:-}" ]; then
 	echo "Seed extra demo data? $SEED_DEMO (from 'make init SEED_DEMO=...')"
 else
-	read -rp "Seed extra demo data (companies/branches/sites, service providers, sample orders) on top of the base roles/users? [y/N]: " SEED_DEMO || true
+	read -rp "Seed 30 sample orders per company (with activity logs) on top of the base data? [y/N]: " SEED_DEMO || true
 	SEED_DEMO=${SEED_DEMO:-n}
 fi
 echo "-> seed extra demo data: $SEED_DEMO"
@@ -55,10 +55,15 @@ set_env DB_PORT 3306
 set_env DB_DATABASE wasteflow
 set_env DB_USERNAME sail
 set_env DB_PASSWORD password
+set_env SCOUT_DRIVER meilisearch
+set_env MEILISEARCH_HOST http://meilisearch:7700
+set_env MEILISEARCH_KEY masterKey
 
 echo ""
 echo "Starting containers (Sail: app, MySQL, Meilisearch)..."
-vendor/bin/sail up -d
+# --force-recreate ensures the meilisearch container picks up MEILISEARCH_KEY from
+# .env even if a container from a previous run (with a different/blank key) is still around.
+vendor/bin/sail up -d --force-recreate
 
 if ! grep -q "^APP_KEY=base64" .env; then
 	echo "Generating app key..."
@@ -71,13 +76,20 @@ vendor/bin/sail npm install
 echo "Running migrations and seeding base data (roles, permissions, default users)..."
 vendor/bin/sail artisan migrate:fresh --seed
 
+echo "Seeding companies, branches/sites, and service providers..."
+vendor/bin/sail artisan db:seed --class=ServiceProviderSeeder
+vendor/bin/sail artisan db:seed --class=CompanySeeder
+
 if [[ "$SEED_DEMO" =~ ^[Yy] ]]; then
-	echo "Seeding demo data (service providers, companies/branches/sites, orders)..."
-	vendor/bin/sail artisan db:seed --class=ServiceProviderSeeder
-	vendor/bin/sail artisan db:seed --class=CompanySeeder
+	echo "Seeding demo orders (30 per company) with activity logs..."
 	vendor/bin/sail artisan db:seed --class=MonthlyReportDataSeeder
 	vendor/bin/sail artisan db:seed --class=DemoOrdersSeeder
 fi
+
+echo "Indexing search (Meilisearch)..."
+for model in Grade Order User Company ContainerOption Branch Site ServiceProvider WasteStream; do
+	vendor/bin/sail artisan scout:import "App\\Models\\${model}"
+done
 
 echo "Building frontend assets..."
 vendor/bin/sail npm run build
