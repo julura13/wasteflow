@@ -42,7 +42,70 @@ A modern waste management application built with Laravel, React, Inertia.js, and
 - ✅ Roles and permissions management UI
 - ✅ User management UI for staff
 
-## Installation
+## Prerequisites
+
+- **Git**
+- **Docker** — [Docker Desktop](https://www.docker.com/products/docker-desktop/) on macOS/Windows, or Docker Engine + the Compose plugin on Linux
+- **Make**
+
+<details>
+<summary><strong>macOS</strong></summary>
+
+- Install Docker Desktop and make sure it's running before you continue.
+- `make` ships with the Xcode Command Line Tools — if you don't have it: `xcode-select --install`.
+
+</details>
+
+<details>
+<summary><strong>Linux</strong></summary>
+
+- Install Docker Engine and the Compose plugin for your distro ([docs.docker.com/engine/install](https://docs.docker.com/engine/install/)).
+- Add your user to the `docker` group so you don't need `sudo` for every command, then log out and back in: `sudo usermod -aG docker $USER`.
+- `make` is usually preinstalled; if not, `sudo apt install make` (Debian/Ubuntu) or your distro's equivalent.
+
+</details>
+
+<details>
+<summary><strong>Windows</strong></summary>
+
+- Install Docker Desktop with the **WSL2 backend** enabled.
+- Install a WSL2 distro if you don't already have one: `wsl --install` (Ubuntu is the default).
+- Clone the repo and run every command below **inside the WSL2 terminal**, not PowerShell/cmd — Docker Desktop's WSL2 integration handles the rest, and `make` is available by default in the Ubuntu WSL image (or `sudo apt install make` if not).
+
+</details>
+
+## Quick Start
+
+Once the prerequisites above are installed:
+
+```bash
+git clone <repository-url>
+cd wasteflow
+make init
+```
+
+`make init` will:
+1. Copy `.env.example` → `.env` (if it doesn't already exist) and install PHP dependencies via a throwaway container — no local PHP/Composer needed
+2. Ask a few questions: app name, local port, and whether to seed extra demo data
+3. Start the Docker containers (app, MySQL, Meilisearch)
+4. Generate the app key, install frontend dependencies, run migrations, and seed the database
+5. Start the Vite dev server
+
+When it finishes, the app is running — see **Default Users** below to log in.
+
+Other commands (see `Makefile` for the full list):
+
+| Command | What it does |
+|---|---|
+| `make up` / `make down` | Start / stop the containers |
+| `make fresh` | Wipe and re-seed the database |
+| `make dev` | Run the Vite dev server only (containers must already be up) |
+| `make test` | Run the backend test suite |
+| `make logs` | Tail container logs |
+
+## Manual Installation
+
+If you'd rather not use Docker/Sail, or want to install dependencies yourself:
 
 1. **Clone the repository**
    ```bash
@@ -79,7 +142,7 @@ A modern waste management application built with Laravel, React, Inertia.js, and
    ```
 
 7. **Start the development server**
-   - **With Sail (recommended):** `vendor/bin/sail up -d` then `vendor/bin/sail open`
+   - **With Sail:** `vendor/bin/sail up -d` then `vendor/bin/sail open`
    - **Without Sail:** `php artisan serve` (and in another terminal `npm run dev` for Vite)
 
 ## Default Users
@@ -140,7 +203,7 @@ npm run test:coverage
 
 The application uses a custom color palette inspired by the WasteFlow website:
 
-- **Primary**: Green tones (#3b82f6) for environmental/sustainability theme
+- **Primary**: Blue tones (#3b82f6) for a clean, professional theme
 - **Secondary**: Gray tones for professional contrast
 - **Accent**: Yellow tones for highlights and call-to-actions
 
